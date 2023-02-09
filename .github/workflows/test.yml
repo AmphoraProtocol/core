@@ -1,4 +1,4 @@
-name: CI
+name: Test
 
 on: [push]
 
@@ -7,30 +7,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
-    name: Run Linters
-    runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [16.x]
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Use Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: "yarn"
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-
-      - run: yarn lint:check
-
   forge:
     name: Run Unit and E2E Tests
     runs-on: ubuntu-latest
@@ -54,7 +30,6 @@ jobs:
         run: |
           touch .env
           echo MAINNET_RPC="${{ secrets.MAINNET_RPC }}" >> .env
-          echo RINKEBY_RPC="${{ secrets.RINKEBY_RPC }}" >> .env
           cat .env
 
       - name: Run tests
