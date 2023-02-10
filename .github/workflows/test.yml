@@ -2,6 +2,10 @@ on: [push]
 
 name: test
 
+concurrency:
+  group: ${{github.workflow}}-${{github.ref}}
+  cancel-in-progress: true
+
 jobs:
   check:
     name: Foundry project
