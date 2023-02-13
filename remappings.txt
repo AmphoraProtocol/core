@@ -1,8 +1,15 @@
-ds-test/=lib/ds-test/src
-prb/test/=lib/prb-test/src/
-forge-std/=lib/forge-std/src
-isolmate/=lib/isolmate/src
+ds-test/=node_modules/ds-test/src
+forge-std/=node_modules/forge-std/src
+isolmate/=node_modules/@defi-wonderland/isolmate/src
+uni-v3-core/=node_modules/@uniswap/v3-core/contracts
+uni-v3-periphery/=node_modules/@uniswap/v3-periphery/contracts
+solidity-utils/=node_modules/@defi-wonderland/solidity-utils/solidity
 
-contracts/=solidity/contracts
-interfaces/=solidity/interfaces
-test/=solidity/test
+@chainlink/=node_modules/@chainlink/contracts/src/v0.8
+@openzeppelin/contracts/=node_modules/@openzeppelin/contracts
+@openzeppelin/contracts-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable
+@uniswap/v3-core/=node_modules/@uniswap/v3-core
+@uniswap/v3-periphery/=node_modules/@uniswap/v3-periphery
+@contracts/=solidity/contracts
+@interfaces/=solidity/interfaces
+@test/=solidity/test
