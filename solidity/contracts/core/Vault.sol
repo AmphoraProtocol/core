@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {CompLike} from '@contracts/_external/CompLike.sol';
 import {IUSDA} from '@interfaces/core/IUSDA.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
@@ -16,7 +15,6 @@ import {IERC20Upgradeable} from '@openzeppelin/contracts-upgradeable/token/ERC20
 /// major differences:
 /// 1. multi-collateral
 /// 2. generate interest in USDA
-/// 3. can delegate voting power of contained tokens
 contract Vault is IVault, Context {
     using SafeERC20Upgradeable for IERC20;
 
@@ -95,13 +93,6 @@ contract Vault is IVault, Context {
         //  check if the account is solvent
         require(_controller.checkVault(_vaultInfo.id), 'over-withdrawal');
         emit Withdraw(token_address, amount);
-    }
-
-    /// @notice delegate the voting power of a comp-like erc20 token to another address
-    /// @param delegatee address that will receive the votes
-    /// @param token_address address of comp-like erc20 token
-    function delegateCompLikeTo(address delegatee, address token_address) external override onlyMinter {
-        CompLike(token_address).delegate(delegatee);
     }
 
     /// @notice function used by the VaultController to transfer tokens

@@ -18,7 +18,6 @@ interface IVault {
     // business logic
 
     function withdrawErc20(address token_address, uint256 amount) external;
-    function delegateCompLikeTo(address compLikeDelegatee, address compLikeToken) external;
 
     // administrative functions
     function controllerTransfer(address _token, address _to, uint256 _amount) external;

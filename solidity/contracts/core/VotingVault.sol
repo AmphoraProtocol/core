@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {CompLike} from '@contracts/_external/CompLike.sol';
 import {VotingVaultController} from '@contracts/core/VotingVaultController.sol';
 
 import {IUSDA} from '@interfaces/core/IUSDA.sol';
@@ -72,13 +71,6 @@ contract VotingVault is Context {
     /// @return address of minter
     function id() external view returns (uint96) {
         return _vaultInfo.id;
-    }
-
-    /// @notice delegate the voting power of a comp-like erc20 token to another address
-    /// @param delegatee address that will receive the votes
-    /// @param token_address address of comp-like erc20 token
-    function delegateCompLikeTo(address delegatee, address token_address) external onlyMinter {
-        CompLike(token_address).delegate(delegatee);
     }
 
     /// @notice function used by the VaultController to transfer tokens
