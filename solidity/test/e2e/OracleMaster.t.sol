@@ -3,6 +3,7 @@ pragma solidity >=0.8.4 <0.9.0;
 
 import '@test/e2e/Common.sol';
 
+// TODO: These tests are not needed, since we are gonna remove the OracleMaster
 contract E2EOracleMaster is CommonE2EBase {
     function setUp() public override {
         super.setUp();

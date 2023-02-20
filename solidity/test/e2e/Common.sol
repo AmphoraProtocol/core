@@ -75,9 +75,12 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     IVault carolVault;
     uint256 carolVaultId;
 
+    IVault daveVault;
+    uint256 daveVaultId;
+
     IVault gusVault;
 
-    uint256 andySUSDBalance = 1 ether;
+    uint256 andySUSDBalance = 100_000_000;
     uint256 bobSUSDBalance = 1_000_000_000;
     uint256 bobWETH = 10 ether;
     uint256 carolUni = 100 ether;
@@ -158,6 +161,24 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
         usdaToken.setPauser(address(frank));
 
         // TODO: add checks for everything being set
+        vm.stopPrank();
+    }
+
+    function _mintVault(address _minter) internal returns (uint256 _id) {
+        vm.prank(_minter);
+        vaultController.mintVault();
+        _id = vaultController.vaultsMinted();
+    }
+
+    function _borrow(address _account, uint256 _vaultId, uint256 _borrowAmount) internal {
+        vm.prank(_account);
+        vaultController.borrowUSDA(uint96(_vaultId), uint192(_borrowAmount));
+    }
+
+    function _depositSUSD(address _account, uint256 _amountToDeposit) internal {
+        vm.startPrank(_account);
+        susd.approve(address(usdaToken), _amountToDeposit);
+        usdaToken.deposit(_amountToDeposit);
         vm.stopPrank();
     }
 }

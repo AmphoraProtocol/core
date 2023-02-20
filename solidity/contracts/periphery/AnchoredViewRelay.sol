@@ -48,7 +48,8 @@ contract AnchoredViewRelay is IOracleRelay {
         require(mainValue > 0, 'invalid oracle value');
 
         // get anchor price
-        uint256 anchorPrice = _anchorRelay.currentValue();
+        /// TODO: I think this is one 0 off, so I multiplied * 10
+        uint256 anchorPrice = _anchorRelay.currentValue() * 10;
         require(anchorPrice > 0, 'invalid anchor value');
 
         // calculate buffer
