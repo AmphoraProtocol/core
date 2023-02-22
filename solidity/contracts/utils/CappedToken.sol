@@ -5,11 +5,12 @@ import {ERC20Upgradeable} from '@openzeppelin/contracts-upgradeable/token/ERC20/
 import {OwnableUpgradeable} from '@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol';
 import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import {IERC20Metadata} from '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
+import {ICappedToken} from '@interfaces/utils/ICappedToken.sol';
 
 /// @title CappedToken
 /// @notice handles all minting/burning of underlying
 /// @dev extends ierc20 upgradable
-contract CappedToken is Initializable, OwnableUpgradeable, ERC20Upgradeable {
+contract CappedToken is ICappedToken, Initializable, OwnableUpgradeable, ERC20Upgradeable {
     IERC20Metadata public _underlying;
     uint8 private _underlying_decimals;
 
@@ -45,7 +46,7 @@ contract CappedToken is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     }
 
     function checkCap(uint256 amount_) internal view {
-        require(ERC20Upgradeable.totalSupply() + amount_ <= _cap, 'cap reached');
+        if (ERC20Upgradeable.totalSupply() + amount_ > _cap) revert CappedToken_CapReached();
     }
 
     function underlyingScalar() public view returns (uint256) {
@@ -68,16 +69,15 @@ contract CappedToken is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function deposit(uint256 underlying_amount, address target) public {
         // scale the decimals to THIS token decimals, or 1e18. see underlyingToCappedAmount
         uint256 amount = underlyingToCappedAmount(underlying_amount);
-        require(amount > 0, 'Cannot deposit 0');
+        if (amount == 0) revert CappedToken_ZeroAmount();
         // check cap
         checkCap(amount);
-        // check allowance and ensure transfer success
-        uint256 allowance = _underlying.allowance(_msgSender(), address(this));
-        require(allowance >= underlying_amount, 'Insufficient Allowance');
         // mint the scaled amount of tokens to the TARGET
         ERC20Upgradeable._mint(target, amount);
         // transfer underlying from SENDER to THIS
-        require(_underlying.transferFrom(_msgSender(), address(this), underlying_amount), 'transfer failed');
+        if (!_underlying.transferFrom(_msgSender(), address(this), underlying_amount)) {
+            revert CappedToken_TransferFailed();
+        }
     }
 
     /// @notice withdraw underlying by burning THIS token
@@ -86,15 +86,11 @@ contract CappedToken is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     function withdraw(uint256 underlying_amount, address target) public {
         // scale the underlying_amount to the THIS token decimal amount, aka 1e18
         uint256 amount = underlyingToCappedAmount(underlying_amount);
-        // check balances all around
-        require(amount <= this.balanceOf(_msgSender()), 'insufficient funds');
-        require(amount > 0, 'Cannot withdraw 0');
-        uint256 balance = _underlying.balanceOf(address(this));
-        require(balance >= underlying_amount, 'Insufficient underlying in Bank');
+        if (amount == 0) revert CappedToken_ZeroAmount();
         // burn the scaled amount of tokens from the SENDER
         ERC20Upgradeable._burn(_msgSender(), amount);
         // transfer underlying to the TARGET
-        require(_underlying.transfer(target, underlying_amount), 'transfer failed');
+        if (!_underlying.transfer(target, underlying_amount)) revert CappedToken_TransferFailed();
     }
 
     // EIP-4626 compliance, sorry it's not the most gas efficient.
@@ -116,8 +112,9 @@ contract CappedToken is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     }
 
     function maxDeposit(address receiver) public view returns (uint256) {
-        uint256 remaining = (_cap - (totalUnderlying() * underlyingScalar())) / underlyingScalar();
-        if (remaining < _underlying.balanceOf(receiver)) return _underlying.balanceOf(receiver);
+        uint256 remaining = (_cap - underlyingToCappedAmount(totalUnderlying()));
+        uint256 _receiverBalance = underlyingToCappedAmount(_underlying.balanceOf(receiver));
+        if (remaining > _receiverBalance) return _receiverBalance;
         return remaining;
     }
 
@@ -125,14 +122,12 @@ contract CappedToken is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         return underlyingToCappedAmount(assets);
     }
 
-    //function deposit - already implemented
-
     function maxMint(address receiver) external view returns (uint256) {
         return cappedAmountToUnderlying(maxDeposit(receiver));
     }
 
     function previewMint(uint256 shares) external view returns (uint256) {
-        return cappedAmountToUnderlying(previewDeposit(shares));
+        return cappedAmountToUnderlying(shares);
     }
 
     function mint(uint256 shares, address receiver) external {
@@ -140,7 +135,7 @@ contract CappedToken is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     }
 
     function maxWithdraw(address receiver) public view returns (uint256) {
-        uint256 receiver_can = (ERC20Upgradeable.balanceOf(receiver) / underlyingScalar());
+        uint256 receiver_can = cappedAmountToUnderlying(ERC20Upgradeable.balanceOf(receiver));
         if (receiver_can > _underlying.balanceOf(address(this))) return _underlying.balanceOf(address(this));
         return receiver_can;
     }
@@ -149,14 +144,12 @@ contract CappedToken is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         return underlyingToCappedAmount(assets);
     }
 
-    //function withdraw - already implemented
-
     function maxRedeem(address receiver) external view returns (uint256) {
-        return cappedAmountToUnderlying(maxWithdraw(receiver));
+        return underlyingToCappedAmount(maxWithdraw(receiver));
     }
 
     function previewRedeem(uint256 shares) external view returns (uint256) {
-        return cappedAmountToUnderlying(previewWithdraw(shares));
+        return cappedAmountToUnderlying(shares);
     }
 
     function redeem(uint256 shares, address receiver) external {

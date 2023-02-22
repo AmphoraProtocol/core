@@ -6,7 +6,6 @@ import {IERC20} from 'isolmate/interfaces/tokens/IERC20.sol';
 import {DSTestPlus} from 'solidity-utils/test/DSTestPlus.sol';
 
 import {VaultController} from '@contracts/core/VaultController.sol';
-import {VotingVaultController} from '@contracts/core/VotingVaultController.sol';
 import {USDA} from '@contracts/core/USDA.sol';
 import {AmphoraProtocolTokenDelegate} from '@contracts/governance/TokenDelegate.sol';
 import {ChainlinkOracleRelay} from '@contracts/periphery/ChainlinkOracleRelay.sol';
@@ -30,7 +29,6 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     // USDA token
     USDA usdaToken;
     // VaultControllers
-    VotingVaultController votingVaultController;
     VaultController vaultController;
     // Curve Master and ThreeLines0_100 curve
     CurveMaster curveMaster;
