@@ -125,7 +125,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
         vaultController.registerOracleMaster(address(oracleMaster));
 
         // Set VaultController address for usdatoken
-        usdaToken.setVaultController(address(vaultController));
+        usdaToken.addVaultController(address(vaultController));
 
         // Deploy uniswapRelayEthUsdc oracle relay
         uniswapRelayEthUsdc = new UniswapV3OracleRelay(60, USDC_WETH_POOL_ADDRESS, true, 100_000_000_000, 1);

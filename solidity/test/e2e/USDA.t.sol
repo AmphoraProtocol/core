@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4 <0.9.0;
 
 import '@test/e2e/Common.sol';
+import '@interfaces/core/IUSDA.sol';
 
 contract E2EUSDA is CommonE2EBase {
     uint256 _susdAmount = 500_000_000;
@@ -71,7 +72,7 @@ contract E2EUSDA is CommonE2EBase {
         vm.startPrank(dave);
         susd.approve(address(usdaToken), _susdAmount);
 
-        vm.expectRevert('Cannot deposit 0');
+        vm.expectRevert(IUSDA.USDA_ZeroAmount.selector);
         usdaToken.deposit(0);
         vm.stopPrank();
     }
@@ -119,7 +120,7 @@ contract E2EUSDA is CommonE2EBase {
 
         assertEq(1 ether, usdaToken.balanceOf(eric));
 
-        vm.expectRevert('insufficient funds');
+        vm.expectRevert(IUSDA.USDA_InsufficientFunds.selector);
         vm.prank(eric);
         usdaToken.withdraw(5 ether);
     }
