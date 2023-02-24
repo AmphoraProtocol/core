@@ -47,6 +47,8 @@ interface IVaultController {
 
     function checkVault(uint96 id) external view returns (bool);
 
+    function tokenId(address _tokenAddress) external view returns (uint256 _tokenId);
+
     struct VaultSummary {
         uint96 id;
         uint192 borrowingPower;

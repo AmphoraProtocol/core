@@ -134,6 +134,13 @@ contract VaultController is
         return _tokensRegistered;
     }
 
+    /// @notice Returns the token id given a token's address
+    /// @param _tokenAddress The address of the token to target
+    /// @return _tokenId The id of the token
+    function tokenId(address _tokenAddress) external view override returns (uint256 _tokenId) {
+        return _tokenAddress_tokenId[_tokenAddress];
+    }
+
     /// @notice create a new vault
     /// @return address of the new vault
     function mintVault() public override whenNotPaused returns (address) {
@@ -248,13 +255,13 @@ contract VaultController is
         require(_oracleMaster._relays(oracle_address) != address(0x0), 'oracle does not exist');
         require(_tokenAddress_tokenId[token_address] != 0, 'token is not registered');
         // we know the token has been registered, get the Id
-        uint256 tokenId = _tokenAddress_tokenId[token_address];
+        uint256 _tokenId = _tokenAddress_tokenId[token_address];
         //LTV must be compatible with liquidation incentive
         require(LTV < (expScale - liquidationIncentive), 'incompatible LTV');
         // set the oracle of the token
-        _tokenId_oracleAddress[tokenId] = oracle_address;
+        _tokenId_oracleAddress[_tokenId] = oracle_address;
         // set the ltv of the token
-        _tokenId_tokenLTV[tokenId] = LTV;
+        _tokenId_tokenLTV[_tokenId] = LTV;
         // set the liquidation incentive of the token
         _tokenAddress_liquidationIncentive[token_address] = liquidationIncentive;
 

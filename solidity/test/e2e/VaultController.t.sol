@@ -16,10 +16,20 @@ contract E2EVaultController is CommonE2EBase {
         // Since we only have 1 vault the id: 1 is gonna be Bob's vault
         bobVault = IVault(vaultController.vaultAddress(1));
 
+        vm.startPrank(bob);
+        weth.approve(address(bobVault), bobWETH);
+        bobVault.depositERC20(address(weth), bobWETH);
+        vm.stopPrank();
+
         // Carol mints vault
         _mintVault(carol);
         // Since we only have 2 vaults the id: 2 is gonna be Carol's vault
         carolVault = IVault(vaultController.vaultAddress(2));
+
+        vm.startPrank(carol);
+        uni.approve(address(carolVault), carolUni);
+        carolVault.depositERC20(address(uni), carolUni);
+        vm.stopPrank();
 
         _mintVault(dave);
         daveVault = IVault(vaultController.vaultAddress(3));
@@ -99,12 +109,6 @@ contract E2EVaultController is CommonE2EBase {
     }
 
     function testVaultDeposits() public {
-        vm.prank(bob);
-        weth.transfer(address(bobVault), bobWETH);
-
-        vm.prank(carol);
-        uni.transfer(address(carolVault), carolUni);
-
         assertEq(bobVault.tokenBalance(WETH_ADDRESS), bobWETH);
 
         assertEq(carolVault.tokenBalance(UNI_ADDRESS), carolUni);
@@ -123,10 +127,6 @@ contract E2EVaultController is CommonE2EBase {
     }
 
     function testBorrow() public {
-        /// Bob deposit to vault
-        vm.prank(bob);
-        weth.transfer(address(bobVault), bobWETH);
-
         uint256 _usdaBalance = usdaToken.balanceOf(bob);
         assertEq(0, _usdaBalance);
 
@@ -156,9 +156,6 @@ contract E2EVaultController is CommonE2EBase {
 
     function testLiabilityAfterAWeek() public {
         uint192 _initInterestFactor = vaultController.interestFactor();
-        /// Fund vault
-        vm.prank(bob);
-        weth.transfer(address(bobVault), bobWETH);
 
         _borrow(bob, 1, borrowAmount);
 
@@ -187,9 +184,6 @@ contract E2EVaultController is CommonE2EBase {
         _depositSUSD(dave, daveSUSD);
         uint256 _balance = usdaToken.balanceOf(dave);
 
-        /// Fund vault
-        vm.prank(bob);
-        weth.transfer(address(bobVault), bobWETH);
         _borrow(bob, 1, borrowAmount);
 
         /// pass 1 year
@@ -215,10 +209,6 @@ contract E2EVaultController is CommonE2EBase {
     }
 
     function testPartialRepay() public {
-        /// Fund vault
-        vm.prank(bob);
-        weth.transfer(address(bobVault), bobWETH);
-
         uint256 _borrowAmount = 10 ether;
         _borrow(bob, 1, _borrowAmount);
 
@@ -265,10 +255,6 @@ contract E2EVaultController is CommonE2EBase {
     }
 
     function testCompletelyRepayVault() public {
-        /// Fund vault
-        vm.prank(bob);
-        weth.transfer(address(bobVault), bobWETH);
-
         uint256 _borrowAmount = 10 ether;
         _borrow(bob, 1, _borrowAmount);
 

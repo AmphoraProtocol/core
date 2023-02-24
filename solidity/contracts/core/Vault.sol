@@ -31,6 +31,8 @@ contract Vault is IVault, Context {
     VaultInfo public _vaultInfo;
     IVaultController public immutable _controller;
 
+    mapping(address => uint256) public balances;
+
     /// @notice this is the unscaled liability of the vault.
     /// the number is meaningless on its own, and must be combined with the factor taken from
     /// the vaultController in order to find the true liabilitiy
@@ -57,69 +59,96 @@ contract Vault is IVault, Context {
         _controller = IVaultController(controller_address);
     }
 
-    /// @notice minter of the vault
-    /// @return address of minter
-    function minter() external view override returns (address) {
+    /**
+     * @notice Returns the minter's address of the vault
+     * @return _minter The minter's address
+     */
+    function minter() external view override returns (address _minter) {
         return _vaultInfo.minter;
     }
 
-    /// @notice id of the vault
-    /// @return address of minter
-    function id() external view override returns (uint96) {
+    /**
+     * @notice Returns the id of the vault
+     * @return _id The id of the vault
+     */
+    function id() external view override returns (uint96 _id) {
         return _vaultInfo.id;
     }
 
-    /// @notice current vault base liability
-    /// @return base liability of vault
-    function baseLiability() external view override returns (uint256) {
+    /**
+     * @notice Returns the current vault base liability
+     * @return _liability The current vault base liability of the vault
+     */
+    function baseLiability() external view override returns (uint256 _liability) {
         return _baseLiability;
     }
 
-    /// @notice get vaults balance of an erc20 token
-    /// @param addr address of the erc20 token
-    /// @dev scales wBTC up to normal erc20 size
-    function tokenBalance(address addr) external view override returns (uint256) {
-        return IERC20(addr).balanceOf(address(this));
+    /**
+     * @notice Returns the vault's balance of a token
+     * @param _token The address of the token
+     * @return _balance The token's balance of the vault
+     */
+    function tokenBalance(address _token) external view override returns (uint256 _balance) {
+        return balances[_token];
     }
 
-    /// @notice withdraw an erc20 token from the vault
-    /// this can only be called by the minter
-    /// the withdraw will be denied if ones vault would become insolvent
-    /// @param token_address address of erc20 token
-    /// @param amount amount of erc20 token to withdraw
-    function withdrawErc20(address token_address, uint256 amount) external override onlyMinter {
+    /**
+     * @notice Used to deposit a token to the vault
+     * @param _token The address of the token to deposit
+     * @param _amount The amount of the token to deposit
+     */
+    function depositERC20(address _token, uint256 _amount) external override onlyMinter {
+        if (_controller.tokenId(_token) == 0) revert Vault_TokenNotRegistered();
+        if (_amount == 0) revert Vault_AmountZero();
+        SafeERC20Upgradeable.safeTransferFrom(IERC20Upgradeable(_token), _msgSender(), address(this), _amount);
+        balances[_token] += _amount;
+        emit Deposit(_token, _amount);
+    }
+
+    /**
+     * @notice Used to withdraw a token from the vault. This can only be called by the minter
+     * @dev The withdraw will be denied if ones vault would become insolvent
+     * @param _token The address of the token
+     * @param _amount The amount of the token to withdraw
+     */
+    function withdrawERC20(address _token, uint256 _amount) external override onlyMinter {
+        if (_controller.tokenId(_token) == 0) revert Vault_TokenNotRegistered();
         // transfer the token to the owner
-        SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(token_address), _msgSender(), amount);
+        SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(_token), _msgSender(), _amount);
         //  check if the account is solvent
         require(_controller.checkVault(_vaultInfo.id), 'over-withdrawal');
-        emit Withdraw(token_address, amount);
+        balances[_token] -= _amount;
+        emit Withdraw(_token, _amount);
     }
 
-    /// @notice function used by the VaultController to transfer tokens
-    /// callable by the VaultController only
-    /// @param _token token to transfer
-    /// @param _to person to send the coins to
-    /// @param _amount amount of coins to move
+    /**
+     * @notice Function used by the VaultController to transfer tokens
+     * @param _token The address of the token to transfer
+     * @param _to The address of the person to send the coins to
+     * @param _amount The amount of coins to move
+     */
     function controllerTransfer(address _token, address _to, uint256 _amount) external override onlyVaultController {
         SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(_token), _to, _amount);
     }
 
-    /// @notice function used by the VaultController to reduce a vault's liability
-    /// callable by the VaultController only
-    /// @param increase true to increase, false to decrease
-    /// @param base_amount change in base liability
-    function modifyLiability(bool increase, uint256 base_amount)
+    /**
+     * @notice Modifies a vault's liability. Can only be called by VaultController
+     * @param _increase True to increase liability, false to decrease
+     * @param _baseAmount The change amount in base liability
+     * @return _liability The new base liability
+     */
+    function modifyLiability(bool _increase, uint256 _baseAmount)
         external
         override
         onlyVaultController
         returns (uint256)
     {
-        if (increase) {
-            _baseLiability = _baseLiability + base_amount;
+        if (_increase) {
+            _baseLiability = _baseLiability + _baseAmount;
         } else {
             // require statement only valid for repayment
-            require(_baseLiability >= base_amount, 'repay too much');
-            _baseLiability = _baseLiability - base_amount;
+            require(_baseLiability >= _baseAmount, 'repay too much');
+            _baseLiability = _baseLiability - _baseAmount;
         }
         return _baseLiability;
     }
