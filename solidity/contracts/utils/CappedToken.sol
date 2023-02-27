@@ -11,148 +11,142 @@ import {ICappedToken} from '@interfaces/utils/ICappedToken.sol';
 /// @notice handles all minting/burning of underlying
 /// @dev extends ierc20 upgradable
 contract CappedToken is ICappedToken, Initializable, OwnableUpgradeable, ERC20Upgradeable {
-    IERC20Metadata public _underlying;
-    uint8 private _underlying_decimals;
+  IERC20Metadata public underlying;
+  uint8 private _underlyingDecimals;
 
-    /// @notice CAP is in units of the CAP token,so 18 decimals.
-    ///         not the underlying!!!!!!!!!
-    uint256 public _cap;
+  /// @notice CAP is in units of the CAP token,so 18 decimals.
+  ///         not the underlying!!!!!!!!!
+  uint256 public cap;
 
-    /// @notice initializer for contract
-    /// @param name_ name of capped token
-    /// @param symbol_ symbol of capped token
-    /// @param underlying_ the address of underlying
-    function initialize(string memory name_, string memory symbol_, address underlying_) public initializer {
-        __Ownable_init();
-        __ERC20_init(name_, symbol_);
-        _underlying = IERC20Metadata(underlying_);
-        _underlying_decimals = _underlying.decimals();
+  /// @notice initializer for contract
+  /// @param _name name of capped token
+  /// @param _symbol symbol of capped token
+  /// @param _underlying the address of underlying
+  function initialize(string memory _name, string memory _symbol, address _underlying) public initializer {
+    __Ownable_init();
+    __ERC20_init(_name, _symbol);
+    underlying = IERC20Metadata(_underlying);
+    _underlyingDecimals = underlying.decimals();
+  }
+
+  /// @notice 18 decimal erc20 spec should have been written into the fucking standard
+  /// @return _decimals decimals of token
+  function decimals() public pure override returns (uint8 _decimals) {
+    return 18;
+  }
+
+  /// @notice set the Cap
+  function setCap(uint256 _cap) external onlyOwner {
+    cap = _cap;
+  }
+
+  function _checkCap(uint256 _amount) internal view {
+    if (ERC20Upgradeable.totalSupply() + _amount > cap) revert CappedToken_CapReached();
+  }
+
+  function underlyingScalar() public view returns (uint256 _underlyingScalar) {
+    return (10 ** (18 - _underlyingDecimals));
+  }
+
+  /// @notice get underlying ratio
+  /// @return _amount amount of this CappedToken
+  function underlyingToCappedAmount(uint256 _underlyingAmount) internal view returns (uint256 _amount) {
+    _amount = _underlyingAmount * underlyingScalar();
+  }
+
+  function cappedAmountToUnderlying(uint256 _underlyingAmount) internal view returns (uint256 _amount) {
+    _amount = _underlyingAmount / underlyingScalar();
+  }
+
+  /// @notice deposit underlying to mint CappedToken
+  /// @param _underlyingAmount amount of underlying to deposit
+  /// @param _target recipient of tokens
+  function deposit(uint256 _underlyingAmount, address _target) public {
+    // scale the decimals to THIS token decimals, or 1e18. see underlyingToCappedAmount
+    uint256 _amount = underlyingToCappedAmount(_underlyingAmount);
+    if (_amount == 0) revert CappedToken_ZeroAmount();
+    // check cap
+    _checkCap(_amount);
+    // mint the scaled amount of tokens to the TARGET
+    ERC20Upgradeable._mint(_target, _amount);
+    // transfer underlying from SENDER to THIS
+    if (!underlying.transferFrom(_msgSender(), address(this), _underlyingAmount)) {
+      revert CappedToken_TransferFailed();
     }
+  }
 
-    /// @notice 18 decimal erc20 spec should have been written into the fucking standard
-    function decimals() public pure override returns (uint8) {
-        return 18;
-    }
+  /// @notice withdraw underlying by burning THIS token
+  /// caller should obtain 1 underlying for every underlyingScalar() THIS token
+  /// @param _underlyingAmount amount of underlying to withdraw
+  function withdraw(uint256 _underlyingAmount, address _target) public {
+    // scale the _underlyingAmount to the THIS token decimal amount, aka 1e18
+    uint256 _amount = underlyingToCappedAmount(_underlyingAmount);
+    if (_amount == 0) revert CappedToken_ZeroAmount();
+    // burn the scaled amount of tokens from the SENDER
+    ERC20Upgradeable._burn(_msgSender(), _amount);
+    // transfer underlying to the TARGET
+    if (!underlying.transfer(_target, _underlyingAmount)) revert CappedToken_TransferFailed();
+  }
 
-    /// @notice get the Cap
-    /// @return cap uint256
-    function getCap() public view returns (uint256) {
-        return _cap;
-    }
+  // EIP-4626 compliance, sorry it's not the most gas efficient.
 
-    /// @notice set the Cap
-    function setCap(uint256 cap_) external onlyOwner {
-        _cap = cap_;
-    }
+  function underlyingAddress() external view returns (address _underlying) {
+    return address(underlying);
+  }
 
-    function checkCap(uint256 amount_) internal view {
-        if (ERC20Upgradeable.totalSupply() + amount_ > _cap) revert CappedToken_CapReached();
-    }
+  function totalUnderlying() public view returns (uint256 _totalUnderlying) {
+    return underlying.balanceOf(address(this));
+  }
 
-    function underlyingScalar() public view returns (uint256) {
-        return (10 ** (18 - _underlying_decimals));
-    }
+  function convertToShares(uint256 _assets) external view returns (uint256 _shares) {
+    return underlyingToCappedAmount(_assets);
+  }
 
-    /// @notice get underlying ratio
-    /// @return amount amount of this CappedToken
-    function underlyingToCappedAmount(uint256 underlying_amount) internal view returns (uint256 amount) {
-        amount = underlying_amount * underlyingScalar();
-    }
+  function convertToAssets(uint256 _shares) external view returns (uint256 _assets) {
+    return cappedAmountToUnderlying(_shares);
+  }
 
-    function cappedAmountToUnderlying(uint256 underlying_amount) internal view returns (uint256 amount) {
-        amount = underlying_amount / underlyingScalar();
-    }
+  function maxDeposit(address _receiver) public view returns (uint256 _maxDeposit) {
+    uint256 _remaining = (cap - underlyingToCappedAmount(totalUnderlying()));
+    uint256 _receiverBalance = underlyingToCappedAmount(underlying.balanceOf(_receiver));
+    if (_remaining > _receiverBalance) return _receiverBalance;
+    return _remaining;
+  }
 
-    /// @notice deposit _underlying to mint CappedToken
-    /// @param underlying_amount amount of underlying to deposit
-    /// @param target recipient of tokens
-    function deposit(uint256 underlying_amount, address target) public {
-        // scale the decimals to THIS token decimals, or 1e18. see underlyingToCappedAmount
-        uint256 amount = underlyingToCappedAmount(underlying_amount);
-        if (amount == 0) revert CappedToken_ZeroAmount();
-        // check cap
-        checkCap(amount);
-        // mint the scaled amount of tokens to the TARGET
-        ERC20Upgradeable._mint(target, amount);
-        // transfer underlying from SENDER to THIS
-        if (!_underlying.transferFrom(_msgSender(), address(this), underlying_amount)) {
-            revert CappedToken_TransferFailed();
-        }
-    }
+  function previewDeposit(uint256 _assets) public view returns (uint256 _shares) {
+    return underlyingToCappedAmount(_assets);
+  }
 
-    /// @notice withdraw underlying by burning THIS token
-    /// caller should obtain 1 underlying for every underlyingScalar() THIS token
-    /// @param underlying_amount amount of underlying to withdraw
-    function withdraw(uint256 underlying_amount, address target) public {
-        // scale the underlying_amount to the THIS token decimal amount, aka 1e18
-        uint256 amount = underlyingToCappedAmount(underlying_amount);
-        if (amount == 0) revert CappedToken_ZeroAmount();
-        // burn the scaled amount of tokens from the SENDER
-        ERC20Upgradeable._burn(_msgSender(), amount);
-        // transfer underlying to the TARGET
-        if (!_underlying.transfer(target, underlying_amount)) revert CappedToken_TransferFailed();
-    }
+  function maxMint(address _receiver) external view returns (uint256 _assets) {
+    return cappedAmountToUnderlying(maxDeposit(_receiver));
+  }
 
-    // EIP-4626 compliance, sorry it's not the most gas efficient.
+  function previewMint(uint256 _shares) external view returns (uint256 _assets) {
+    return cappedAmountToUnderlying(_shares);
+  }
 
-    function underlyingAddress() external view returns (address) {
-        return address(_underlying);
-    }
+  function mint(uint256 _shares, address _receiver) external {
+    return deposit(cappedAmountToUnderlying(_shares), _receiver);
+  }
 
-    function totalUnderlying() public view returns (uint256) {
-        return _underlying.balanceOf(address(this));
-    }
+  function maxWithdraw(address _receiver) public view returns (uint256 _maxWithdraw) {
+    _maxWithdraw = cappedAmountToUnderlying(ERC20Upgradeable.balanceOf(_receiver));
+    if (_maxWithdraw > underlying.balanceOf(address(this))) return underlying.balanceOf(address(this));
+  }
 
-    function convertToShares(uint256 assets) external view returns (uint256) {
-        return underlyingToCappedAmount(assets);
-    }
+  function previewWithdraw(uint256 _assets) public view returns (uint256 _shares) {
+    return underlyingToCappedAmount(_assets);
+  }
 
-    function convertToAssets(uint256 shares) external view returns (uint256) {
-        return cappedAmountToUnderlying(shares);
-    }
+  function maxRedeem(address _receiver) external view returns (uint256 _assets) {
+    return underlyingToCappedAmount(maxWithdraw(_receiver));
+  }
 
-    function maxDeposit(address receiver) public view returns (uint256) {
-        uint256 remaining = (_cap - underlyingToCappedAmount(totalUnderlying()));
-        uint256 _receiverBalance = underlyingToCappedAmount(_underlying.balanceOf(receiver));
-        if (remaining > _receiverBalance) return _receiverBalance;
-        return remaining;
-    }
+  function previewRedeem(uint256 _shares) external view returns (uint256 _assets) {
+    return cappedAmountToUnderlying(_shares);
+  }
 
-    function previewDeposit(uint256 assets) public view returns (uint256) {
-        return underlyingToCappedAmount(assets);
-    }
-
-    function maxMint(address receiver) external view returns (uint256) {
-        return cappedAmountToUnderlying(maxDeposit(receiver));
-    }
-
-    function previewMint(uint256 shares) external view returns (uint256) {
-        return cappedAmountToUnderlying(shares);
-    }
-
-    function mint(uint256 shares, address receiver) external {
-        return deposit(cappedAmountToUnderlying(shares), receiver);
-    }
-
-    function maxWithdraw(address receiver) public view returns (uint256) {
-        uint256 receiver_can = cappedAmountToUnderlying(ERC20Upgradeable.balanceOf(receiver));
-        if (receiver_can > _underlying.balanceOf(address(this))) return _underlying.balanceOf(address(this));
-        return receiver_can;
-    }
-
-    function previewWithdraw(uint256 assets) public view returns (uint256) {
-        return underlyingToCappedAmount(assets);
-    }
-
-    function maxRedeem(address receiver) external view returns (uint256) {
-        return underlyingToCappedAmount(maxWithdraw(receiver));
-    }
-
-    function previewRedeem(uint256 shares) external view returns (uint256) {
-        return cappedAmountToUnderlying(shares);
-    }
-
-    function redeem(uint256 shares, address receiver) external {
-        return withdraw(cappedAmountToUnderlying(shares), receiver);
-    }
+  function redeem(uint256 _shares, address _receiver) external {
+    return withdraw(cappedAmountToUnderlying(_shares), _receiver);
+  }
 }

@@ -2,5 +2,9 @@
 pragma solidity ^0.8.9;
 
 interface IAMPH {
-    function getPriorVotes(address account, uint256 blockNumber) external view returns (uint96);
+  /// @notice Returns the prior votes from an account
+  /// @param _account address of the account
+  /// @param _blockNumber block number to get the votes from
+  /// @return _votes amount of votes
+  function getPriorVotes(address _account, uint256 _blockNumber) external view returns (uint96 _votes);
 }

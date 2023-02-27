@@ -4,39 +4,43 @@ pragma solidity ^0.8.9;
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 interface IWUSDA is IERC20 {
-    /**
-     * view functions
-     */
-    function underlying() external view returns (address);
-    function totalUnderlying() external view returns (uint256);
-    function balanceOfUnderlying(address owner) external view returns (uint256);
-    function underlyingToWrapper(uint256 usda_amount) external view returns (uint256);
-    function wrapperToUnderlying(uint256 wUSDA_amount) external view returns (uint256);
+  /*///////////////////////////////////////////////////////////////
+                            VARIABLES
+    //////////////////////////////////////////////////////////////*/
+  function underlying() external view returns (address _underlying);
 
-    /**
-     * write functions
-     */
-    function mint(uint256 wUSDA_amount) external returns (uint256);
+  function totalUnderlying() external view returns (uint256 _totalUnderlying);
 
-    function mintFor(address to, uint256 wUSDA_amount) external returns (uint256);
+  function balanceOfUnderlying(address _owner) external view returns (uint256 _balanceOfUnderlying);
 
-    function burn(uint256 wUSDA_amount) external returns (uint256);
+  function underlyingToWrapper(uint256 _usdaAmount) external view returns (uint256 _wusdaAmount);
 
-    function burnTo(address to, uint256 wUSDA_amount) external returns (uint256);
+  function wrapperToUnderlying(uint256 _wusdaAmount) external view returns (uint256 _usdaAmount);
 
-    function burnAll() external returns (uint256);
+  /*///////////////////////////////////////////////////////////////
+                            LOGIC
+    //////////////////////////////////////////////////////////////*/
+  function mint(uint256 _wusdaAmount) external returns (uint256 _usdaAmount);
 
-    function burnAllTo(address to) external returns (uint256);
+  function mintFor(address _to, uint256 _wusdaAmount) external returns (uint256 _usdaAmount);
 
-    function deposit(uint256 usda_amount) external returns (uint256);
+  function burn(uint256 _wusdaAmount) external returns (uint256 _usdaAmount);
 
-    function depositFor(address to, uint256 usda_amount) external returns (uint256);
+  function burnTo(address _to, uint256 _wusdaAmount) external returns (uint256 _usdaAmount);
 
-    function withdraw(uint256 usda_amount) external returns (uint256);
+  function burnAll() external returns (uint256 _usdaAmount);
 
-    function withdrawTo(address to, uint256 usda_amount) external returns (uint256);
+  function burnAllTo(address _to) external returns (uint256 _usdaAmount);
 
-    function withdrawAll() external returns (uint256);
+  function deposit(uint256 _usdaAmount) external returns (uint256 _wusdaAmount);
 
-    function withdrawAllTo(address to) external returns (uint256);
+  function depositFor(address _to, uint256 _usdaAmount) external returns (uint256 _wusdaAmount);
+
+  function withdraw(uint256 _usdaAmount) external returns (uint256 _wusdaAmount);
+
+  function withdrawTo(address _to, uint256 _usdaAmount) external returns (uint256 _wusdaAmount);
+
+  function withdrawAll() external returns (uint256 _usdaAmount);
+
+  function withdrawAllTo(address _to) external returns (uint256 _usdaAmount);
 }

@@ -12,7 +12,7 @@
 │   │    │   ├─── Vault.sol : User's vault, can deposit/withdraw collateral, claim protocol rewards, borrow sUSD
 │   │    │   ├─── CappedCollateralToken.sol : A wrapper for an underlying asset that can be listed as collateral on the protocol
 │   │    │   ├─── USDA.sol : ERC20, given by the protocol 1:1 ratio when a lender deposits sUSD
-│   │    │   └─── WUSDA.sol : Warped version of USDA to interact with other DeFi protocols 
+│   │    │   └─── WUSDA.sol : Warped version of USDA to interact with other DeFi protocols
 │   │    ├─── periphery/: All periphery contracts
 │   │    │   ├─── CurveMaster.sol : The CurveMaster manages the various interest rate curves, used in VaultManagerLogic
 │   │    │   ├─── CurveLPOracle.sol : Responsible for getting the price of a curve LP token in USD

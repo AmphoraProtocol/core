@@ -1,106 +1,161 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
+
 /// @title VaultController Interface
 interface IVaultController {
-    event InterestEvent(uint64 epoch, uint192 amount, uint256 curve_val);
-    event NewProtocolFee(uint256 protocol_fee);
-    event RegisteredErc20(address token_address, uint256 LTVe4, address oracle_address, uint256 liquidationIncentivee4);
-    event UpdateRegisteredErc20(
-        address token_address, uint256 LTVe4, address oracle_address, uint256 liquidationIncentivee4
-    );
-    event NewVault(address vault_address, uint256 vaultId, address vaultOwner);
-    event RegisterOracleMaster(address oracleMasterAddress);
-    event RegisterCurveMaster(address curveMasterAddress);
-    event BorrowUSDA(uint256 vaultId, address vaultAddress, uint256 borrowAmount);
-    event RepayUSDA(uint256 vaultId, address vaultAddress, uint256 repayAmount);
-    event Liquidate(uint256 vaultId, address asset_address, uint256 usda_to_repurchase, uint256 tokens_to_liquidate);
-    // initializer
+  /*///////////////////////////////////////////////////////////////
+                            EVENTS
+    //////////////////////////////////////////////////////////////*/
 
-    function initialize() external;
+  event InterestEvent(uint64 _epoch, uint192 _amount, uint256 _curveVal);
+  event NewProtocolFee(uint256 _protocolFee);
+  event RegisteredErc20(address _tokenAddress, uint256 _ltv, address _oracleAddress, uint256 _liquidationIncentive);
+  event UpdateRegisteredErc20(address _tokenAddress, uint256 _ltv, address _oracleAddress, uint256 _liquidationIncentive);
+  event NewVault(address _vaultAddress, uint256 _vaultId, address _vaultOwner);
+  event RegisterOracleMaster(address _oracleMasterAddress);
+  event RegisterCurveMaster(address _curveMasterAddress);
+  event BorrowUSDA(uint256 _vaultId, address _vaultAddress, uint256 _borrowAmount);
+  event RepayUSDA(uint256 _vaultId, address _vaultAddress, uint256 _repayAmount);
+  event Liquidate(uint256 _vaultId, address _assetAddress, uint256 _usdaToRepurchase, uint256 _tokensToLiquidate);
 
-    // view functions
+  /*///////////////////////////////////////////////////////////////
+                            ERRORS
+    //////////////////////////////////////////////////////////////*/
 
-    function tokensRegistered() external view returns (uint256);
+  /// @notice Thrown when _msgSender is not the pauser of the contract
+  error VaultController_OnlyPauser();
 
-    function vaultsMinted() external view returns (uint96);
+  /// @notice Thrown when the fee is too large
+  error VaultController_FeeTooLarge();
 
-    function lastInterestTime() external view returns (uint64);
+  /// @notice Thrown when oracle does not exist
+  error VaultController_OracleNotRegistered();
 
-    function totalBaseLiability() external view returns (uint192);
+  /// @notice Thrown when the token is already registered
+  error VaultController_TokenAlreadyRegistered();
 
-    function interestFactor() external view returns (uint192);
+  /// @notice Thrown when the token is not registered
+  error VaultController_TokenNotRegistered();
 
-    function protocolFee() external view returns (uint192);
+  /// @notice Thrown when the _ltv is incompatible
+  error VaultController_LTVIncompatible();
 
-    function vaultAddress(uint96 id) external view returns (address);
+  /// @notice Thrown when _msgSender is not the minter
+  error VaultController_OnlyMinter();
 
-    function vaultIDs(address wallet) external view returns (uint96[] memory);
+  /// @notice Thrown when vault is insolvent
+  error VaultController_VaultInsolvent();
 
-    function amountToSolvency(uint96 id) external view returns (uint256);
+  /// @notice Thrown when repay is grater than borrow
+  error VaultController_RepayTooMuch();
 
-    function vaultLiability(uint96 id) external view returns (uint192);
+  /// @notice Thrown when trying to liquidate 0 tokens
+  error VaultController_LiquidateZeroTokens();
 
-    function vaultBorrowingPower(uint96 id) external view returns (uint192);
+  /// @notice Thrown when trying to liquidate more than is possible
+  error VaultController_OverLiquidation();
 
-    function tokensToLiquidate(uint96 id, address token) external view returns (uint256);
+  /// @notice Thrown when vault is solvent
+  error VaultController_VaultSolvent();
 
-    function checkVault(uint96 id) external view returns (bool);
+  /// @notice Thrown when vault does not exist
+  error VaultController_VaultDoesNotExist();
 
-    function tokenId(address _tokenAddress) external view returns (uint256 _tokenId);
+  /*///////////////////////////////////////////////////////////////
+                            STRUCTS
+    //////////////////////////////////////////////////////////////*/
 
-    struct VaultSummary {
-        uint96 id;
-        uint192 borrowingPower;
-        uint192 vaultLiability;
-        address[] tokenAddresses;
-        uint256[] tokenBalances;
-    }
+  struct VaultSummary {
+    uint96 id;
+    uint192 borrowingPower;
+    uint192 vaultLiability;
+    address[] tokenAddresses;
+    uint256[] tokenBalances;
+  }
 
-    function vaultSummaries(uint96 start, uint96 stop) external view returns (VaultSummary[] memory);
+  struct Interest {
+    uint64 lastTime;
+    uint192 factor;
+  }
 
-    // interest calculations
-    function calculateInterest() external returns (uint256);
+  /*///////////////////////////////////////////////////////////////
+                            VARIABLES
+    //////////////////////////////////////////////////////////////*/
 
-    // vault management business
-    function mintVault() external returns (address);
+  function initialize() external;
 
-    function liquidateVault(uint96 id, address asset_address, uint256 tokenAmount) external returns (uint256);
+  function tokensRegistered() external view returns (uint256 _tokensRegistered);
 
-    function borrowUSDA(uint96 id, uint192 amount) external;
+  function vaultsMinted() external view returns (uint96 _vaultsMinted);
 
-    function borrowUSDAto(uint96 id, uint192 amount, address target) external;
+  function lastInterestTime() external view returns (uint64 _lastInterestTime);
 
-    function borrowsUSDto(uint96 id, uint192 susd_amount, address target) external;
+  function totalBaseLiability() external view returns (uint192 _totalBaseLiability);
 
-    function repayUSDA(uint96 id, uint192 amount) external;
+  function interestFactor() external view returns (uint192 _interestFactor);
 
-    function repayAllUSDA(uint96 id) external;
+  function protocolFee() external view returns (uint192 _protocolFee);
 
-    // admin
-    function pause() external;
+  function vaultAddress(uint96 _id) external view returns (address _vaultAddress);
 
-    function unpause() external;
+  function vaultIDs(address _wallet) external view returns (uint96[] memory _vaultIDs);
 
-    function getOracleMaster() external view returns (address);
+  function curveMaster() external view returns (CurveMaster _curveMaster);
 
-    function registerOracleMaster(address master_oracle_address) external;
+  /*///////////////////////////////////////////////////////////////
+                            LOGIC
+    //////////////////////////////////////////////////////////////*/
 
-    function getCurveMaster() external view returns (address);
+  function amountToSolvency(uint96 _id) external view returns (uint256 _amountToSolvency);
 
-    function registerCurveMaster(address master_curve_address) external;
+  function vaultLiability(uint96 _id) external view returns (uint192 _vaultLiability);
 
-    function changeProtocolFee(uint192 new_protocol_fee) external;
+  function vaultBorrowingPower(uint96 _id) external view returns (uint192 _vaultBorrowingPower);
 
-    function registerErc20(address token_address, uint256 LTV, address oracle_address, uint256 liquidationIncentive)
-        external;
+  function tokensToLiquidate(uint96 _id, address _token) external view returns (uint256 _tokensToLiquidate);
 
-    function registerUSDA(address usda_address) external;
+  function tokenId(address _tokenAddress) external view returns (uint256 _tokenId);
 
-    function updateRegisteredErc20(
-        address token_address,
-        uint256 LTV,
-        address oracle_address,
-        uint256 liquidationIncentive
-    ) external;
+  function checkVault(uint96 _id) external view returns (bool _overCollateralized);
+
+  function vaultSummaries(uint96 _start, uint96 _stop) external view returns (VaultSummary[] memory _vaultSummaries);
+
+  // interest calculations
+  function calculateInterest() external returns (uint256 _interest);
+
+  // vault management business
+  function mintVault() external returns (address _vaultAddress);
+
+  function liquidateVault(uint96 _id, address _assetAddress, uint256 _tokenAmount) external returns (uint256 _tokensToLiquidate);
+
+  function borrowUSDA(uint96 _id, uint192 _amount) external;
+
+  function borrowUSDAto(uint96 _id, uint192 _amount, address _target) external;
+
+  function borrowsUSDto(uint96 _id, uint192 _susdAmount, address _target) external;
+
+  function repayUSDA(uint96 _id, uint192 _amount) external;
+
+  function repayAllUSDA(uint96 _id) external;
+
+  // admin
+  function pause() external;
+
+  function unpause() external;
+
+  function getOracleMaster() external view returns (address _oracleMasterAddress);
+
+  function registerOracleMaster(address _masterOracleAddress) external;
+
+  function registerCurveMaster(address _masterCurveAddress) external;
+
+  function changeProtocolFee(uint192 _newProtocolFee) external;
+
+  function registerErc20(address _tokenAddress, uint256 _ltv, address _oracleAddress, uint256 _liquidationIncentive) external;
+
+  function registerUSDA(address _usdaAddress) external;
+
+  function updateRegisteredErc20(address _tokenAddress, uint256 _ltv, address _oracleAddress, uint256 _liquidationIncentive) external;
 }

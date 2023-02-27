@@ -7,67 +7,72 @@ import {TickMath} from '@uniswap/v3-core/contracts/libraries/TickMath.sol';
 
 /// @title Oracle that wraps a univ3 pool
 /// @notice The oracle returns (univ3) * mul / div
-/// if quote_token_is_token0 == true, then the reciprocal is returned
+/// if QUOTE_TOKEN_IS_TOKEN0 == true, then the reciprocal is returned
 contract UniswapV3OracleRelay is IOracleRelay {
-    bool public immutable _quoteTokenIsToken0;
-    IUniswapV3PoolDerivedState public immutable _pool;
-    uint32 public immutable _lookback;
+  /// @notice Thrown when the tick time diff fails
+  error UniswapV3OracleRelay_TickTimeDiffTooLarge();
 
-    uint256 public immutable _mul;
-    uint256 public immutable _div;
+  bool public immutable QUOTE_TOKEN_IS_TOKEN0;
+  IUniswapV3PoolDerivedState public immutable POOL;
+  uint32 public immutable LOOKBACK;
 
-    /// @notice all values set at construction time
-    /// @param lookback how many seconds to twap for
-    /// @param  pool_address address of chainlink feed
-    /// @param quote_token_is_token0 marker for which token to use as quote/base in calculation
-    /// @param mul numerator of scalar
-    /// @param div denominator of scalar
-    constructor(uint32 lookback, address pool_address, bool quote_token_is_token0, uint256 mul, uint256 div) {
-        _lookback = lookback;
-        _mul = mul;
-        _div = div;
-        _quoteTokenIsToken0 = quote_token_is_token0;
-        _pool = IUniswapV3PoolDerivedState(pool_address);
-    }
+  uint256 public immutable MUL;
+  uint256 public immutable DIV;
 
-    /// @notice the current reported value of the oracle
-    /// @return the current value
-    /// @dev implementation in getLastSecond
-    function currentValue() external view override returns (uint256) {
-        return getLastSeconds(_lookback);
-    }
+  /// @notice all values set at construction time
+  /// @param _lookback how many seconds to twap for
+  /// @param  _poolAddress address of chainlink feed
+  /// @param _quoteTokenIsToken0 marker for which token to use as quote/base in calculation
+  /// @param _mul numerator of scalar
+  /// @param _div denominator of scalar
+  constructor(uint32 _lookback, address _poolAddress, bool _quoteTokenIsToken0, uint256 _mul, uint256 _div) {
+    LOOKBACK = _lookback;
+    MUL = _mul;
+    DIV = _div;
+    QUOTE_TOKEN_IS_TOKEN0 = _quoteTokenIsToken0;
+    POOL = IUniswapV3PoolDerivedState(_poolAddress);
+  }
 
-    function getLastSeconds(uint32 seconds_) private view returns (uint256 price) {
-        int56[] memory tickCumulatives;
-        uint32[] memory input = new uint32[](2);
-        input[0] = seconds_;
-        input[1] = 0;
+  /// @notice the current reported value of the oracle
+  /// @return _value the current value
+  /// @dev implementation in getLastSecond
+  function currentValue() external view override returns (uint256 _value) {
+    return _getLastSeconds(LOOKBACK);
+  }
 
-        (tickCumulatives,) = _pool.observe(input);
+  /// @notice returns last second value of the oracle
+  /// @return _price last second value of the oracle
+  function _getLastSeconds(uint32 _seconds) private view returns (uint256 _price) {
+    int56[] memory _tickCumulatives;
+    uint32[] memory _input = new uint32[](2);
+    _input[0] = _seconds;
+    _input[1] = 0;
 
-        uint32 tickTimeDifference = seconds_;
-        int56 tickCumulativeDifference = tickCumulatives[0] - tickCumulatives[1];
-        bool tickNegative = tickCumulativeDifference < 0;
-        uint56 tickAbs;
-        if (tickNegative) tickAbs = uint56(-tickCumulativeDifference);
-        else tickAbs = uint56(tickCumulativeDifference);
+    (_tickCumulatives, ) = POOL.observe(_input);
 
-        uint56 bigTick = tickAbs / tickTimeDifference;
-        require(bigTick < 887272, 'Tick time diff fail');
-        int24 tick;
-        if (tickNegative) tick = -int24(int56(bigTick));
-        else tick = int24(int56(bigTick));
+    uint32 _tickTimeDifference = _seconds;
+    int56 _tickCumulativeDifference = _tickCumulatives[0] - _tickCumulatives[1];
+    bool _tickNegative = _tickCumulativeDifference < 0;
+    uint56 _tickAbs;
+    if (_tickNegative) _tickAbs = uint56(-_tickCumulativeDifference);
+    else _tickAbs = uint56(_tickCumulativeDifference);
 
-        // we use 1e18 bc this is what we're going to use in exp
-        // basically, you need the "price" amount of the quote in order to buy 1 base
-        // or, 1 base is worth this much quote;
+    uint56 _bigTick = _tickAbs / _tickTimeDifference;
+    if (_bigTick >= 887272) revert UniswapV3OracleRelay_TickTimeDiffTooLarge();
+    int24 _tick;
+    if (_tickNegative) _tick = -int24(int56(_bigTick));
+    else _tick = int24(int56(_bigTick));
 
-        price = (1e9 * ((uint256(TickMath.getSqrtRatioAtTick(tick))))) / (2 ** (2 * 48));
+    // we use 1e18 bc this is what we're going to use in exp
+    // basically, you need the 'price' amount of the quote in order to buy 1 base
+    // or, 1 base is worth this much quote;
 
-        price = price * price;
+    _price = (1e9 * ((uint256(TickMath.getSqrtRatioAtTick(_tick))))) / (2 ** (2 * 48));
 
-        if (!_quoteTokenIsToken0) price = (1e18 * 1e18) / price;
+    _price = _price * _price;
 
-        price = (price * _mul) / _div;
-    }
+    if (!QUOTE_TOKEN_IS_TOKEN0) _price = (1e18 * 1e18) / _price;
+
+    _price = (_price * MUL) / DIV;
+  }
 }

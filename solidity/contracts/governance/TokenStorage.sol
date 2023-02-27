@@ -5,28 +5,27 @@ pragma experimental ABIEncoderV2;
 import {Context} from '@openzeppelin/contracts/utils/Context.sol';
 
 contract TokenDelegatorStorage is Context {
-    /// @notice Active brains of Token
-    address public implementation;
+  /// @notice EIP-20 token decimals for this token
+  uint8 public constant decimals = 18;
+  /// @notice Active brains of Token
+  address public implementation;
 
-    /// @notice EIP-20 token name for this token
-    string public name = 'Amphora Protocol';
+  /// @notice EIP-20 token name for this token
+  string public name = 'Amphora Protocol';
 
-    /// @notice EIP-20 token symbol for this token
-    string public symbol = 'AMPH';
+  /// @notice EIP-20 token symbol for this token
+  string public symbol = 'AMPH';
 
-    /// @notice Total number of tokens in circulation
-    uint256 public totalSupply;
+  /// @notice Total number of tokens in circulation
+  uint256 public totalSupply;
 
-    /// @notice EIP-20 token decimals for this token
-    uint8 public constant decimals = 18;
+  address public owner;
+  /// @notice onlyOwner modifier checks if sender is owner
 
-    address public owner;
-    /// @notice onlyOwner modifier checks if sender is owner
-
-    modifier onlyOwner() {
-        require(owner == _msgSender(), 'onlyOwner: sender not owner');
-        _;
-    }
+  modifier onlyOwner() {
+    require(owner == _msgSender(), 'onlyOwner: sender not owner');
+    _;
+  }
 }
 
 /**
@@ -36,27 +35,27 @@ contract TokenDelegatorStorage is Context {
  * TokenDelegateStorageVX.
  */
 contract TokenDelegateStorageV1 is TokenDelegatorStorage {
-    // Allowance amounts on behalf of others
-    mapping(address => mapping(address => uint96)) internal allowances;
+  // Allowance amounts on behalf of others
+  mapping(address => mapping(address => uint96)) internal _allowances;
 
-    // Official record of token balances for each account
-    mapping(address => uint96) internal balances;
+  // Official record of token balances for each account
+  mapping(address => uint96) internal _balances;
 
-    /// @notice A record of each accounts delegate
-    mapping(address => address) public delegates;
+  /// @notice A record of each accounts delegate
+  mapping(address => address) public delegates;
 
-    /// @notice A checkpoint for marking number of votes from a given block
-    struct Checkpoint {
-        uint32 fromBlock;
-        uint96 votes;
-    }
-    /// @notice A record of votes checkpoints for each account, by index
+  /// @notice A checkpoint for marking number of votes from a given block
+  struct Checkpoint {
+    uint32 fromBlock;
+    uint96 votes;
+  }
+  /// @notice A record of votes checkpoints for each account, by index
 
-    mapping(address => mapping(uint32 => Checkpoint)) public checkpoints;
+  mapping(address => mapping(uint32 => Checkpoint)) public checkpoints;
 
-    /// @notice The number of checkpoints for each account
-    mapping(address => uint32) public numCheckpoints;
+  /// @notice The number of checkpoints for each account
+  mapping(address => uint32) public numCheckpoints;
 
-    /// @notice A record of states for signing / validating signatures
-    mapping(address => uint256) public nonces;
+  /// @notice A record of states for signing / validating signatures
+  mapping(address => uint256) public nonces;
 }

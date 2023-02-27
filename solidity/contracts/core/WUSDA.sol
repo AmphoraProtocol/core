@@ -12,7 +12,7 @@ import {ERC20Permit} from '@openzeppelin/contracts/token/ERC20/extensions/draft-
 /**
  * @title wUSDA (Wrapped usda).
  *
- * @dev A fixed-balance ERC-20 wrapper for the usda rebasing token.
+ * @notice A fixed-balance ERC-20 wrapper for the usda rebasing token.
  *
  *      Users deposit usda into this contract and are minted wUSDA.
  *
@@ -24,240 +24,231 @@ import {ERC20Permit} from '@openzeppelin/contracts/token/ERC20/extensions/draft-
  *        when the usda supply is 500M, 100K wUSDA will be redeemable for 5M usda
  *        and so on.
  *
- *      We call wUSDA the "wrapper" token and usda the "underlying" or "wrapped" token.
+ *      We call wUSDA the 'wrapper' token and usda the 'underlying' or 'wrapped' token.
  */
 contract WUSDA is IWUSDA, ERC20, ERC20Permit {
-    using SafeERC20 for IERC20;
+  using SafeERC20 for IERC20;
 
-    //--------------------------------------------------------------------------
-    // Constants
+  //--------------------------------------------------------------------------
+  // Constants
 
-    /// @dev The maximum wUSDA supply.
-    uint256 public constant MAX_wUSDA_SUPPLY = 10000000 * (10 ** 18); // 10 M
+  /// @notice The maximum wUSDA supply.
+  uint256 public constant MAX_wUSDA_SUPPLY = 10000000 * (10 ** 18); // 10 M
 
-    //--------------------------------------------------------------------------
-    // Attributes
+  //--------------------------------------------------------------------------
+  // Attributes
 
-    /// @dev The reference to the usda token.
-    address private immutable _usda;
+  /// @notice The reference to the usda token.
+  address private immutable _USDA;
 
-    //--------------------------------------------------------------------------
+  //--------------------------------------------------------------------------
 
-    /// @param usda The usda ERC20 token address.
-    /// @param name_ The wUSDA ERC20 name.
-    /// @param symbol_ The wUSDA ERC20 symbol.
-    constructor(address usda, string memory name_, string memory symbol_) ERC20(name_, symbol_) ERC20Permit(name_) {
-        _usda = usda;
-    }
+  /// @param _usdaToken The usda ERC20 token address.
+  /// @param _name The wUSDA ERC20 name.
+  /// @param _symbol The wUSDA ERC20 symbol.
+  constructor(address _usdaToken, string memory _name, string memory _symbol) ERC20(_name, _symbol) ERC20Permit(_name) {
+    _USDA = _usdaToken;
+  }
 
-    //--------------------------------------------------------------------------
-    // wUSDA write methods
+  //--------------------------------------------------------------------------
+  // wUSDA write methods
 
-    /// @notice Transfers usda_amount from {msg.sender} and mints wUSDA_amount.
-    ///
-    /// @param wUSDA_amount The amount of wUSDA_amount to mint.
-    /// @return The amount of usda_amount deposited.
-    function mint(uint256 wUSDA_amount) external override returns (uint256) {
-        uint256 usda_amount = _wUSDA_to_USDA(wUSDA_amount, _query_USDA_Supply());
-        _deposit(_msgSender(), _msgSender(), usda_amount, wUSDA_amount);
-        return usda_amount;
-    }
+  /// @notice Transfers usda amount from {msg.sender} and mints wusda amount.
+  ///
+  /// @param _wusdaAmount The amount of wusda to mint.
+  /// @return _usdaAmount The amount of usda deposited.
+  function mint(uint256 _wusdaAmount) external override returns (uint256 _usdaAmount) {
+    _usdaAmount = _wUSDAToUSDA(_wusdaAmount, _usdaSupply());
+    _deposit(_msgSender(), _msgSender(), _usdaAmount, _wusdaAmount);
+  }
 
-    /// @notice Transfers usda_amount from {msg.sender} and mints wUSDA_amount,
-    ///         to the specified beneficiary.
-    ///
-    /// @param to The beneficiary wallet.
-    /// @param wUSDA_amount The amount of wUSDA_amount to mint.
-    /// @return The amount of usda_amount deposited.
-    function mintFor(address to, uint256 wUSDA_amount) external override returns (uint256) {
-        uint256 usda_amount = _wUSDA_to_USDA(wUSDA_amount, _query_USDA_Supply());
-        _deposit(_msgSender(), to, usda_amount, wUSDA_amount);
-        return usda_amount;
-    }
+  /// @notice Transfers usda amount from {msg.sender} and mints wusda amount,
+  ///         to the specified beneficiary.
+  ///
+  /// @param _to The beneficiary wallet.
+  /// @param _wusdaAmount The amount of wusda to mint.
+  /// @return _usdaAmount The amount of usda deposited.
+  function mintFor(address _to, uint256 _wusdaAmount) external override returns (uint256 _usdaAmount) {
+    _usdaAmount = _wUSDAToUSDA(_wusdaAmount, _usdaSupply());
+    _deposit(_msgSender(), _to, _usdaAmount, _wusdaAmount);
+  }
 
-    /// @notice Burns wUSDA_amount from {msg.sender} and transfers usda_amount back.
-    ///
-    /// @param wUSDA_amount The amount of wUSDA_amount to burn.
-    /// @return The amount of usda withdrawn.
-    function burn(uint256 wUSDA_amount) external override returns (uint256) {
-        uint256 usda_amount = _wUSDA_to_USDA(wUSDA_amount, _query_USDA_Supply());
-        _withdraw(_msgSender(), _msgSender(), usda_amount, wUSDA_amount);
-        return usda_amount;
-    }
+  /// @notice Burns wusda from {msg.sender} and transfers usda amount back.
+  ///
+  /// @param _wusdaAmount The amount of _wusdaAmount to burn.
+  /// @return _usdaAmount The amount of usda withdrawn.
+  function burn(uint256 _wusdaAmount) external override returns (uint256 _usdaAmount) {
+    _usdaAmount = _wUSDAToUSDA(_wusdaAmount, _usdaSupply());
+    _withdraw(_msgSender(), _msgSender(), _usdaAmount, _wusdaAmount);
+  }
 
-    /// @notice Burns wUSDA_amount from {msg.sender} and transfers usda_amount back,
-    ///         to the specified beneficiary.
-    ///
-    /// @param to The beneficiary wallet.
-    /// @param wUSDA_amount The amount of wUSDA_amount to burn.
-    /// @return The amount of usda_amount withdrawn.
-    function burnTo(address to, uint256 wUSDA_amount) external override returns (uint256) {
-        uint256 usda_amount = _wUSDA_to_USDA(wUSDA_amount, _query_USDA_Supply());
-        _withdraw(_msgSender(), to, usda_amount, wUSDA_amount);
-        return usda_amount;
-    }
+  /// @notice Burns wusda amount from {msg.sender} and transfers usda amount back,
+  ///         to the specified beneficiary.
+  ///
+  /// @param _to The beneficiary wallet.
+  /// @param _wusdaAmount The amount of _wusdaAmount to burn.
+  /// @return _usdaAmount The amount of _usdaAmount withdrawn.
+  function burnTo(address _to, uint256 _wusdaAmount) external override returns (uint256 _usdaAmount) {
+    _usdaAmount = _wUSDAToUSDA(_wusdaAmount, _usdaSupply());
+    _withdraw(_msgSender(), _to, _usdaAmount, _wusdaAmount);
+  }
 
-    /// @notice Burns all wUSDA_amount from {msg.sender} and transfers usda_amount back.
-    ///
-    /// @return The amount of usda_amount withdrawn.
-    function burnAll() external override returns (uint256) {
-        uint256 wUSDA_amount = balanceOf(_msgSender());
-        uint256 usda_amount = _wUSDA_to_USDA(wUSDA_amount, _query_USDA_Supply());
-        _withdraw(_msgSender(), _msgSender(), usda_amount, wUSDA_amount);
-        return usda_amount;
-    }
+  /// @notice Burns all wusda from {msg.sender} and transfers usda back.
+  ///
+  /// @return _usdaAmount The amount of usda withdrawn.
+  function burnAll() external override returns (uint256 _usdaAmount) {
+    uint256 _wusdaAmount = balanceOf(_msgSender());
+    _usdaAmount = _wUSDAToUSDA(_wusdaAmount, _usdaSupply());
+    _withdraw(_msgSender(), _msgSender(), _usdaAmount, _wusdaAmount);
+  }
 
-    /// @notice Burns all wUSDA_amount from {msg.sender} and transfers usda_amount back,
-    ///         to the specified beneficiary.
-    ///
-    /// @param to The beneficiary wallet.
-    /// @return The amount of usda_amount withdrawn.
-    function burnAllTo(address to) external override returns (uint256) {
-        uint256 wUSDA_amount = balanceOf(_msgSender());
-        uint256 usda_amount = _wUSDA_to_USDA(wUSDA_amount, _query_USDA_Supply());
-        _withdraw(_msgSender(), to, usda_amount, wUSDA_amount);
-        return usda_amount;
-    }
+  /// @notice Burns all wusda from {msg.sender} and transfers usda back,
+  ///         to the specified beneficiary.
+  ///
+  /// @param _to The beneficiary wallet.
+  /// @return _usdaAmount The amount of _usdaAmount withdrawn.
+  function burnAllTo(address _to) external override returns (uint256 _usdaAmount) {
+    uint256 _wusdaAmount = balanceOf(_msgSender());
+    _usdaAmount = _wUSDAToUSDA(_wusdaAmount, _usdaSupply());
+    _withdraw(_msgSender(), _to, _usdaAmount, _wusdaAmount);
+  }
 
-    /// @notice Transfers usda_amount from {msg.sender} and mints wUSDA_amount.
-    ///
-    /// @param usda_amount The amount of usda_amount to deposit.
-    /// @return The amount of wUSDA_amount minted.
-    function deposit(uint256 usda_amount) external override returns (uint256) {
-        uint256 wUSDA_amount = _usda_to_wUSDA(usda_amount, _query_USDA_Supply());
-        _deposit(_msgSender(), _msgSender(), usda_amount, wUSDA_amount);
-        return wUSDA_amount;
-    }
+  /// @notice Transfers usda amount from {msg.sender} and mints wusda amount.
+  ///
+  /// @param _usdaAmount The amount of _usdaAmount to deposit.
+  /// @return _wusdaAmount The amount of _wusdaAmount minted.
+  function deposit(uint256 _usdaAmount) external override returns (uint256 _wusdaAmount) {
+    _wusdaAmount = _usdaToWUSDA(_usdaAmount, _usdaSupply());
+    _deposit(_msgSender(), _msgSender(), _usdaAmount, _wusdaAmount);
+  }
 
-    /// @notice Transfers usda_amount from {msg.sender} and mints wUSDA_amount,
-    ///         to the specified beneficiary.
-    ///
-    /// @param to The beneficiary wallet.
-    /// @param usda_amount The amount of usda_amount to deposit.
-    /// @return The amount of wUSDA_amount minted.
-    function depositFor(address to, uint256 usda_amount) external override returns (uint256) {
-        uint256 wUSDA_amount = _usda_to_wUSDA(usda_amount, _query_USDA_Supply());
-        _deposit(_msgSender(), to, usda_amount, wUSDA_amount);
-        return wUSDA_amount;
-    }
+  /// @notice Transfers usda amount from {msg.sender} and mints wusda amount,
+  ///         to the specified beneficiary.
+  ///
+  /// @param _to The beneficiary wallet.
+  /// @param _usdaAmount The amount of _usdaAmount to deposit.
+  /// @return _wusdaAmount The amount of _wusdaAmount minted.
+  function depositFor(address _to, uint256 _usdaAmount) external override returns (uint256 _wusdaAmount) {
+    _wusdaAmount = _usdaToWUSDA(_usdaAmount, _usdaSupply());
+    _deposit(_msgSender(), _to, _usdaAmount, _wusdaAmount);
+  }
 
-    /// @notice Burns wUSDA_amount from {msg.sender} and transfers usda_amount back.
-    ///
-    /// @param usda_amount The amount of usda_amount to withdraw.
-    /// @return The amount of burnt wUSDA_amount.
-    function withdraw(uint256 usda_amount) external override returns (uint256) {
-        uint256 wUSDA_amount = _usda_to_wUSDA(usda_amount, _query_USDA_Supply());
-        _withdraw(_msgSender(), _msgSender(), usda_amount, wUSDA_amount);
-        return wUSDA_amount;
-    }
+  /// @notice Burns wusda amount from {msg.sender} and transfers usda amount back.
+  ///
+  /// @param _usdaAmount The amount of _usdaAmount to withdraw.
+  /// @return _wusdaAmount The amount of burnt _wusdaAmount.
+  function withdraw(uint256 _usdaAmount) external override returns (uint256 _wusdaAmount) {
+    _wusdaAmount = _usdaToWUSDA(_usdaAmount, _usdaSupply());
+    _withdraw(_msgSender(), _msgSender(), _usdaAmount, _wusdaAmount);
+  }
 
-    /// @notice Burns wUSDA_amount from {msg.sender} and transfers usda_amount back,
-    ///         to the specified beneficiary.
-    ///
-    /// @param to The beneficiary wallet.
-    /// @param usda_amount The amount of usda_amount to withdraw.
-    /// @return The amount of burnt wUSDA_amount.
-    function withdrawTo(address to, uint256 usda_amount) external override returns (uint256) {
-        uint256 wUSDA_amount = _usda_to_wUSDA(usda_amount, _query_USDA_Supply());
-        _withdraw(_msgSender(), to, usda_amount, wUSDA_amount);
-        return wUSDA_amount;
-    }
+  /// @notice Burns wusda amount from {msg.sender} and transfers usda amount back,
+  ///         to the specified beneficiary.
+  ///
+  /// @param _to The beneficiary wallet.
+  /// @param _usdaAmount The amount of _usdaAmount to withdraw.
+  /// @return _wusdaAmount The amount of burnt _wusdaAmount.
+  function withdrawTo(address _to, uint256 _usdaAmount) external override returns (uint256 _wusdaAmount) {
+    _wusdaAmount = _usdaToWUSDA(_usdaAmount, _usdaSupply());
+    _withdraw(_msgSender(), _to, _usdaAmount, _wusdaAmount);
+  }
 
-    /// @notice Burns all wUSDA_amount from {msg.sender} and transfers usda_amount back.
-    ///
-    /// @return The amount of burnt wUSDA_amount.
-    function withdrawAll() external override returns (uint256) {
-        uint256 wUSDA_amount = balanceOf(_msgSender());
-        uint256 usda_amount = _wUSDA_to_USDA(wUSDA_amount, _query_USDA_Supply());
+  /// @notice Burns all wusda from {msg.sender} and transfers usda amount back.
+  ///
+  /// @return _wusdaAmount The amount of burnt.
+  function withdrawAll() external override returns (uint256 _wusdaAmount) {
+    _wusdaAmount = balanceOf(_msgSender());
+    uint256 _usdaAmount = _wUSDAToUSDA(_wusdaAmount, _usdaSupply());
+    _withdraw(_msgSender(), _msgSender(), _usdaAmount, _wusdaAmount);
+  }
 
-        _withdraw(_msgSender(), _msgSender(), usda_amount, wUSDA_amount);
-        return wUSDA_amount;
-    }
+  /// @notice Burns all wusda from {msg.sender} and transfers usda amount back,
+  ///         to the specified beneficiary.
+  ///
+  /// @param _to The beneficiary wallet.
+  /// @return _wusdaAmount The amount of burnt.
+  function withdrawAllTo(address _to) external override returns (uint256 _wusdaAmount) {
+    _wusdaAmount = balanceOf(_msgSender());
+    uint256 _usdaAmount = _wUSDAToUSDA(_wusdaAmount, _usdaSupply());
+    _withdraw(_msgSender(), _to, _usdaAmount, _wusdaAmount);
+  }
 
-    /// @notice Burns all wUSDA_amount from {msg.sender} and transfers usda_amount back,
-    ///         to the specified beneficiary.
-    ///
-    /// @param to The beneficiary wallet.
-    /// @return The amount of burnt wUSDA_amount.
-    function withdrawAllTo(address to) external override returns (uint256) {
-        uint256 wUSDA_amount = balanceOf(_msgSender());
-        uint256 usda_amount = _wUSDA_to_USDA(wUSDA_amount, _query_USDA_Supply());
-        _withdraw(_msgSender(), to, usda_amount, wUSDA_amount);
-        return wUSDA_amount;
-    }
+  //--------------------------------------------------------------------------
+  // wUSDA view methods
 
-    //--------------------------------------------------------------------------
-    // wUSDA view methods
+  /// @return _usdaAddress The address of the underlying 'wrapped' token ie) usda.
+  function underlying() external view override returns (address _usdaAddress) {
+    return _USDA;
+  }
 
-    /// @return The address of the underlying "wrapped" token ie) usda.
-    function underlying() external view override returns (address) {
-        return _usda;
-    }
+  /// @return _usdaAmount The total _usdaAmount held by this contract.
+  function totalUnderlying() external view override returns (uint256 _usdaAmount) {
+    return _wUSDAToUSDA(totalSupply(), _usdaSupply());
+  }
 
-    /// @return The total usda_amount held by this contract.
-    function totalUnderlying() external view override returns (uint256) {
-        return _wUSDA_to_USDA(totalSupply(), _query_USDA_Supply());
-    }
+  /// @param _owner The account address.
+  /// @return _redeemableUSDA The usda balance redeemable by the owner.
+  function balanceOfUnderlying(address _owner) external view override returns (uint256 _redeemableUSDA) {
+    return _wUSDAToUSDA(balanceOf(_owner), _usdaSupply());
+  }
 
-    /// @param owner The account address.
-    /// @return The usda balance redeemable by the owner.
-    function balanceOfUnderlying(address owner) external view override returns (uint256) {
-        return _wUSDA_to_USDA(balanceOf(owner), _query_USDA_Supply());
-    }
+  /// @param _usdaAmount The amount of usda tokens.
+  /// @return _wusdaAmount The amount of wUSDA tokens exchangeable.
+  function underlyingToWrapper(uint256 _usdaAmount) external view override returns (uint256 _wusdaAmount) {
+    return _usdaToWUSDA(_usdaAmount, _usdaSupply());
+  }
 
-    /// @param usda_amount The amount of usda tokens.
-    /// @return The amount of wUSDA tokens exchangeable.
-    function underlyingToWrapper(uint256 usda_amount) external view override returns (uint256) {
-        return _usda_to_wUSDA(usda_amount, _query_USDA_Supply());
-    }
+  /// @param _wusdaAmount The amount of wUSDA tokens.
+  /// @return _usdaAmount The amount of usda tokens exchangeable.
+  function wrapperToUnderlying(uint256 _wusdaAmount) external view override returns (uint256 _usdaAmount) {
+    return _wUSDAToUSDA(_wusdaAmount, _usdaSupply());
+  }
 
-    /// @param wUSDA_amount The amount of wUSDA tokens.
-    /// @return The amount of usda tokens exchangeable.
-    function wrapperToUnderlying(uint256 wUSDA_amount) external view override returns (uint256) {
-        return _wUSDA_to_USDA(wUSDA_amount, _query_USDA_Supply());
-    }
+  //--------------------------------------------------------------------------
+  // Private methods
 
-    //--------------------------------------------------------------------------
-    // Private methods
+  /// @notice Internal helper function to handle deposit state change.
+  /// @param _from The initiator wallet.
+  /// @param _to The beneficiary wallet.
+  /// @param _usdaAmount The amount of _usdaAmount to deposit.
+  /// @param _wusdaAmount The amount of _wusdaAmount to mint.
+  function _deposit(address _from, address _to, uint256 _usdaAmount, uint256 _wusdaAmount) private {
+    IERC20(_USDA).safeTransferFrom(_from, address(this), _usdaAmount);
+    _mint(_to, _wusdaAmount);
+  }
 
-    /// @dev Internal helper function to handle deposit state change.
-    /// @param from The initiator wallet.
-    /// @param to The beneficiary wallet.
-    /// @param usda_amount The amount of usda_amount to deposit.
-    /// @param wUSDA_amount The amount of wUSDA_amount to mint.
-    function _deposit(address from, address to, uint256 usda_amount, uint256 wUSDA_amount) private {
-        IERC20(_usda).safeTransferFrom(from, address(this), usda_amount);
+  /// @notice Internal helper function to handle withdraw state change.
+  /// @param _from The initiator wallet.
+  /// @param _to The beneficiary wallet.
+  /// @param _usdaAmount The amount of _usdaAmount to withdraw.
+  /// @param _wusdaAmount The amount of _wusdaAmount to burn.
+  function _withdraw(address _from, address _to, uint256 _usdaAmount, uint256 _wusdaAmount) private {
+    _burn(_from, _wusdaAmount);
+    IERC20(_USDA).safeTransfer(_to, _usdaAmount);
+  }
 
-        _mint(to, wUSDA_amount);
-    }
+  /// @notice Queries the current total supply of usda.
+  /// @return _totalUsdaSupply The current usda supply.
+  function _usdaSupply() private view returns (uint256 _totalUsdaSupply) {
+    return IERC20(_USDA).totalSupply();
+  }
 
-    /// @dev Internal helper function to handle withdraw state change.
-    /// @param from The initiator wallet.
-    /// @param to The beneficiary wallet.
-    /// @param usda_amount The amount of usda_amount to withdraw.
-    /// @param wUSDA_amount The amount of wUSDA_amount to burn.
-    function _withdraw(address from, address to, uint256 usda_amount, uint256 wUSDA_amount) private {
-        _burn(from, wUSDA_amount);
+  //--------------------------------------------------------------------------
+  // Pure methods
 
-        IERC20(_usda).safeTransfer(to, usda_amount);
-    }
+  /// @notice Converts _usdaAmount to wUSDA amount.
+  /// @param _usdaAmount The amount of usda tokens.
+  /// @param _totalUsdaSupply The total usda supply.
+  /// @return _wusdaAmount The amount of wUSDA tokens exchangeable.
+  function _usdaToWUSDA(uint256 _usdaAmount, uint256 _totalUsdaSupply) private pure returns (uint256 _wusdaAmount) {
+    return (_usdaAmount * MAX_wUSDA_SUPPLY) / _totalUsdaSupply;
+  }
 
-    /// @dev Queries the current total supply of usda.
-    /// @return The current usda supply.
-    function _query_USDA_Supply() private view returns (uint256) {
-        return IERC20(_usda).totalSupply();
-    }
-
-    //--------------------------------------------------------------------------
-    // Pure methods
-
-    /// @dev Converts usda_amount to wUSDA amount.
-    function _usda_to_wUSDA(uint256 usda_amount, uint256 total_usda_supply) private pure returns (uint256) {
-        return (usda_amount * MAX_wUSDA_SUPPLY) / total_usda_supply;
-    }
-
-    /// @dev Converts wUSDA_amount amount to usda_amount.
-    function _wUSDA_to_USDA(uint256 wUSDA_amount, uint256 total_usda_supply) private pure returns (uint256) {
-        return (wUSDA_amount * total_usda_supply) / MAX_wUSDA_SUPPLY;
-    }
+  /// @notice Converts _wusdaAmount amount to _usdaAmount.
+  /// @param _wusdaAmount The amount of wUSDA tokens.
+  /// @param _totalUsdaSupply The total usda supply.
+  /// @return _usdaAmount The amount of usda tokens exchangeable.
+  function _wUSDAToUSDA(uint256 _wusdaAmount, uint256 _totalUsdaSupply) private pure returns (uint256 _usdaAmount) {
+    return (_wusdaAmount * _totalUsdaSupply) / MAX_wUSDA_SUPPLY;
+  }
 }

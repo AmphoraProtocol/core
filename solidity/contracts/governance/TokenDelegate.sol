@@ -2,371 +2,399 @@
 pragma solidity ^0.8.9;
 pragma experimental ABIEncoderV2;
 
-import {ITokenDelegate, TokenEvents} from '@interfaces/governance/IToken.sol';
+import {ITokenDelegate} from '@interfaces/governance/ITokenDelegate.sol';
 import {TokenDelegateStorageV1} from '@contracts/governance/TokenStorage.sol';
 
-contract AmphoraProtocolTokenDelegate is TokenDelegateStorageV1, TokenEvents, ITokenDelegate {
-    /// @notice The EIP-712 typehash for the contract's domain
-    bytes32 public constant DOMAIN_TYPEHASH =
-        keccak256('EIP712Domain(string name,uint256 chainId,address verifyingContract)');
+contract AmphoraProtocolTokenDelegate is TokenDelegateStorageV1, ITokenDelegate {
+  /// @notice The EIP-712 typehash for the contract's domain
+  bytes32 public constant DOMAIN_TYPEHASH = keccak256('EIP712Domain(string name,uint256 chainId,address verifyingContract)');
 
-    /// @notice The EIP-712 typehash for the delegation struct used by the contract
-    bytes32 public constant DELEGATION_TYPEHASH =
-        keccak256('Delegation(address delegatee,uint256 nonce,uint256 expiry)');
+  /// @notice The EIP-712 typehash for the delegation struct used by the contract
+  bytes32 public constant DELEGATION_TYPEHASH = keccak256('Delegation(address delegatee,uint256 nonce,uint256 expiry)');
 
-    /// @notice The EIP-712 typehash for the permit struct used by the contract
-    bytes32 public constant PERMIT_TYPEHASH =
-        keccak256('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)');
+  /// @notice The EIP-712 typehash for the permit struct used by the contract
+  bytes32 public constant PERMIT_TYPEHASH = keccak256('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)');
 
-    uint96 public constant UINT96_MAX = 2 ** 96 - 1;
+  uint96 public constant UINT96_MAX = 2 ** 96 - 1;
 
-    uint256 public constant UINT256_MAX = 2 ** 256 - 1;
+  uint256 public constant UINT256_MAX = 2 ** 256 - 1;
 
-    /**
-     * @notice Used to initialize the contract during delegator constructor
-     * @param account_ The address to recieve initial suppply   * @param initialSupply_ set initial supply
-     */
-    function initialize(address account_, uint256 initialSupply_) public override {
-        require(totalSupply == 0, 'initialize: can only do once');
-        require(account_ != address(0), 'initialize: invalid address');
-        require(initialSupply_ > 0, 'invalid initial supply');
+  /**
+   * @notice Used to initialize the contract during delegator constructor
+   * @param _account The address to recieve initial suppply
+   * @param _initialSupply set initial supply
+   */
+  function initialize(address _account, uint256 _initialSupply) public override {
+    if (totalSupply != 0) revert TokenDelegate_AlreadyInitialized();
+    if (_account == address(0)) revert TokenDelegate_InvalidAddress();
+    if (_initialSupply <= 0) revert TokenDelegate_InvalidSupply();
 
-        totalSupply = initialSupply_;
+    totalSupply = _initialSupply;
 
-        require(initialSupply_ < 2 ** 96, 'initialSupply_ overflow uint96');
+    if (_initialSupply >= 2 ** 96) revert TokenDelegate_Overflow();
 
-        balances[account_] = uint96(totalSupply);
-        emit Transfer(address(0), account_, totalSupply);
+    _balances[_account] = uint96(totalSupply);
+    emit Transfer(address(0), _account, totalSupply);
+  }
+
+  /**
+   * @notice Change token name
+   * @param _name New token name
+   */
+  function changeName(string calldata _name) external override onlyOwner {
+    if (bytes(_name).length <= 0) revert TokenDelegate_InvalidLength();
+
+    emit ChangedName(name, _name);
+
+    name = _name;
+  }
+
+  /**
+   * @notice Change token symbol
+   * @param _symbol New token symbol
+   */
+  function changeSymbol(string calldata _symbol) external override onlyOwner {
+    if (bytes(_symbol).length <= 0) revert TokenDelegate_InvalidLength();
+
+    emit ChangedSymbol(symbol, _symbol);
+
+    symbol = _symbol;
+  }
+
+  /**
+   * @notice Get the number of tokens `spender` is approved to spend on behalf of `account`
+   * @param _account The address of the account holding the funds
+   * @param _spender The address of the account spending the funds
+   * @return _approvedTokens The number of tokens approved
+   */
+  function allowance(address _account, address _spender) external view override returns (uint256 _approvedTokens) {
+    return _allowances[_account][_spender];
+  }
+
+  /**
+   * @notice Approve `spender` to transfer up to `amount` from `src`
+   * @dev This will overwrite the approval amount for `spender`
+   *  and is subject to issues noted [here](https://eips.ethereum.org/EIPS/eip-20#approve)
+   * @param _spender The address of the account which may transfer tokens
+   * @param _rawAmount The number of tokens that are approved (2^256-1 means infinite)
+   * @return _succeeded Whether or not the approval succeeded
+   */
+  function approve(address _spender, uint256 _rawAmount) external override returns (bool _succeeded) {
+    uint96 _amount;
+    if (_rawAmount == UINT256_MAX) _amount = UINT96_MAX;
+    else _amount = _safe96(_rawAmount, 'approve: amount exceeds 96 bits');
+
+    _allowances[msg.sender][_spender] = _amount;
+
+    emit Approval(msg.sender, _spender, _amount);
+    return true;
+  }
+
+  /**
+   * @notice Triggers an approval from owner to spends
+   * @param _owner The address to approve from
+   * @param _spender The address to be approved
+   * @param _rawAmount The number of tokens that are approved (2^256-1 means infinite)
+   * @param _deadline The time at which to expire the signature
+   * @param _v The recovery byte of the signature
+   * @param _r Half of the ECDSA signature pair
+   * @param _s Half of the ECDSA signature pair
+   */
+  function permit(address _owner, address _spender, uint256 _rawAmount, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s) external override {
+    uint96 _amount;
+    if (_rawAmount == UINT256_MAX) _amount = UINT96_MAX;
+    else _amount = _safe96(_rawAmount, 'permit: amount exceeds 96 bits');
+
+    bytes32 _domainSeparator = keccak256(abi.encode(DOMAIN_TYPEHASH, keccak256(bytes(name)), _getChainId(), address(this)));
+    bytes32 _structHash = keccak256(abi.encode(PERMIT_TYPEHASH, _owner, _spender, _rawAmount, nonces[_owner]++, _deadline));
+    bytes32 _digest = keccak256(abi.encodePacked('\x19\x01', _domainSeparator, _structHash));
+    if (uint256(_s) > 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) {
+      revert TokenDelegate_InvalidSignature();
+    }
+    address _signatory = ecrecover(_digest, _v, _r, _s);
+    if (_signatory == address(0x0)) revert TokenDelegate_InvalidSignature();
+
+    if (block.timestamp > _deadline) revert TokenDelegate_SignatureExpired();
+
+    _allowances[_owner][_spender] = _amount;
+
+    emit Approval(_owner, _spender, _amount);
+  }
+
+  /**
+   * @notice Get the number of tokens held by the `account`
+   * @param _account The address of the account to get the balance of
+   * @return _balance The number of tokens held
+   */
+  function balanceOf(address _account) external view override returns (uint256 _balance) {
+    return _balances[_account];
+  }
+
+  /**
+   * @notice Transfer `amount` tokens from `msg.sender` to `dst`
+   * @param _dst The address of the destination account
+   * @param _rawAmount The number of tokens to transfer
+   * @return _succeeded Whether or not the transfer succeeded
+   */
+  function transfer(address _dst, uint256 _rawAmount) external override returns (bool _succeeded) {
+    uint96 _amount = _safe96(_rawAmount, 'transfer: amount exceeds 96 bits');
+    _transferTokens(msg.sender, _dst, _amount);
+    return true;
+  }
+
+  /**
+   * @notice Transfer `amount` tokens from `src` to `dst`
+   * @param _src The address of the source account
+   * @param _dst The address of the destination account
+   * @param _rawAmount The number of tokens to transfer
+   * @return _succeeded Whether or not the transfer succeeded
+   */
+  function transferFrom(address _src, address _dst, uint256 _rawAmount) external override returns (bool _succeeded) {
+    address _spender = msg.sender;
+    uint96 _spenderAllowance = _allowances[_src][_spender];
+    uint96 _amount = _safe96(_rawAmount, 'transferFrom: amount exceeds 96 bits');
+
+    if (_spender != _src && _spenderAllowance != UINT96_MAX) {
+      uint96 _newAllowance = _sub96(_spenderAllowance, _amount, 'transferFrom: transfer amount exceeds spender allowance');
+      _allowances[_src][_spender] = _newAllowance;
+
+      emit Approval(_src, _spender, _newAllowance);
     }
 
-    /**
-     * @notice Change token name
-     * @param name_ New token name
-     */
-    function changeName(string calldata name_) external override onlyOwner {
-        require(bytes(name_).length > 0, 'changeName: length invaild');
+    _transferTokens(_src, _dst, _amount);
+    return true;
+  }
 
-        emit ChangedName(name, name_);
+  /**
+   * @notice Mint new tokens
+   * @param _dst The address of the destination account
+   * @param _rawAmount The number of tokens to be minted
+   */
+  function mint(address _dst, uint256 _rawAmount) external override onlyOwner {
+    require(_dst != address(0), 'mint: cant transfer to 0 address');
+    uint96 _amount = _safe96(_rawAmount, 'mint: amount exceeds 96 bits');
+    totalSupply = _safe96(totalSupply + _amount, 'mint: totalSupply exceeds 96 bits');
 
-        name = name_;
+    // transfer the amount to the recipient
+    _balances[_dst] = _add96(_balances[_dst], _amount, 'mint: transfer amount overflows');
+    emit Transfer(address(0), _dst, _amount);
+
+    // move delegates
+    _moveDelegates(address(0), delegates[_dst], _amount);
+  }
+
+  /**
+   * @notice Delegate votes from `msg.sender` to `delegatee`
+   * @param _delegatee The address to delegate votes to
+   */
+  function delegate(address _delegatee) public override {
+    return _delegate(msg.sender, _delegatee);
+  }
+
+  /**
+   * @notice Delegates votes from signatory to `delegatee`
+   * @param _delegatee The address to delegate votes to
+   * @param _nonce The contract state required to match the signature
+   * @param _expiry The time at which to expire the signature
+   * @param _v The recovery byte of the signature
+   * @param _r Half of the ECDSA signature pair
+   * @param _s Half of the ECDSA signature pair
+   */
+  function delegateBySig(address _delegatee, uint256 _nonce, uint256 _expiry, uint8 _v, bytes32 _r, bytes32 _s) public override {
+    bytes32 _domainSeparator = keccak256(abi.encode(DOMAIN_TYPEHASH, keccak256(bytes(name)), _getChainId(), address(this)));
+    bytes32 _structHash = keccak256(abi.encode(DELEGATION_TYPEHASH, _delegatee, _nonce, _expiry));
+    bytes32 _digest = keccak256(abi.encodePacked('\x19\x01', _domainSeparator, _structHash));
+    if (uint256(_s) > 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) {
+      revert TokenDelegate_InvalidSignature();
+    }
+    address _signatory = ecrecover(_digest, _v, _r, _s);
+    if (_signatory == address(0)) revert TokenDelegate_InvalidSignature();
+
+    if (_nonce != nonces[_signatory]++) revert TokenDelegate_InvalidNonce();
+    if (block.timestamp > _expiry) revert TokenDelegate_SignatureExpired();
+    return _delegate(_signatory, _delegatee);
+  }
+
+  /**
+   * @notice Gets the current votes balance for `account`
+   * @param _account The address to get votes balance
+   * @return _votes The number of current votes for `account`
+   */
+  function getCurrentVotes(address _account) external view override returns (uint96 _votes) {
+    uint32 _nCheckpoints = numCheckpoints[_account];
+    return _nCheckpoints > 0 ? checkpoints[_account][_nCheckpoints - 1].votes : 0;
+  }
+
+  /**
+   * @notice Determine the prior number of votes for an account as of a block number
+   * @dev Block number must be a finalized block or else this function will revert to prevent misinformation.
+   * @param _account The address of the account to check
+   * @param _blockNumber The block number to get the vote balance at
+   * @return _accountVotes The number of votes the account had as of the given block
+   */
+  function getPriorVotes(address _account, uint256 _blockNumber) public view override returns (uint96 _accountVotes) {
+    if (_blockNumber >= block.number) revert TokenDelegate_CannotDetermineVotes();
+    // check naive cases
+    (bool _ok, uint96 _votes) = _naivePriorVotes(_account, _blockNumber);
+    if (_ok) return _votes;
+    uint32 _lower;
+    uint32 _upper = numCheckpoints[_account] - 1;
+    while (_upper > _lower) {
+      uint32 _center = _upper - (_upper - _lower) / 2; // ceil, avoiding overflow
+      Checkpoint memory _cp = checkpoints[_account][_center];
+      (_ok, _lower, _upper) = _binarySearch(_cp.fromBlock, _blockNumber, _lower, _upper);
+      if (_ok) return _cp.votes;
+    }
+    return checkpoints[_account][_lower].votes;
+  }
+
+  /// @notice naive cases to check for votes
+  /// @param _account the account to check
+  /// @param _blockNumber the block number to check
+  function _naivePriorVotes(address _account, uint256 _blockNumber) internal view returns (bool _ok, uint96 _ans) {
+    uint32 _nCheckpoints = numCheckpoints[_account];
+    // if no checkpoints, must be 0
+    if (_nCheckpoints == 0) return (true, 0);
+    // First check most recent balance
+    if (checkpoints[_account][_nCheckpoints - 1].fromBlock <= _blockNumber) {
+      return (true, checkpoints[_account][_nCheckpoints - 1].votes);
+    }
+    // Next check implicit zero balance
+    if (checkpoints[_account][0].fromBlock > _blockNumber) return (true, 0);
+    return (false, 0);
+  }
+
+  /// @notice binary search
+  /// @param _from the block number to start searching from
+  /// @param _blk the block number to search for
+  /// @param _lower the lower bound of the search
+  /// @param _upper the upper bound of the search
+  function _binarySearch(
+    uint32 _from,
+    uint256 _blk,
+    uint32 _lower,
+    uint32 _upper
+  ) internal pure returns (bool _ok, uint32 _newLower, uint32 _newUpper) {
+    uint32 _center = _upper - (_upper - _lower) / 2; // ceil, avoiding overflow
+    if (_from == _blk) return (true, 0, 0);
+    if (_from < _blk) return (false, _center, _upper);
+    return (false, _lower, _center - 1);
+  }
+
+  /// @notice assign delegate to another address
+  /// @param _delegator the address to change delegate
+  /// @param _delegatee the address to delegate to
+  function _delegate(address _delegator, address _delegatee) internal {
+    address _currentDelegate = delegates[_delegator];
+    uint96 _delegatorBalance = _balances[_delegator];
+    delegates[_delegator] = _delegatee;
+
+    emit DelegateChanged(_delegator, _currentDelegate, _delegatee);
+
+    _moveDelegates(_currentDelegate, _delegatee, _delegatorBalance);
+  }
+
+  /// @notice transfer tokens
+  /// @param _src the address to transfer from
+  /// @param _dst the address to transfer to
+  /// @param _amount the amount to transfer
+  function _transferTokens(address _src, address _dst, uint96 _amount) internal {
+    if (_src == address(0) || _dst == address(0)) revert TokenDelegate_ZeroAddress();
+
+    _balances[_src] = _sub96(_balances[_src], _amount, '_transferTokens: transfer amount exceeds balance');
+    _balances[_dst] = _add96(_balances[_dst], _amount, '_transferTokens: transfer amount overflows');
+    emit Transfer(_src, _dst, _amount);
+
+    _moveDelegates(delegates[_src], delegates[_dst], _amount);
+  }
+
+  /// @notice Move delegates to another address
+  /// @param _srcRep the address to move from
+  /// @param _dstRep the address to move to
+  /// @param _amount the amount to move
+  function _moveDelegates(address _srcRep, address _dstRep, uint96 _amount) internal {
+    if (_srcRep != _dstRep && _amount > 0) {
+      if (_srcRep != address(0)) {
+        uint32 _srcRepNum = numCheckpoints[_srcRep];
+        uint96 _srcRepOld = _srcRepNum > 0 ? checkpoints[_srcRep][_srcRepNum - 1].votes : 0;
+        uint96 _srcRepNew = _sub96(_srcRepOld, _amount, '_moveVotes: vote amt underflows');
+        _writeCheckpoint(_srcRep, _srcRepNum, _srcRepOld, _srcRepNew);
+      }
+
+      if (_dstRep != address(0)) {
+        uint32 _dstRepNum = numCheckpoints[_dstRep];
+        uint96 _dstRepOld = _dstRepNum > 0 ? checkpoints[_dstRep][_dstRepNum - 1].votes : 0;
+        uint96 _dstRepNew = _add96(_dstRepOld, _amount, '_moveVotes: vote amt overflows');
+        _writeCheckpoint(_dstRep, _dstRepNum, _dstRepOld, _dstRepNew);
+      }
+    }
+  }
+
+  /// @notice write checkpoint
+  /// @param _delegatee the address to write checkpoint for
+  /// @param _nCheckpoints the number of checkpoints
+  /// @param _oldVotes the old votes
+  /// @param _newVotes the new votes
+  function _writeCheckpoint(address _delegatee, uint32 _nCheckpoints, uint96 _oldVotes, uint96 _newVotes) internal {
+    uint32 _blockNumber = _safe32(block.number, '_writeCheckpoint: blocknum exceeds 32 bits');
+
+    if (_nCheckpoints > 0 && checkpoints[_delegatee][_nCheckpoints - 1].fromBlock == _blockNumber) {
+      checkpoints[_delegatee][_nCheckpoints - 1].votes = _newVotes;
+    } else {
+      checkpoints[_delegatee][_nCheckpoints] = Checkpoint(_blockNumber, _newVotes);
+      numCheckpoints[_delegatee] = _nCheckpoints + 1;
     }
 
-    /**
-     * @notice Change token symbol
-     * @param symbol_ New token symbol
-     */
-    function changeSymbol(string calldata symbol_) external override onlyOwner {
-        require(bytes(symbol_).length > 0, 'changeSymbol: length invaild');
+    emit DelegateVotesChanged(_delegatee, _oldVotes, _newVotes);
+  }
 
-        emit ChangedSymbol(symbol, symbol_);
+  /// @notice safe uint32
+  /// @param _n the number to convert
+  /// @param _errorMessage the error message to revert with
+  /// @return _ans the converted number
+  function _safe32(uint256 _n, string memory _errorMessage) internal pure returns (uint32 _ans) {
+    require(_n < 2 ** 32, _errorMessage);
+    return uint32(_n);
+  }
 
-        symbol = symbol_;
+  /// @notice safe uint96
+  /// @param _n the number to convert
+  /// @param _errorMessage the error message to revert with
+  /// @return _ans the converted number
+  function _safe96(uint256 _n, string memory _errorMessage) internal pure returns (uint96 _ans) {
+    require(_n < 2 ** 96, _errorMessage);
+    return uint96(_n);
+  }
+
+  /// @notice safe add uint96
+  /// @param _a the first number
+  /// @param _b the second number
+  /// @param _errorMessage the error message to revert with
+  /// @return _c the resulting sum
+  function _add96(uint96 _a, uint96 _b, string memory _errorMessage) internal pure returns (uint96 _c) {
+    _c = _a + _b;
+    require(_c >= _a, _errorMessage);
+    return _c;
+  }
+
+  /// @notice safe sub uint96
+  /// @param _a the first number
+  /// @param _b the second number
+  /// @param _errorMessage the error message to revert with
+  /// @return _c the resulting difference
+  function _sub96(uint96 _a, uint96 _b, string memory _errorMessage) internal pure returns (uint96 _c) {
+    require(_b <= _a, _errorMessage);
+    return _a - _b;
+  }
+
+  /// @notice returns the current chain id
+  /// @return _chainId the current chain id
+  function _getChainId() internal view returns (uint256 _chainId) {
+    uint256 _chainId;
+    //solhint-disable-next-line no-inline-assembly
+    assembly {
+      _chainId := chainid()
     }
-
-    /**
-     * @notice Get the number of tokens `spender` is approved to spend on behalf of `account`
-     * @param account The address of the account holding the funds
-     * @param spender The address of the account spending the funds
-     * @return The number of tokens approved
-     */
-    function allowance(address account, address spender) external view override returns (uint256) {
-        return allowances[account][spender];
-    }
-
-    /**
-     * @notice Approve `spender` to transfer up to `amount` from `src`
-     * @dev This will overwrite the approval amount for `spender`
-     *  and is subject to issues noted [here](https://eips.ethereum.org/EIPS/eip-20#approve)
-     * @param spender The address of the account which may transfer tokens
-     * @param rawAmount The number of tokens that are approved (2^256-1 means infinite)
-     * @return Whether or not the approval succeeded
-     */
-    function approve(address spender, uint256 rawAmount) external override returns (bool) {
-        uint96 amount;
-        if (rawAmount == UINT256_MAX) amount = UINT96_MAX;
-        else amount = safe96(rawAmount, 'approve: amount exceeds 96 bits');
-
-        allowances[msg.sender][spender] = amount;
-
-        emit Approval(msg.sender, spender, amount);
-        return true;
-    }
-
-    /**
-     * @notice Triggers an approval from owner to spends
-     * @param owner The address to approve from
-     * @param spender The address to be approved
-     * @param rawAmount The number of tokens that are approved (2^256-1 means infinite)
-     * @param deadline The time at which to expire the signature
-     * @param v The recovery byte of the signature
-     * @param r Half of the ECDSA signature pair
-     * @param s Half of the ECDSA signature pair
-     */
-    function permit(address owner, address spender, uint256 rawAmount, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
-        external
-        override
-    {
-        uint96 amount;
-        if (rawAmount == UINT256_MAX) amount = UINT96_MAX;
-        else amount = safe96(rawAmount, 'permit: amount exceeds 96 bits');
-
-        bytes32 domainSeparator =
-            keccak256(abi.encode(DOMAIN_TYPEHASH, keccak256(bytes(name)), getChainid(), address(this)));
-        bytes32 structHash =
-            keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, rawAmount, nonces[owner]++, deadline));
-        bytes32 digest = keccak256(abi.encodePacked('\x19\x01', domainSeparator, structHash));
-        require(
-            uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0,
-            'permit: invalid signature'
-        );
-        address signatory = ecrecover(digest, v, r, s);
-        require(signatory != address(0x0), 'permit: invalid signature');
-
-        require(block.timestamp <= deadline, 'permit: signature expired');
-
-        allowances[owner][spender] = amount;
-
-        emit Approval(owner, spender, amount);
-    }
-
-    /**
-     * @notice Get the number of tokens held by the `account`
-     * @param account The address of the account to get the balance of
-     * @return The number of tokens held
-     */
-    function balanceOf(address account) external view override returns (uint256) {
-        return balances[account];
-    }
-
-    /**
-     * @notice Transfer `amount` tokens from `msg.sender` to `dst`
-     * @param dst The address of the destination account
-     * @param rawAmount The number of tokens to transfer
-     * @return Whether or not the transfer succeeded
-     */
-    function transfer(address dst, uint256 rawAmount) external override returns (bool) {
-        uint96 amount = safe96(rawAmount, 'transfer: amount exceeds 96 bits');
-        _transferTokens(msg.sender, dst, amount);
-        return true;
-    }
-
-    /**
-     * @notice Transfer `amount` tokens from `src` to `dst`
-     * @param src The address of the source account
-     * @param dst The address of the destination account
-     * @param rawAmount The number of tokens to transfer
-     * @return Whether or not the transfer succeeded
-     */
-    function transferFrom(address src, address dst, uint256 rawAmount) external override returns (bool) {
-        address spender = msg.sender;
-        uint96 spenderAllowance = allowances[src][spender];
-        uint96 amount = safe96(rawAmount, 'transferFrom: amount exceeds 96 bits');
-
-        if (spender != src && spenderAllowance != UINT96_MAX) {
-            uint96 newAllowance =
-                sub96(spenderAllowance, amount, 'transferFrom: transfer amount exceeds spender allowance');
-            allowances[src][spender] = newAllowance;
-
-            emit Approval(src, spender, newAllowance);
-        }
-
-        _transferTokens(src, dst, amount);
-        return true;
-    }
-
-    /**
-     * @notice Mint new tokens
-     * @param dst The address of the destination account
-     * @param rawAmount The number of tokens to be minted
-     */
-    function mint(address dst, uint256 rawAmount) external override onlyOwner {
-        require(dst != address(0), 'mint: cant transfer to 0 address');
-        uint96 amount = safe96(rawAmount, 'mint: amount exceeds 96 bits');
-        totalSupply = safe96(totalSupply + amount, 'mint: totalSupply exceeds 96 bits');
-
-        // transfer the amount to the recipient
-        balances[dst] = add96(balances[dst], amount, 'mint: transfer amount overflows');
-        emit Transfer(address(0), dst, amount);
-
-        // move delegates
-        _moveDelegates(address(0), delegates[dst], amount);
-    }
-
-    /**
-     * @notice Delegate votes from `msg.sender` to `delegatee`
-     * @param delegatee The address to delegate votes to
-     */
-    function delegate(address delegatee) public override {
-        return _delegate(msg.sender, delegatee);
-    }
-
-    /**
-     * @notice Delegates votes from signatory to `delegatee`
-     * @param delegatee The address to delegate votes to
-     * @param nonce The contract state required to match the signature
-     * @param expiry The time at which to expire the signature
-     * @param v The recovery byte of the signature
-     * @param r Half of the ECDSA signature pair
-     * @param s Half of the ECDSA signature pair
-     */
-    function delegateBySig(address delegatee, uint256 nonce, uint256 expiry, uint8 v, bytes32 r, bytes32 s)
-        public
-        override
-    {
-        bytes32 domainSeparator =
-            keccak256(abi.encode(DOMAIN_TYPEHASH, keccak256(bytes(name)), getChainid(), address(this)));
-        bytes32 structHash = keccak256(abi.encode(DELEGATION_TYPEHASH, delegatee, nonce, expiry));
-        bytes32 digest = keccak256(abi.encodePacked('\x19\x01', domainSeparator, structHash));
-        require(
-            uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0,
-            'delegateBySig: invalid signature'
-        );
-        address signatory = ecrecover(digest, v, r, s);
-        require(signatory != address(0x0), 'delegateBySig: invalid signature');
-
-        require(nonce == nonces[signatory]++, 'delegateBySig: invalid nonce');
-        require(block.timestamp <= expiry, 'delegateBySig: signature expired');
-        return _delegate(signatory, delegatee);
-    }
-
-    /**
-     * @notice Gets the current votes balance for `account`
-     * @param account The address to get votes balance
-     * @return The number of current votes for `account`
-     */
-    function getCurrentVotes(address account) external view override returns (uint96) {
-        uint32 nCheckpoints = numCheckpoints[account];
-        return nCheckpoints > 0 ? checkpoints[account][nCheckpoints - 1].votes : 0;
-    }
-
-    /**
-     * @notice Determine the prior number of votes for an account as of a block number
-     * @dev Block number must be a finalized block or else this function will revert to prevent misinformation.
-     * @param account The address of the account to check
-     * @param blockNumber The block number to get the vote balance at
-     * @return The number of votes the account had as of the given block
-     */
-    function getPriorVotes(address account, uint256 blockNumber) public view override returns (uint96) {
-        require(blockNumber < block.number, 'getPriorVotes: not determined');
-        bool ok = false;
-        uint96 votes = 0;
-        // check naive cases
-        (ok, votes) = _naivePriorVotes(account, blockNumber);
-        if (ok == true) return votes;
-        uint32 lower = 0;
-        uint32 upper = numCheckpoints[account] - 1;
-        while (upper > lower) {
-            uint32 center = upper - (upper - lower) / 2; // ceil, avoiding overflow
-            Checkpoint memory cp = checkpoints[account][center];
-            (ok, lower, upper) = _binarySearch(cp.fromBlock, blockNumber, lower, upper);
-            if (ok == true) return cp.votes;
-        }
-        return checkpoints[account][lower].votes;
-    }
-
-    function _naivePriorVotes(address account, uint256 blockNumber) internal view returns (bool ok, uint96 ans) {
-        uint32 nCheckpoints = numCheckpoints[account];
-        // if no checkpoints, must be 0
-        if (nCheckpoints == 0) return (true, 0);
-        // First check most recent balance
-        if (checkpoints[account][nCheckpoints - 1].fromBlock <= blockNumber) {
-            return (true, checkpoints[account][nCheckpoints - 1].votes);
-        }
-        // Next check implicit zero balance
-        if (checkpoints[account][0].fromBlock > blockNumber) return (true, 0);
-        return (false, 0);
-    }
-
-    function _binarySearch(uint32 from, uint256 blk, uint32 lower, uint32 upper)
-        internal
-        pure
-        returns (bool ok, uint32 newLower, uint32 newUpper)
-    {
-        uint32 center = upper - (upper - lower) / 2; // ceil, avoiding overflow
-        if (from == blk) return (true, 0, 0);
-        if (from < blk) return (false, center, upper);
-        return (false, lower, center - 1);
-    }
-
-    function _delegate(address delegator, address delegatee) internal {
-        address currentDelegate = delegates[delegator];
-        uint96 delegatorBalance = balances[delegator];
-        delegates[delegator] = delegatee;
-
-        emit DelegateChanged(delegator, currentDelegate, delegatee);
-
-        _moveDelegates(currentDelegate, delegatee, delegatorBalance);
-    }
-
-    function _transferTokens(address src, address dst, uint96 amount) internal {
-        require(src != address(0), '_transferTokens: cant 0addr');
-        require(dst != address(0), '_transferTokens: cant 0addr');
-
-        balances[src] = sub96(balances[src], amount, '_transferTokens: transfer amount exceeds balance');
-        balances[dst] = add96(balances[dst], amount, '_transferTokens: transfer amount overflows');
-        emit Transfer(src, dst, amount);
-
-        _moveDelegates(delegates[src], delegates[dst], amount);
-    }
-
-    function _moveDelegates(address srcRep, address dstRep, uint96 amount) internal {
-        if (srcRep != dstRep && amount > 0) {
-            if (srcRep != address(0)) {
-                uint32 srcRepNum = numCheckpoints[srcRep];
-                uint96 srcRepOld = srcRepNum > 0 ? checkpoints[srcRep][srcRepNum - 1].votes : 0;
-                uint96 srcRepNew = sub96(srcRepOld, amount, '_moveVotes: vote amt underflows');
-                _writeCheckpoint(srcRep, srcRepNum, srcRepOld, srcRepNew);
-            }
-
-            if (dstRep != address(0)) {
-                uint32 dstRepNum = numCheckpoints[dstRep];
-                uint96 dstRepOld = dstRepNum > 0 ? checkpoints[dstRep][dstRepNum - 1].votes : 0;
-                uint96 dstRepNew = add96(dstRepOld, amount, '_moveVotes: vote amt overflows');
-                _writeCheckpoint(dstRep, dstRepNum, dstRepOld, dstRepNew);
-            }
-        }
-    }
-
-    function _writeCheckpoint(address delegatee, uint32 nCheckpoints, uint96 oldVotes, uint96 newVotes) internal {
-        uint32 blockNumber = safe32(block.number, '_writeCheckpoint: blocknum exceeds 32 bits');
-
-        if (nCheckpoints > 0 && checkpoints[delegatee][nCheckpoints - 1].fromBlock == blockNumber) {
-            checkpoints[delegatee][nCheckpoints - 1].votes = newVotes;
-        } else {
-            checkpoints[delegatee][nCheckpoints] = Checkpoint(blockNumber, newVotes);
-            numCheckpoints[delegatee] = nCheckpoints + 1;
-        }
-
-        emit DelegateVotesChanged(delegatee, oldVotes, newVotes);
-    }
-
-    function safe32(uint256 n, string memory errorMessage) internal pure returns (uint32) {
-        require(n < 2 ** 32, errorMessage);
-        return uint32(n);
-    }
-
-    function safe96(uint256 n, string memory errorMessage) internal pure returns (uint96) {
-        require(n < 2 ** 96, errorMessage);
-        return uint96(n);
-    }
-
-    function add96(uint96 a, uint96 b, string memory errorMessage) internal pure returns (uint96) {
-        uint96 c = a + b;
-        require(c >= a, errorMessage);
-        return c;
-    }
-
-    function sub96(uint96 a, uint96 b, string memory errorMessage) internal pure returns (uint96) {
-        require(b <= a, errorMessage);
-        return a - b;
-    }
-
-    function getChainid() internal view returns (uint256) {
-        uint256 chainId;
-        //solhint-disable-next-line no-inline-assembly
-        assembly {
-            chainId := chainid()
-        }
-        return chainId;
-    }
+    return _chainId;
+  }
 }

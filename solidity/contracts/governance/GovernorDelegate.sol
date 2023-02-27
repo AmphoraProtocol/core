@@ -6,573 +6,579 @@ import {GovernorCharlieDelegateStorage} from '@contracts/governance/GovernorStor
 import {Receipt, ProposalState, Proposal} from '@contracts/utils/GovernanceStructs.sol';
 
 import {IAMPH} from '@interfaces/governance/IAMPH.sol';
-import {IGovernorCharlieDelegate, GovernorCharlieEvents} from '@interfaces/governance/IGovernor.sol';
+import {IGovernorCharlieDelegate} from '@interfaces/governance/IGovernorCharlieDelegate.sol';
 
-contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, GovernorCharlieEvents, IGovernorCharlieDelegate {
-    /// @notice The name of this contract
-    string public constant name = 'Amphora Protocol Governor';
+contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCharlieDelegate {
+  /// @notice The name of this contract
+  string public constant NAME = 'Amphora Protocol Governor';
 
-    /// @notice The maximum number of actions that can be included in a proposal
-    uint256 public constant proposalMaxOperations = 10;
+  /// @notice The maximum number of actions that can be included in a proposal
+  uint256 public constant PROPOSAL_MAX_OPERATIONS = 10;
 
-    /// @notice The EIP-712 typehash for the contract's domain
-    bytes32 public constant DOMAIN_TYPEHASH =
-        keccak256('EIP712Domain(string name,uint256 chainId,address verifyingContract)');
+  /// @notice The EIP-712 typehash for the contract's domain
+  bytes32 public constant DOMAIN_TYPEHASH = keccak256('EIP712Domain(string name,uint256 chainId,address verifyingContract)');
 
-    /// @notice The EIP-712 typehash for the ballot struct used by the contract
-    bytes32 public constant BALLOT_TYPEHASH = keccak256('Ballot(uint256 proposalId,uint8 support)');
+  /// @notice The EIP-712 typehash for the ballot struct used by the contract
+  bytes32 public constant BALLOT_TYPEHASH = keccak256('Ballot(uint256 proposalId,uint8 support)');
 
-    /// @notice The time for a proposal to be executed after passing
-    uint256 public constant GRACE_PERIOD = 14 days;
+  /// @notice The time for a proposal to be executed after passing
+  uint256 public constant GRACE_PERIOD = 14 days;
 
-    /**
-     * @notice Used to initialize the contract during delegator contructor
-     * @param amph_ The address of the AMPH token
-     */
-    function initialize(address amph_) external override {
-        require(!initialized, 'already been initialized');
-        amph = IAMPH(amph_);
-        votingPeriod = 40320;
-        votingDelay = 13140;
-        proposalThreshold = 1000000000000000000000000;
-        proposalTimelockDelay = 172800;
-        proposalCount = 0;
-        quorumVotes = 10000000000000000000000000;
-        emergencyQuorumVotes = 40000000000000000000000000;
-        emergencyVotingPeriod = 6570;
-        emergencyTimelockDelay = 43200;
+  /**
+   * @notice Used to initialize the contract during delegator contructor
+   * @param _amph The address of the AMPH token
+   */
+  function initialize(address _amph) external override {
+    if (initialized) revert GovernorCharlie_AlreadyInitialized();
+    amph = IAMPH(_amph);
+    votingPeriod = 40320;
+    votingDelay = 13140;
+    proposalThreshold = 1000000000000000000000000;
+    proposalTimelockDelay = 172800;
+    proposalCount = 0;
+    quorumVotes = 10000000000000000000000000;
+    emergencyQuorumVotes = 40000000000000000000000000;
+    emergencyVotingPeriod = 6570;
+    emergencyTimelockDelay = 43200;
 
-        optimisticQuorumVotes = 2000000000000000000000000;
-        optimisticVotingDelay = 25600;
-        maxWhitelistPeriod = 31536000;
+    optimisticQuorumVotes = 2000000000000000000000000;
+    optimisticVotingDelay = 25600;
+    maxWhitelistPeriod = 31536000;
 
-        initialized = true;
+    initialized = true;
+  }
+
+  /// @notice any function with this modifier can only be called by governance
+  modifier onlyGov() {
+    if (_msgSender() != address(this)) revert GovernorCharlie_NotGovernor();
+    _;
+  }
+
+  /**
+   * @notice Function used to propose a new proposal. Sender must have delegates above the proposal threshold
+   * @param _targets Target addresses for proposal calls
+   * @param _values Eth values for proposal calls
+   * @param _signatures Function signatures for proposal calls
+   * @param _calldatas Calldatas for proposal calls
+   * @param _description String description of the proposal
+   * @param _emergency Bool to determine if proposal an emergency proposal
+   * @return _proposalId Proposal id of new proposal
+   */
+  function propose(
+    address[] memory _targets,
+    uint256[] memory _values,
+    string[] memory _signatures,
+    bytes[] memory _calldatas,
+    string memory _description,
+    bool _emergency
+  ) public override returns (uint256 _proposalId) {
+    // Reject proposals before initiating as Governor
+    if (quorumVotes == 0) revert GovernorCharlie_NotActive();
+    // Allow addresses above proposal threshold and whitelisted addresses to propose
+    if (amph.getPriorVotes(_msgSender(), (block.number - 1)) < proposalThreshold && !isWhitelisted(_msgSender())) {
+      revert GovernorCharlie_VotesBelowThreshold();
+    }
+    if (_targets.length != _values.length || _targets.length != _signatures.length || _targets.length != _calldatas.length)
+      revert GovernorCharlie_ArityMismatch();
+    if (_targets.length == 0) revert GovernorCharlie_NoActions();
+    if (_targets.length > PROPOSAL_MAX_OPERATIONS) revert GovernorCharlie_TooManyActions();
+
+    uint256 _latestProposalId = latestProposalIds[_msgSender()];
+    if (_latestProposalId != 0) {
+      ProposalState _proposersLatestProposalState = state(_latestProposalId);
+      if (_proposersLatestProposalState == ProposalState.Active) revert GovernorCharlie_MultipleActiveProposals();
+      if (_proposersLatestProposalState == ProposalState.Pending) {
+        revert GovernorCharlie_MultiplePendingProposals();
+      }
     }
 
-    /// @notice any function with this modifier can only be called by governance
-    modifier onlyGov() {
-        require(_msgSender() == address(this), 'must come from the gov.');
-        _;
+    proposalCount++;
+    Proposal memory _newProposal = Proposal({
+      id: proposalCount,
+      proposer: _msgSender(),
+      eta: 0,
+      targets: _targets,
+      values: _values,
+      signatures: _signatures,
+      calldatas: _calldatas,
+      startBlock: block.number + votingDelay,
+      endBlock: block.number + votingDelay + votingPeriod,
+      forVotes: 0,
+      againstVotes: 0,
+      abstainVotes: 0,
+      canceled: false,
+      executed: false,
+      emergency: _emergency,
+      quorumVotes: quorumVotes,
+      delay: proposalTimelockDelay
+    });
+
+    //whitelist can't make emergency
+    if (_emergency && !isWhitelisted(_msgSender())) {
+      _newProposal.startBlock = block.number;
+      _newProposal.endBlock = block.number + emergencyVotingPeriod;
+      _newProposal.quorumVotes = emergencyQuorumVotes;
+      _newProposal.delay = emergencyTimelockDelay;
     }
 
-    /**
-     * @notice Function used to propose a new proposal. Sender must have delegates above the proposal threshold
-     * @param targets Target addresses for proposal calls
-     * @param values Eth values for proposal calls
-     * @param signatures Function signatures for proposal calls
-     * @param calldatas Calldatas for proposal calls
-     * @param description String description of the proposal
-     * @param emergency Bool to determine if proposal an emergency proposal
-     * @return Proposal id of new proposal
-     */
-    function propose(
-        address[] memory targets,
-        uint256[] memory values,
-        string[] memory signatures,
-        bytes[] memory calldatas,
-        string memory description,
-        bool emergency
-    ) public override returns (uint256) {
-        // Reject proposals before initiating as Governor
-        require(quorumVotes != 0, 'Charlie not active');
-        // Allow addresses above proposal threshold and whitelisted addresses to propose
-        require(
-            amph.getPriorVotes(_msgSender(), (block.number - 1)) >= proposalThreshold || isWhitelisted(_msgSender()),
-            'votes below proposal threshold'
-        );
-        require(
-            targets.length == values.length && targets.length == signatures.length && targets.length == calldatas.length,
-            'information arity mismatch'
-        );
-        require(targets.length != 0, 'must provide actions');
-        require(targets.length <= proposalMaxOperations, 'too many actions');
+    //whitelist can only make optimistic proposals
+    if (isWhitelisted(_msgSender())) {
+      _newProposal.quorumVotes = optimisticQuorumVotes;
+      _newProposal.startBlock = block.number + optimisticVotingDelay;
+      _newProposal.endBlock = block.number + optimisticVotingDelay + votingPeriod;
+    }
 
-        uint256 latestProposalId = latestProposalIds[_msgSender()];
-        if (latestProposalId != 0) {
-            ProposalState proposersLatestProposalState = state(latestProposalId);
-            require(proposersLatestProposalState != ProposalState.Active, 'one active proposal per proposer');
-            require(proposersLatestProposalState != ProposalState.Pending, 'one pending proposal per proposer');
+    proposals[_newProposal.id] = _newProposal;
+    latestProposalIds[_newProposal.proposer] = _newProposal.id;
+
+    emit ProposalCreated(
+      _newProposal.id,
+      _msgSender(),
+      _targets,
+      _values,
+      _signatures,
+      _calldatas,
+      _newProposal.startBlock,
+      _newProposal.endBlock,
+      _description
+    );
+    return _newProposal.id;
+  }
+
+  /**
+   * @notice Queues a proposal of state succeeded
+   * @param _proposalId The id of the proposal to queue
+   */
+  function queue(uint256 _proposalId) external override {
+    if (state(_proposalId) != ProposalState.Succeeded) revert GovernorCharlie_ProposalNotSucceeded();
+    Proposal storage _proposal = proposals[_proposalId];
+    uint256 _eta = block.timestamp + _proposal.delay;
+    for (uint256 _i = 0; _i < _proposal.targets.length; _i++) {
+      if (
+        queuedTransactions[
+          keccak256(abi.encode(_proposal.targets[_i], _proposal.values[_i], _proposal.signatures[_i], _proposal.calldatas[_i], _eta))
+        ]
+      ) revert GovernorCharlie_ProposalAlreadyQueued();
+      _queueTransaction(_proposal.targets[_i], _proposal.values[_i], _proposal.signatures[_i], _proposal.calldatas[_i], _eta, _proposal.delay);
+    }
+    _proposal.eta = _eta;
+    emit ProposalQueued(_proposalId, _eta);
+  }
+
+  /// @notice Queues a transaction
+  /// @param _target Target address for transaction
+  /// @param _value Eth value for transaction
+  /// @param _signature Function signature for transaction
+  /// @param _data Calldata for transaction
+  /// @param _eta Timestamp for transaction
+  /// @param _delay Delay for transaction
+  /// @return _txHash Transaction hash
+  function _queueTransaction(
+    address _target,
+    uint256 _value,
+    string memory _signature,
+    bytes memory _data,
+    uint256 _eta,
+    uint256 _delay
+  ) internal returns (bytes32 _txHash) {
+    if (_eta < (_getBlockTimestamp() + _delay)) revert GovernorCharlie_DelayNotReached();
+
+    _txHash = keccak256(abi.encode(_target, _value, _signature, _data, _eta));
+    queuedTransactions[_txHash] = true;
+
+    emit QueueTransaction(_txHash, _target, _value, _signature, _data, _eta);
+  }
+
+  /**
+   * @notice Executes a queued proposal if eta has passed
+   * @param _proposalId The id of the proposal to execute
+   */
+  function execute(uint256 _proposalId) external payable override {
+    if (state(_proposalId) != ProposalState.Queued) revert GovernorCharlie_ProposalNotQueued();
+    Proposal storage _proposal = proposals[_proposalId];
+    _proposal.executed = true;
+    for (uint256 _i = 0; _i < _proposal.targets.length; _i++) {
+      this.executeTransaction{value: _proposal.values[_i]}(
+        _proposal.targets[_i],
+        _proposal.values[_i],
+        _proposal.signatures[_i],
+        _proposal.calldatas[_i],
+        _proposal.eta
+      );
+    }
+    emit ProposalExecuted(_proposalId);
+  }
+
+  /// @notice Executes a transaction
+  /// @param _target Target address for transaction
+  /// @param _value Eth value for transaction
+  /// @param _signature Function signature for transaction
+  /// @param _data Calldata for transaction
+  /// @param _eta Timestamp for transaction
+  function executeTransaction(
+    address _target,
+    uint256 _value,
+    string memory _signature,
+    bytes memory _data,
+    uint256 _eta
+  ) external payable override {
+    if (msg.sender != address(this)) revert GovernorCharlie_NotGovernor();
+
+    bytes32 _txHash = keccak256(abi.encode(_target, _value, _signature, _data, _eta));
+    if (!queuedTransactions[_txHash]) revert GovernorCharlie_ProposalNotQueued();
+    if (_getBlockTimestamp() < _eta) revert GovernorCharlie_TimelockNotReached();
+    if (_getBlockTimestamp() > _eta + GRACE_PERIOD) revert GovernorCharlie_TransactionStale();
+
+    queuedTransactions[_txHash] = false;
+
+    bytes memory _callData;
+
+    if (bytes(_signature).length == 0) _callData = _data;
+    else _callData = abi.encodePacked(bytes4(keccak256(bytes(_signature))), _data);
+
+    // solhint-disable-next-line avoid-low-level-calls
+    (bool _success /*bytes memory returnData*/, ) = _target.call{value: _value}(_callData);
+    if (!_success) revert GovernorCharlie_TransactionReverted();
+
+    emit ExecuteTransaction(_txHash, _target, _value, _signature, _data, _eta);
+  }
+
+  /**
+   * @notice Cancels a proposal only if sender is the proposer, or proposer delegates dropped below proposal threshold
+   * @notice whitelistGuardian can cancel proposals from whitelisted addresses
+   * @param _proposalId The id of the proposal to cancel
+   */
+  function cancel(uint256 _proposalId) external override {
+    if (state(_proposalId) == ProposalState.Executed) revert GovernorCharlie_ProposalAlreadyExecuted();
+
+    Proposal storage _proposal = proposals[_proposalId];
+
+    // Proposer can cancel
+    if (_msgSender() != _proposal.proposer) {
+      // Whitelisted proposers can't be canceled for falling below proposal threshold
+      if (isWhitelisted(_proposal.proposer)) {
+        if ((amph.getPriorVotes(_proposal.proposer, (block.number - 1)) >= proposalThreshold) || _msgSender() != whitelistGuardian)
+          revert GovernorCharlie_WhitelistedProposer();
+      } else {
+        if ((amph.getPriorVotes(_proposal.proposer, (block.number - 1)) >= proposalThreshold)) {
+          revert GovernorCharlie_ProposalAboveThreshold();
         }
-
-        proposalCount++;
-        Proposal memory newProposal = Proposal({
-            id: proposalCount,
-            proposer: _msgSender(),
-            eta: 0,
-            targets: targets,
-            values: values,
-            signatures: signatures,
-            calldatas: calldatas,
-            startBlock: block.number + votingDelay,
-            endBlock: block.number + votingDelay + votingPeriod,
-            forVotes: 0,
-            againstVotes: 0,
-            abstainVotes: 0,
-            canceled: false,
-            executed: false,
-            emergency: emergency,
-            quorumVotes: quorumVotes,
-            delay: proposalTimelockDelay
-        });
-
-        //whitelist can't make emergency
-        if (emergency && !isWhitelisted(_msgSender())) {
-            newProposal.startBlock = block.number;
-            newProposal.endBlock = block.number + emergencyVotingPeriod;
-            newProposal.quorumVotes = emergencyQuorumVotes;
-            newProposal.delay = emergencyTimelockDelay;
-        }
-
-        //whitelist can only make optimistic proposals
-        if (isWhitelisted(_msgSender())) {
-            newProposal.quorumVotes = optimisticQuorumVotes;
-            newProposal.startBlock = block.number + optimisticVotingDelay;
-            newProposal.endBlock = block.number + optimisticVotingDelay + votingPeriod;
-        }
-
-        proposals[newProposal.id] = newProposal;
-        latestProposalIds[newProposal.proposer] = newProposal.id;
-
-        emit ProposalCreated(
-            newProposal.id,
-            _msgSender(),
-            targets,
-            values,
-            signatures,
-            calldatas,
-            newProposal.startBlock,
-            newProposal.endBlock,
-            description
-            );
-        return newProposal.id;
+      }
     }
 
-    /**
-     * @notice Queues a proposal of state succeeded
-     * @param proposalId The id of the proposal to queue
-     */
-    function queue(uint256 proposalId) external override {
-        require(state(proposalId) == ProposalState.Succeeded, 'can only be queued if succeeded');
-        Proposal storage proposal = proposals[proposalId];
-        uint256 eta = block.timestamp + proposal.delay;
-        for (uint256 i = 0; i < proposal.targets.length; i++) {
-            require(
-                !queuedTransactions[keccak256(
-                    abi.encode(
-                        proposal.targets[i], proposal.values[i], proposal.signatures[i], proposal.calldatas[i], eta
-                    )
-                )],
-                'proposal already queued'
-            );
-            queueTransaction(
-                proposal.targets[i],
-                proposal.values[i],
-                proposal.signatures[i],
-                proposal.calldatas[i],
-                eta,
-                proposal.delay
-            );
-        }
-        proposal.eta = eta;
-        emit ProposalQueued(proposalId, eta);
+    _proposal.canceled = true;
+    for (uint256 _i = 0; _i < _proposal.targets.length; _i++) {
+      _cancelTransaction(_proposal.targets[_i], _proposal.values[_i], _proposal.signatures[_i], _proposal.calldatas[_i], _proposal.eta);
     }
 
-    function queueTransaction(
-        address target,
-        uint256 value,
-        string memory signature,
-        bytes memory data,
-        uint256 eta,
-        uint256 delay
-    ) internal returns (bytes32) {
-        require(eta >= (getBlockTimestamp() + delay), 'must satisfy delay.');
+    emit ProposalCanceled(_proposalId);
+  }
 
-        bytes32 txHash = keccak256(abi.encode(target, value, signature, data, eta));
-        queuedTransactions[txHash] = true;
+  /// @notice Cancels a transaction
+  /// @param _target Target address for transaction
+  /// @param _value Eth value for transaction
+  /// @param _signature Function signature for transaction
+  /// @param _data Calldata for transaction
+  /// @param _eta Timestamp for transaction
+  function _cancelTransaction(address _target, uint256 _value, string memory _signature, bytes memory _data, uint256 _eta) internal {
+    bytes32 _txHash = keccak256(abi.encode(_target, _value, _signature, _data, _eta));
+    queuedTransactions[_txHash] = false;
 
-        emit QueueTransaction(txHash, target, value, signature, data, eta);
-        return txHash;
+    emit CancelTransaction(_txHash, _target, _value, _signature, _data, _eta);
+  }
+
+  /**
+   * @notice Gets actions of a proposal
+   * @param _proposalId the id of the proposal
+   * @return _targets proposal targets
+   * @return _values proposal values
+   * @return _signatures proposal signatures
+   * @return _calldatas proposal calldatae
+   */
+  function getActions(
+    uint256 _proposalId
+  )
+    external
+    view
+    override
+    returns (address[] memory _targets, uint256[] memory _values, string[] memory _signatures, bytes[] memory _calldatas)
+  {
+    Proposal storage _proposal = proposals[_proposalId];
+    return (_proposal.targets, _proposal.values, _proposal.signatures, _proposal.calldatas);
+  }
+
+  /**
+   * @notice Gets the receipt for a voter on a given proposal
+   * @param _proposalId the id of proposal
+   * @param _voter The address of the voter
+   * @return _votingReceipt The voting receipt
+   */
+  function getReceipt(uint256 _proposalId, address _voter) external view override returns (Receipt memory _votingReceipt) {
+    _votingReceipt = proposalReceipts[_proposalId][_voter];
+  }
+
+  /**
+   * @notice Gets the state of a proposal
+   * @param _proposalId The id of the proposal
+   * @return _state Proposal state
+   */
+  // solhint-disable-next-line code-complexity
+  function state(uint256 _proposalId) public view override returns (ProposalState _state) {
+    if (proposalCount < _proposalId || _proposalId <= initialProposalId) revert GovernorCharlie_InvalidProposalId();
+    Proposal storage _proposal = proposals[_proposalId];
+    bool _whitelisted = isWhitelisted(_proposal.proposer);
+    if (_proposal.canceled) return ProposalState.Canceled;
+    else if (block.number <= _proposal.startBlock) return ProposalState.Pending;
+    else if (block.number <= _proposal.endBlock) return ProposalState.Active;
+    else if (
+      (_whitelisted && _proposal.againstVotes > _proposal.quorumVotes) ||
+      (!_whitelisted && _proposal.forVotes <= _proposal.againstVotes) ||
+      (!_whitelisted && _proposal.forVotes < _proposal.quorumVotes)
+    ) return ProposalState.Defeated;
+    else if (_proposal.eta == 0) return ProposalState.Succeeded;
+    else if (_proposal.executed) return ProposalState.Executed;
+    else if (block.timestamp >= (_proposal.eta + GRACE_PERIOD)) return ProposalState.Expired;
+    return ProposalState.Queued;
+  }
+
+  /**
+   * @notice Cast a vote for a proposal
+   * @param _proposalId The id of the proposal to vote on
+   * @param _support The support value for the vote. 0=against, 1=for, 2=abstain
+   */
+  function castVote(uint256 _proposalId, uint8 _support) external override {
+    emit VoteCast(_msgSender(), _proposalId, _support, _castVoteInternal(_msgSender(), _proposalId, _support), '');
+  }
+
+  /**
+   * @notice Cast a vote for a proposal with a reason
+   * @param _proposalId The id of the proposal to vote on
+   * @param _support The support value for the vote. 0=against, 1=for, 2=abstain
+   * @param _reason The reason given for the vote by the voter
+   */
+  function castVoteWithReason(uint256 _proposalId, uint8 _support, string calldata _reason) external override {
+    emit VoteCast(_msgSender(), _proposalId, _support, _castVoteInternal(_msgSender(), _proposalId, _support), _reason);
+  }
+
+  /**
+   * @notice Cast a vote for a proposal by signature
+   * @dev external override function that accepts EIP-712 signatures for voting on proposals.
+   */
+  function castVoteBySig(uint256 _proposalId, uint8 _support, uint8 _v, bytes32 _r, bytes32 _s) external override {
+    bytes32 _domainSeparator = keccak256(abi.encode(DOMAIN_TYPEHASH, keccak256(bytes(NAME)), _getChainIdInternal(), address(this)));
+    bytes32 _structHash = keccak256(abi.encode(BALLOT_TYPEHASH, _proposalId, _support));
+
+    bytes32 _digest = keccak256(abi.encodePacked('\x19\x01', _domainSeparator, _structHash));
+
+    if (uint256(_s) > 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) {
+      revert GovernorCharlie_InvalidSignature();
     }
+    address _signatory = ecrecover(_digest, _v, _r, _s);
+    if (_signatory == address(0)) revert GovernorCharlie_InvalidSignature();
+    emit VoteCast(_signatory, _proposalId, _support, _castVoteInternal(_signatory, _proposalId, _support), '');
+  }
 
-    /**
-     * @notice Executes a queued proposal if eta has passed
-     * @param proposalId The id of the proposal to execute
-     */
-    function execute(uint256 proposalId) external payable override {
-        require(state(proposalId) == ProposalState.Queued, "can only be exec'd if queued");
-        Proposal storage proposal = proposals[proposalId];
-        proposal.executed = true;
-        for (uint256 i = 0; i < proposal.targets.length; i++) {
-            this.executeTransaction{value: proposal.values[i]}(
-                proposal.targets[i], proposal.values[i], proposal.signatures[i], proposal.calldatas[i], proposal.eta
-            );
-        }
-        emit ProposalExecuted(proposalId);
-    }
+  /**
+   * @notice Internal function that caries out voting logic
+   * @param _voter The voter that is casting their vote
+   * @param _proposalId The id of the proposal to vote on
+   * @param _support The support value for the vote. 0=against, 1=for, 2=abstain
+   * @return _numberOfVotes The number of votes cast
+   */
+  function _castVoteInternal(address _voter, uint256 _proposalId, uint8 _support) internal returns (uint96 _numberOfVotes) {
+    if (state(_proposalId) != ProposalState.Active) revert GovernorCharlie_VotingClosed();
+    if (_support > 2) revert GovernorCharlie_InvalidVoteType();
+    Proposal storage _proposal = proposals[_proposalId];
+    Receipt storage _receipt = proposalReceipts[_proposalId][_voter];
+    if (_receipt.hasVoted) revert GovernorCharlie_AlreadyVoted();
+    uint96 _votes = amph.getPriorVotes(_voter, _proposal.startBlock);
 
-    function executeTransaction(address target, uint256 value, string memory signature, bytes memory data, uint256 eta)
-        external
-        payable
-        override
-    {
-        require(msg.sender == address(this), 'execute must come from this address');
+    if (_support == 0) _proposal.againstVotes = _proposal.againstVotes + _votes;
+    else if (_support == 1) _proposal.forVotes = _proposal.forVotes + _votes;
+    else if (_support == 2) _proposal.abstainVotes = _proposal.abstainVotes + _votes;
 
-        bytes32 txHash = keccak256(abi.encode(target, value, signature, data, eta));
-        require(queuedTransactions[txHash], "tx hasn't been queued.");
-        require(getBlockTimestamp() >= eta, "tx hasn't surpassed timelock.");
-        require(getBlockTimestamp() <= eta + GRACE_PERIOD, 'tx is stale.');
+    _receipt.hasVoted = true;
+    _receipt.support = _support;
+    _receipt.votes = _votes;
 
-        queuedTransactions[txHash] = false;
+    return _votes;
+  }
 
-        bytes memory callData;
+  /**
+   * @notice View function which returns if an account is whitelisted
+   * @param _account Account to check white list status of
+   * @return _isWhitelisted If the account is whitelisted
+   */
+  function isWhitelisted(address _account) public view override returns (bool _isWhitelisted) {
+    return (whitelistAccountExpirations[_account] > block.timestamp);
+  }
 
-        if (bytes(signature).length == 0) callData = data;
-        else callData = abi.encodePacked(bytes4(keccak256(bytes(signature))), data);
+  /**
+   * @notice Governance function for setting the governance token
+   * @param  _token new token addr
+   */
+  function setNewToken(address _token) external onlyGov {
+    amph = IAMPH(_token);
+  }
 
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, /*bytes memory returnData*/ ) = target.call{value: value}(callData);
-        require(success, 'tx execution reverted.');
+  /**
+   * @notice Governance function for setting the max whitelist period
+   * @param  _second how many seconds to whitelist for
+   */
+  function setMaxWhitelistPeriod(uint256 _second) external onlyGov {
+    maxWhitelistPeriod = _second;
+  }
 
-        emit ExecuteTransaction(txHash, target, value, signature, data, eta);
-    }
+  /**
+   * @notice Used to update the timelock period
+   * @param _proposalTimelockDelay The proposal holding period
+   */
+  function setDelay(uint256 _proposalTimelockDelay) public override onlyGov {
+    uint256 _oldTimelockDelay = proposalTimelockDelay;
+    proposalTimelockDelay = _proposalTimelockDelay;
 
-    /**
-     * @notice Cancels a proposal only if sender is the proposer, or proposer delegates dropped below proposal threshold
-     * @notice whitelistGuardian can cancel proposals from whitelisted addresses
-     * @param proposalId The id of the proposal to cancel
-     */
-    function cancel(uint256 proposalId) external override {
-        require(state(proposalId) != ProposalState.Executed, 'cant cancel executed proposal');
+    emit NewDelay(_oldTimelockDelay, proposalTimelockDelay);
+  }
 
-        Proposal storage proposal = proposals[proposalId];
+  /**
+   * @notice Used to update the emergency timelock period
+   * @param _emergencyTimelockDelay The proposal holding period
+   */
+  function setEmergencyDelay(uint256 _emergencyTimelockDelay) public override onlyGov {
+    uint256 _oldEmergencyTimelockDelay = emergencyTimelockDelay;
+    emergencyTimelockDelay = _emergencyTimelockDelay;
 
-        // Proposer can cancel
-        if (_msgSender() != proposal.proposer) {
-            // Whitelisted proposers can't be canceled for falling below proposal threshold
-            if (isWhitelisted(proposal.proposer)) {
-                require(
-                    (amph.getPriorVotes(proposal.proposer, (block.number - 1)) < proposalThreshold)
-                        && _msgSender() == whitelistGuardian,
-                    'cancel: whitelisted proposer'
-                );
-            } else {
-                require(
-                    (amph.getPriorVotes(proposal.proposer, (block.number - 1)) < proposalThreshold),
-                    'cancel: proposer above threshold'
-                );
-            }
-        }
+    emit NewEmergencyDelay(_oldEmergencyTimelockDelay, emergencyTimelockDelay);
+  }
 
-        proposal.canceled = true;
-        for (uint256 i = 0; i < proposal.targets.length; i++) {
-            cancelTransaction(
-                proposal.targets[i], proposal.values[i], proposal.signatures[i], proposal.calldatas[i], proposal.eta
-            );
-        }
+  /**
+   * @notice Governance function for setting the voting delay
+   * @param _newVotingDelay new voting delay, in blocks
+   */
+  function setVotingDelay(uint256 _newVotingDelay) external override onlyGov {
+    uint256 _oldVotingDelay = votingDelay;
+    votingDelay = _newVotingDelay;
 
-        emit ProposalCanceled(proposalId);
-    }
+    emit VotingDelaySet(_oldVotingDelay, votingDelay);
+  }
 
-    function cancelTransaction(address target, uint256 value, string memory signature, bytes memory data, uint256 eta)
-        internal
-    {
-        bytes32 txHash = keccak256(abi.encode(target, value, signature, data, eta));
-        queuedTransactions[txHash] = false;
+  /**
+   * @notice Governance function for setting the voting period
+   * @param _newVotingPeriod new voting period, in blocks
+   */
+  function setVotingPeriod(uint256 _newVotingPeriod) external override onlyGov {
+    uint256 _oldVotingPeriod = votingPeriod;
+    votingPeriod = _newVotingPeriod;
 
-        emit CancelTransaction(txHash, target, value, signature, data, eta);
-    }
+    emit VotingPeriodSet(_oldVotingPeriod, votingPeriod);
+  }
 
-    /**
-     * @notice Gets actions of a proposal
-     * @param proposalId the id of the proposal
-     * @return targets proposal targets
-     * @return values proposal values
-     * @return signatures proposal signatures
-     * @return calldatas proposal calldatae
-     */
-    function getActions(uint256 proposalId)
-        external
-        view
-        override
-        returns (
-            address[] memory targets,
-            uint256[] memory values,
-            string[] memory signatures,
-            bytes[] memory calldatas
-        )
-    {
-        Proposal storage p = proposals[proposalId];
-        return (p.targets, p.values, p.signatures, p.calldatas);
-    }
+  /**
+   * @notice Governance function for setting the emergency voting period
+   * @param _newEmergencyVotingPeriod new voting period, in blocks
+   */
+  function setEmergencyVotingPeriod(uint256 _newEmergencyVotingPeriod) external override onlyGov {
+    uint256 _oldEmergencyVotingPeriod = emergencyVotingPeriod;
+    emergencyVotingPeriod = _newEmergencyVotingPeriod;
 
-    /**
-     * @notice Gets the receipt for a voter on a given proposal
-     * @param proposalId the id of proposal
-     * @param voter The address of the voter
-     * @return The voting receipt
-     */
-    function getReceipt(uint256 proposalId, address voter) external view override returns (Receipt memory) {
-        return proposalReceipts[proposalId][voter];
-    }
+    emit EmergencyVotingPeriodSet(_oldEmergencyVotingPeriod, emergencyVotingPeriod);
+  }
 
-    /**
-     * @notice Gets the state of a proposal
-     * @param proposalId The id of the proposal
-     * @return Proposal state
-     */
-    // solhint-disable-next-line code-complexity
-    function state(uint256 proposalId) public view override returns (ProposalState) {
-        require(proposalCount >= proposalId && proposalId > initialProposalId, 'state: invalid proposal id');
-        Proposal storage proposal = proposals[proposalId];
-        bool whitelisted = isWhitelisted(proposal.proposer);
-        if (proposal.canceled) return ProposalState.Canceled;
-        else if (block.number <= proposal.startBlock) return ProposalState.Pending;
-        else if (block.number <= proposal.endBlock) return ProposalState.Active;
-        else if (
-            (whitelisted && proposal.againstVotes > proposal.quorumVotes)
-                || (!whitelisted && proposal.forVotes <= proposal.againstVotes)
-                || (!whitelisted && proposal.forVotes < proposal.quorumVotes)
-        ) return ProposalState.Defeated;
-        else if (proposal.eta == 0) return ProposalState.Succeeded;
-        else if (proposal.executed) return ProposalState.Executed;
-        else if (block.timestamp >= (proposal.eta + GRACE_PERIOD)) return ProposalState.Expired;
-        return ProposalState.Queued;
-    }
+  /**
+   * @notice Governance function for setting the proposal threshold
+   * @param _newProposalThreshold new proposal threshold
+   */
+  function setProposalThreshold(uint256 _newProposalThreshold) external override onlyGov {
+    uint256 _oldProposalThreshold = proposalThreshold;
+    proposalThreshold = _newProposalThreshold;
 
-    /**
-     * @notice Cast a vote for a proposal
-     * @param proposalId The id of the proposal to vote on
-     * @param support The support value for the vote. 0=against, 1=for, 2=abstain
-     */
-    function castVote(uint256 proposalId, uint8 support) external override {
-        emit VoteCast(_msgSender(), proposalId, support, castVoteInternal(_msgSender(), proposalId, support), '');
-    }
+    emit ProposalThresholdSet(_oldProposalThreshold, proposalThreshold);
+  }
 
-    /**
-     * @notice Cast a vote for a proposal with a reason
-     * @param proposalId The id of the proposal to vote on
-     * @param support The support value for the vote. 0=against, 1=for, 2=abstain
-     * @param reason The reason given for the vote by the voter
-     */
-    function castVoteWithReason(uint256 proposalId, uint8 support, string calldata reason) external override {
-        emit VoteCast(_msgSender(), proposalId, support, castVoteInternal(_msgSender(), proposalId, support), reason);
-    }
+  /**
+   * @notice Governance function for setting the quorum
+   * @param _newQuorumVotes new proposal quorum
+   */
+  function setQuorumVotes(uint256 _newQuorumVotes) external override onlyGov {
+    uint256 _oldQuorumVotes = quorumVotes;
+    quorumVotes = _newQuorumVotes;
 
-    /**
-     * @notice Cast a vote for a proposal by signature
-     * @dev external override function that accepts EIP-712 signatures for voting on proposals.
-     */
-    function castVoteBySig(uint256 proposalId, uint8 support, uint8 v, bytes32 r, bytes32 s) external override {
-        bytes32 domainSeparator =
-            keccak256(abi.encode(DOMAIN_TYPEHASH, keccak256(bytes(name)), getChainIdInternal(), address(this)));
-        bytes32 structHash = keccak256(abi.encode(BALLOT_TYPEHASH, proposalId, support));
+    emit NewQuorum(_oldQuorumVotes, quorumVotes);
+  }
 
-        bytes32 digest = keccak256(abi.encodePacked('\x19\x01', domainSeparator, structHash));
+  /**
+   * @notice Governance function for setting the emergency quorum
+   * @param _newEmergencyQuorumVotes new proposal quorum
+   */
+  function setEmergencyQuorumVotes(uint256 _newEmergencyQuorumVotes) external override onlyGov {
+    uint256 _oldEmergencyQuorumVotes = emergencyQuorumVotes;
+    emergencyQuorumVotes = _newEmergencyQuorumVotes;
 
-        require(
-            uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0,
-            'castVoteBySig: invalid signature'
-        );
-        address signatory = ecrecover(digest, v, r, s);
-        require(signatory != address(0x0), 'castVoteBySig: invalid signature');
-        emit VoteCast(signatory, proposalId, support, castVoteInternal(signatory, proposalId, support), '');
-    }
+    emit NewEmergencyQuorum(_oldEmergencyQuorumVotes, emergencyQuorumVotes);
+  }
 
-    /**
-     * @notice Internal function that caries out voting logic
-     * @param voter The voter that is casting their vote
-     * @param proposalId The id of the proposal to vote on
-     * @param support The support value for the vote. 0=against, 1=for, 2=abstain
-     * @return The number of votes cast
-     */
-    function castVoteInternal(address voter, uint256 proposalId, uint8 support) internal returns (uint96) {
-        require(state(proposalId) == ProposalState.Active, 'voting is closed');
-        require(support <= 2, 'invalid vote type');
-        Proposal storage proposal = proposals[proposalId];
-        Receipt storage receipt = proposalReceipts[proposalId][voter];
-        require(receipt.hasVoted == false, 'voter already voted');
-        uint96 votes = amph.getPriorVotes(voter, proposal.startBlock);
+  /**
+   * @notice Governance function for setting the whitelist expiration as a timestamp
+   * for an account. Whitelist status allows accounts to propose without meeting threshold
+   * @param _account Account address to set whitelist expiration for
+   * @param _expiration Expiration for account whitelist status as timestamp (if now < expiration, whitelisted)
+   */
+  function setWhitelistAccountExpiration(address _account, uint256 _expiration) external override onlyGov {
+    if (_expiration >= (maxWhitelistPeriod + block.timestamp)) revert GovernorCharlie_ExpirationExceedsMax();
+    whitelistAccountExpirations[_account] = _expiration;
 
-        if (support == 0) proposal.againstVotes = proposal.againstVotes + votes;
-        else if (support == 1) proposal.forVotes = proposal.forVotes + votes;
-        else if (support == 2) proposal.abstainVotes = proposal.abstainVotes + votes;
+    emit WhitelistAccountExpirationSet(_account, _expiration);
+  }
 
-        receipt.hasVoted = true;
-        receipt.support = support;
-        receipt.votes = votes;
+  /**
+   * @notice Governance function for setting the whitelistGuardian. WhitelistGuardian can cancel proposals from whitelisted addresses
+   * @param _account Account to set whitelistGuardian to (0x0 to remove whitelistGuardian)
+   */
+  function setWhitelistGuardian(address _account) external override onlyGov {
+    address _oldGuardian = whitelistGuardian;
+    whitelistGuardian = _account;
 
-        return votes;
-    }
+    emit WhitelistGuardianSet(_oldGuardian, whitelistGuardian);
+  }
 
-    /**
-     * @notice View function which returns if an account is whitelisted
-     * @param account Account to check white list status of
-     * @return If the account is whitelisted
-     */
-    function isWhitelisted(address account) public view override returns (bool) {
-        return (whitelistAccountExpirations[account] > block.timestamp);
-    }
+  /**
+   * @notice Governance function for setting the optimistic voting delay
+   * @param _newOptimisticVotingDelay new optimistic voting delay, in blocks
+   */
+  function setOptimisticDelay(uint256 _newOptimisticVotingDelay) external override onlyGov {
+    uint256 _oldOptimisticVotingDelay = optimisticVotingDelay;
+    optimisticVotingDelay = _newOptimisticVotingDelay;
 
-    /**
-     * @notice Governance function for setting the governance token
-     * @param  token_ new token addr
-     */
-    function _setNewToken(address token_) external onlyGov {
-        amph = IAMPH(token_);
-    }
+    emit OptimisticVotingDelaySet(_oldOptimisticVotingDelay, optimisticVotingDelay);
+  }
 
-    /**
-     * @notice Governance function for setting the max whitelist period
-     * @param  second how many seconds to whitelist for
-     */
-    function setMaxWhitelistPeriod(uint256 second) external onlyGov {
-        maxWhitelistPeriod = second;
-    }
+  /**
+   * @notice Governance function for setting the optimistic quorum
+   * @param _newOptimisticQuorumVotes new optimistic quorum votes, in blocks
+   */
+  function setOptimisticQuorumVotes(uint256 _newOptimisticQuorumVotes) external override onlyGov {
+    uint256 _oldOptimisticQuorumVotes = optimisticQuorumVotes;
+    optimisticQuorumVotes = _newOptimisticQuorumVotes;
 
-    /**
-     * @notice Used to update the timelock period
-     * @param proposalTimelockDelay_ The proposal holding period
-     */
-    function _setDelay(uint256 proposalTimelockDelay_) public override onlyGov {
-        uint256 oldTimelockDelay = proposalTimelockDelay;
-        proposalTimelockDelay = proposalTimelockDelay_;
+    emit OptimisticQuorumVotesSet(_oldOptimisticQuorumVotes, optimisticQuorumVotes);
+  }
 
-        emit NewDelay(oldTimelockDelay, proposalTimelockDelay);
-    }
+  /// @notice Returns the chaid id of the blockchain
+  /// @return _chainId The chain id
+  function _getChainIdInternal() internal view returns (uint256 _chainId) {
+    return block.chainid;
+  }
 
-    /**
-     * @notice Used to update the emergency timelock period
-     * @param emergencyTimelockDelay_ The proposal holding period
-     */
-    function _setEmergencyDelay(uint256 emergencyTimelockDelay_) public override onlyGov {
-        uint256 oldEmergencyTimelockDelay = emergencyTimelockDelay;
-        emergencyTimelockDelay = emergencyTimelockDelay_;
+  /// @notice Returns the block timestamp
+  /// @return _timestamp The block timestamp
+  function _getBlockTimestamp() internal view returns (uint256 _timestamp) {
+    // solium-disable-next-line security/no-block-members
+    return block.timestamp;
+  }
 
-        emit NewEmergencyDelay(oldEmergencyTimelockDelay, emergencyTimelockDelay);
-    }
-
-    /**
-     * @notice Governance function for setting the voting delay
-     * @param newVotingDelay new voting delay, in blocks
-     */
-    function _setVotingDelay(uint256 newVotingDelay) external override onlyGov {
-        uint256 oldVotingDelay = votingDelay;
-        votingDelay = newVotingDelay;
-
-        emit VotingDelaySet(oldVotingDelay, votingDelay);
-    }
-
-    /**
-     * @notice Governance function for setting the voting period
-     * @param newVotingPeriod new voting period, in blocks
-     */
-    function _setVotingPeriod(uint256 newVotingPeriod) external override onlyGov {
-        uint256 oldVotingPeriod = votingPeriod;
-        votingPeriod = newVotingPeriod;
-
-        emit VotingPeriodSet(oldVotingPeriod, votingPeriod);
-    }
-
-    /**
-     * @notice Governance function for setting the emergency voting period
-     * @param newEmergencyVotingPeriod new voting period, in blocks
-     */
-    function _setEmergencyVotingPeriod(uint256 newEmergencyVotingPeriod) external override onlyGov {
-        uint256 oldEmergencyVotingPeriod = emergencyVotingPeriod;
-        emergencyVotingPeriod = newEmergencyVotingPeriod;
-
-        emit EmergencyVotingPeriodSet(oldEmergencyVotingPeriod, emergencyVotingPeriod);
-    }
-
-    /**
-     * @notice Governance function for setting the proposal threshold
-     * @param newProposalThreshold new proposal threshold
-     */
-    function _setProposalThreshold(uint256 newProposalThreshold) external override onlyGov {
-        uint256 oldProposalThreshold = proposalThreshold;
-        proposalThreshold = newProposalThreshold;
-
-        emit ProposalThresholdSet(oldProposalThreshold, proposalThreshold);
-    }
-
-    /**
-     * @notice Governance function for setting the quorum
-     * @param newQuorumVotes new proposal quorum
-     */
-    function _setQuorumVotes(uint256 newQuorumVotes) external override onlyGov {
-        uint256 oldQuorumVotes = quorumVotes;
-        quorumVotes = newQuorumVotes;
-
-        emit NewQuorum(oldQuorumVotes, quorumVotes);
-    }
-
-    /**
-     * @notice Governance function for setting the emergency quorum
-     * @param newEmergencyQuorumVotes new proposal quorum
-     */
-    function _setEmergencyQuorumVotes(uint256 newEmergencyQuorumVotes) external override onlyGov {
-        uint256 oldEmergencyQuorumVotes = emergencyQuorumVotes;
-        emergencyQuorumVotes = newEmergencyQuorumVotes;
-
-        emit NewEmergencyQuorum(oldEmergencyQuorumVotes, emergencyQuorumVotes);
-    }
-
-    /**
-     * @notice Governance function for setting the whitelist expiration as a timestamp
-     * for an account. Whitelist status allows accounts to propose without meeting threshold
-     * @param account Account address to set whitelist expiration for
-     * @param expiration Expiration for account whitelist status as timestamp (if now < expiration, whitelisted)
-     */
-    function _setWhitelistAccountExpiration(address account, uint256 expiration) external override onlyGov {
-        require(expiration < (maxWhitelistPeriod + block.timestamp), 'expiration exceeds max');
-        whitelistAccountExpirations[account] = expiration;
-
-        emit WhitelistAccountExpirationSet(account, expiration);
-    }
-
-    /**
-     * @notice Governance function for setting the whitelistGuardian. WhitelistGuardian can cancel proposals from whitelisted addresses
-     * @param account Account to set whitelistGuardian to (0x0 to remove whitelistGuardian)
-     */
-    function _setWhitelistGuardian(address account) external override onlyGov {
-        address oldGuardian = whitelistGuardian;
-        whitelistGuardian = account;
-
-        emit WhitelistGuardianSet(oldGuardian, whitelistGuardian);
-    }
-
-    /**
-     * @notice Governance function for setting the optimistic voting delay
-     * @param newOptimisticVotingDelay new optimistic voting delay, in blocks
-     */
-    function _setOptimisticDelay(uint256 newOptimisticVotingDelay) external override onlyGov {
-        uint256 oldOptimisticVotingDelay = optimisticVotingDelay;
-        optimisticVotingDelay = newOptimisticVotingDelay;
-
-        emit OptimisticVotingDelaySet(oldOptimisticVotingDelay, optimisticVotingDelay);
-    }
-
-    /**
-     * @notice Governance function for setting the optimistic quorum
-     * @param newOptimisticQuorumVotes new optimistic quorum votes, in blocks
-     */
-    function _setOptimisticQuorumVotes(uint256 newOptimisticQuorumVotes) external override onlyGov {
-        uint256 oldOptimisticQuorumVotes = optimisticQuorumVotes;
-        optimisticQuorumVotes = newOptimisticQuorumVotes;
-
-        emit OptimisticQuorumVotesSet(oldOptimisticQuorumVotes, optimisticQuorumVotes);
-    }
-
-    function getChainIdInternal() internal view returns (uint256) {
-        return block.chainid;
-    }
-
-    function getBlockTimestamp() internal view returns (uint256) {
-        // solium-disable-next-line security/no-block-members
-        return block.timestamp;
-    }
-
-    function _msgSender() internal view virtual returns (address) {
-        return msg.sender;
-    }
+  /// @notice Returns the msg sender
+  /// @return _msgSender The msg sender
+  function _msgSender() internal view virtual returns (address _msgSender) {
+    return msg.sender;
+  }
 }

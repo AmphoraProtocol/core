@@ -5,20 +5,20 @@ import {Script} from 'forge-std/Script.sol';
 import {IERC20} from 'isolmate/interfaces/tokens/IERC20.sol';
 
 abstract contract Deploy is Script {
-    function _deploy() internal {
-        vm.startBroadcast();
-        vm.stopBroadcast();
-    }
+  function _deploy() internal {
+    vm.startBroadcast();
+    vm.stopBroadcast();
+  }
 }
 
 contract DeployMainnet is Deploy {
-    function run() external {
-        _deploy();
-    }
+  function run() external {
+    _deploy();
+  }
 }
 
 contract DeployRinkeby is Deploy {
-    function run() external {
-        _deploy();
-    }
+  function run() external {
+    _deploy();
+  }
 }

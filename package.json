@@ -15,7 +15,11 @@
     "coverage": "forge coverage --match-contract Unit",
     "deploy": "echo 'script to do'",
     "postinstall": "husky install",
-    "lint:check": "forge fmt --check",
+    "lint:check": "yarn lint:sol-tests && yarn lint:sol-logic && yarn lint:prettier --check",
+    "lint:fix": "sort-package-json && yarn lint:sol-tests --fix && yarn lint:sol-logic --fix && yarn lint:prettier --write",
+    "lint:prettier": "cross-env prettier './**'",
+    "lint:sol-logic": "cross-env solhint -c .solhint.json 'solidity/contracts/**/*.sol' 'solidity/interfaces/**/*.sol'",
+    "lint:sol-tests": "cross-env solhint 'solidity/test/**/*.sol'",
     "prepare": "husky install && wonderland-crypto-husky-checks install",
     "test": "yarn test:unit && yarn test:e2e",
     "test:e2e": "forge test --match-contract E2E -vvv",
@@ -23,7 +27,8 @@
     "test:unit": "forge test --match-contract Unit -vvv"
   },
   "lint-staged": {
-    "*.sol": "forge fmt",
+    "*.{js,css,md,ts,sol}": "prettier --write",
+    "*.sol": "cross-env solhint --fix 'solidity/**/*.sol",
     "package.json": "sort-package-json"
   },
   "dependencies": {
@@ -41,8 +46,13 @@
     "@commitlint/cli": "17.0.3",
     "@commitlint/config-conventional": "17.0.3",
     "@defi-wonderland/crypto-husky-checks": "0.0.0-29a10090",
+    "cross-env": "7.0.3",
     "husky": "8.0.2",
     "lint-staged": "10",
+    "prettier": "2.8.4",
+    "prettier-plugin-solidity": "1.1.2",
+    "solhint-plugin-defi-wonderland": "1.1.0",
+    "solhint-plugin-prettier": "0.0.5",
     "sort-package-json": "2.4.1"
   }
 }

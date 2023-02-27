@@ -10,43 +10,38 @@ import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 /// @notice Curve master keeps a record of CurveSlave contracts and links it with an address
 /// @dev all numbers should be scaled to 1e18. for instance, number 5e17 represents 50%
 contract CurveMaster is ICurveMaster, Ownable {
-    // mapping of token to address
-    mapping(address => address) public _curves;
+  // mapping of token to address
+  mapping(address => address) public curves;
 
-    address public _vaultControllerAddress;
-    IVaultController private _VaultController;
+  address public vaultControllerAddress;
+  IVaultController private _vaultController;
 
-    /// @notice gets the return value of curve labled token_address at x_value
-    /// @param token_address the key to lookup the curve with in the mapping
-    /// @param x_value the x value to pass to the slave
-    /// @return y value of the curve
-    function getValueAt(address token_address, int256 x_value) external view override returns (int256) {
-        require(_curves[token_address] != address(0x0), 'token not enabled');
-        ICurveSlave curve = ICurveSlave(_curves[token_address]);
-        int256 value = curve.valueAt(x_value);
-        require(value != 0, 'result must be nonzero');
-        return value;
-    }
+  /// @notice gets the return value of curve labled _tokenAddress at _xValue
+  /// @param _tokenAddress the key to lookup the curve with in the mapping
+  /// @param _xValue the x value to pass to the slave
+  /// @return _value y value of the curve
+  function getValueAt(address _tokenAddress, int256 _xValue) external view override returns (int256 _value) {
+    if (curves[_tokenAddress] == address(0)) revert CurveMaster_TokenNotEnabled();
+    ICurveSlave _curve = ICurveSlave(curves[_tokenAddress]);
+    _value = _curve.valueAt(_xValue);
+    if (_value == 0) revert CurveMaster_ZeroResult();
+  }
 
-    /// @notice set the VaultController addr in order to pay interest on curve setting
-    /// @param vault_master_address address of vault master
-    function setVaultController(address vault_master_address) external override onlyOwner {
-        _vaultControllerAddress = vault_master_address;
-        _VaultController = IVaultController(vault_master_address);
-    }
+  /// @notice set the VaultController addr in order to pay interest on curve setting
+  /// @param _vaultMasterAddress address of vault master
+  function setVaultController(address _vaultMasterAddress) external override onlyOwner {
+    vaultControllerAddress = _vaultMasterAddress;
+    _vaultController = IVaultController(_vaultMasterAddress);
+  }
 
-    function vaultControllerAddress() external view override returns (address) {
-        return _vaultControllerAddress;
-    }
+  ///@notice setting a new curve should pay interest
+  function setCurve(address _tokenAddress, address _curveAddress) external override onlyOwner {
+    if (address(_vaultController) != address(0)) _vaultController.calculateInterest();
+    curves[_tokenAddress] = _curveAddress;
+  }
 
-    ///@notice setting a new curve should pay interest
-    function setCurve(address token_address, address curve_address) external override onlyOwner {
-        if (address(_VaultController) != address(0)) _VaultController.calculateInterest();
-        _curves[token_address] = curve_address;
-    }
-
-    /// @notice special function that does not calculate interest, used for deployment et al
-    function forceSetCurve(address token_address, address curve_address) external override onlyOwner {
-        _curves[token_address] = curve_address;
-    }
+  /// @notice special function that does not calculate interest, used for deployment et al
+  function forceSetCurve(address _tokenAddress, address _curveAddress) external override onlyOwner {
+    curves[_tokenAddress] = _curveAddress;
+  }
 }

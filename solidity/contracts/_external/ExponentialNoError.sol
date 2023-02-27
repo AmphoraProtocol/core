@@ -9,201 +9,201 @@ pragma solidity ^0.8.9;
  *         `Exp({mantissa: 5100000000000000000})`.
  */
 contract ExponentialNoError {
-    uint256 constant expScale = 1e18;
-    uint256 constant doubleScale = 1e36;
-    uint256 constant halfExpScale = expScale / 2;
-    uint256 constant mantissaOne = expScale;
-    uint256 constant uint192Max = 2 ** 192 - 1;
-    uint256 constant uint128Max = 2 ** 128 - 1;
+  uint256 public constant EXP_SCALE = 1e18;
+  uint256 public constant DOUBLE_SCALE = 1e36;
+  uint256 public constant HALF_EXP_SCALE = EXP_SCALE / 2;
+  uint256 public constant MANTISSA_ONE = EXP_SCALE;
+  uint256 public constant UINT192_MAX = 2 ** 192 - 1;
+  uint256 public constant UINT128_MAX = 2 ** 128 - 1;
 
-    struct Exp {
-        uint256 mantissa;
-    }
+  struct Exp {
+    uint256 mantissa;
+  }
 
-    struct Double {
-        uint256 mantissa;
-    }
+  struct Double {
+    uint256 mantissa;
+  }
 
-    /**
-     * @dev Truncates the given exp to a whole number value.
-     *      For example, truncate(Exp{mantissa: 15 * expScale}) = 15
-     */
-    function truncate(Exp memory exp) internal pure returns (uint256) {
-        return exp.mantissa / expScale;
-    }
+  /**
+   * @dev Truncates the given exp to a whole number value.
+   *      For example, truncate(Exp{mantissa: 15 * EXP_SCALE}) = 15
+   */
+  function _truncate(Exp memory _exp) internal pure returns (uint256 _result) {
+    return _exp.mantissa / EXP_SCALE;
+  }
 
-    function truncate(uint256 u) internal pure returns (uint256) {
-        return u / expScale;
-    }
+  function _truncate(uint256 _u) internal pure returns (uint256 _result) {
+    return _u / EXP_SCALE;
+  }
 
-    function safeu192(uint256 u) internal pure returns (uint192) {
-        require(u < uint192Max, 'overflow');
-        return uint192(u);
-    }
+  function _safeu192(uint256 _u) internal pure returns (uint192 _result) {
+    require(_u < UINT192_MAX, 'overflow');
+    return uint192(_u);
+  }
 
-    function safeu128(uint256 u) internal pure returns (uint128) {
-        require(u < uint128Max, 'overflow');
-        return uint128(u);
-    }
+  function _safeu128(uint256 _u) internal pure returns (uint128 _result) {
+    require(_u < UINT128_MAX, 'overflow');
+    return uint128(_u);
+  }
 
-    /**
-     * @dev Multiply an Exp by a scalar, then truncate to return an unsigned integer.
-     */
-    function mul_ScalarTruncate(Exp memory a, uint256 scalar) internal pure returns (uint256) {
-        Exp memory product = mul_(a, scalar);
-        return truncate(product);
-    }
+  /**
+   * @dev Multiply an Exp by a scalar, then truncate to return an unsigned integer.
+   */
+  function _mulScalarTruncate(Exp memory _a, uint256 _scalar) internal pure returns (uint256 _result) {
+    Exp memory _product = _mul(_a, _scalar);
+    return _truncate(_product);
+  }
 
-    /**
-     * @dev Multiply an Exp by a scalar, truncate, then add an to an unsigned integer, returning an unsigned integer.
-     */
-    function mul_ScalarTruncateAddUInt(Exp memory a, uint256 scalar, uint256 addend) internal pure returns (uint256) {
-        Exp memory product = mul_(a, scalar);
-        return add_(truncate(product), addend);
-    }
+  /**
+   * @dev Multiply an Exp by a scalar, truncate, then _add an to an unsigned integer, returning an unsigned integer.
+   */
+  function _mulScalarTruncateAddUInt(Exp memory _a, uint256 _scalar, uint256 _addend) internal pure returns (uint256 _result) {
+    Exp memory _product = _mul(_a, _scalar);
+    return _add(_truncate(_product), _addend);
+  }
 
-    /**
-     * @dev Checks if first Exp is less than second Exp.
-     */
-    function lessThanExp(Exp memory left, Exp memory right) internal pure returns (bool) {
-        return left.mantissa < right.mantissa;
-    }
+  /**
+   * @dev Checks if first Exp is less than second Exp.
+   */
+  function _lessThanExp(Exp memory _left, Exp memory _right) internal pure returns (bool _result) {
+    return _left.mantissa < _right.mantissa;
+  }
 
-    /**
-     * @dev Checks if left Exp <= right Exp.
-     */
-    function lessThanOrEqualExp(Exp memory left, Exp memory right) internal pure returns (bool) {
-        return left.mantissa <= right.mantissa;
-    }
+  /**
+   * @dev Checks if left Exp <= right Exp.
+   */
+  function _lessThanOrEqualExp(Exp memory _left, Exp memory _right) internal pure returns (bool _result) {
+    return _left.mantissa <= _right.mantissa;
+  }
 
-    /**
-     * @dev Checks if left Exp > right Exp.
-     */
-    function greaterThanExp(Exp memory left, Exp memory right) internal pure returns (bool) {
-        return left.mantissa > right.mantissa;
-    }
+  /**
+   * @dev Checks if left Exp > right Exp.
+   */
+  function _greaterThanExp(Exp memory _left, Exp memory _right) internal pure returns (bool _result) {
+    return _left.mantissa > _right.mantissa;
+  }
 
-    /**
-     * @dev returns true if Exp is exactly zero
-     */
-    function isZeroExp(Exp memory value) internal pure returns (bool) {
-        return value.mantissa == 0;
-    }
+  /**
+   * @dev returns true if Exp is exactly zero
+   */
+  function _isZeroExp(Exp memory _value) internal pure returns (bool _result) {
+    return _value.mantissa == 0;
+  }
 
-    function safe224(uint256 n, string memory errorMessage) internal pure returns (uint224) {
-        require(n < 2 ** 224, errorMessage);
-        return uint224(n);
-    }
+  function _safe224(uint256 _n, string memory _errorMessage) internal pure returns (uint224 _result) {
+    require(_n < 2 ** 224, _errorMessage);
+    return uint224(_n);
+  }
 
-    function safe32(uint256 n, string memory errorMessage) internal pure returns (uint32) {
-        require(n < 2 ** 32, errorMessage);
-        return uint32(n);
-    }
+  function _safe32(uint256 _n, string memory _errorMessage) internal pure returns (uint32 _result) {
+    require(_n < 2 ** 32, _errorMessage);
+    return uint32(_n);
+  }
 
-    function add_(Exp memory a, Exp memory b) internal pure returns (Exp memory) {
-        return Exp({mantissa: add_(a.mantissa, b.mantissa)});
-    }
+  function _add(Exp memory _a, Exp memory _b) internal pure returns (Exp memory _result) {
+    return Exp({mantissa: _add(_a.mantissa, _b.mantissa)});
+  }
 
-    function add_(Double memory a, Double memory b) internal pure returns (Double memory) {
-        return Double({mantissa: add_(a.mantissa, b.mantissa)});
-    }
+  function _add(Double memory _a, Double memory _b) internal pure returns (Double memory _result) {
+    return Double({mantissa: _add(_a.mantissa, _b.mantissa)});
+  }
 
-    function add_(uint256 a, uint256 b) internal pure returns (uint256) {
-        return add_(a, b, 'addition overflow');
-    }
+  function _add(uint256 _a, uint256 _b) internal pure returns (uint256 _result) {
+    return _add(_a, _b, 'addition overflow');
+  }
 
-    function add_(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        uint256 c = a + b;
-        require(c >= a, errorMessage);
-        return c;
-    }
+  function _add(uint256 _a, uint256 _b, string memory _errorMessage) internal pure returns (uint256 _result) {
+    uint256 _c = _a + _b;
+    require(_c >= _a, _errorMessage);
+    return _c;
+  }
 
-    function sub_(Exp memory a, Exp memory b) internal pure returns (Exp memory) {
-        return Exp({mantissa: sub_(a.mantissa, b.mantissa)});
-    }
+  function _sub(Exp memory _a, Exp memory _b) internal pure returns (Exp memory _result) {
+    return Exp({mantissa: _sub(_a.mantissa, _b.mantissa)});
+  }
 
-    function sub_(Double memory a, Double memory b) internal pure returns (Double memory) {
-        return Double({mantissa: sub_(a.mantissa, b.mantissa)});
-    }
+  function _sub(Double memory _a, Double memory _b) internal pure returns (Double memory _result) {
+    return Double({mantissa: _sub(_a.mantissa, _b.mantissa)});
+  }
 
-    function sub_(uint256 a, uint256 b) internal pure returns (uint256) {
-        return sub_(a, b, 'subtraction underflow');
-    }
+  function _sub(uint256 _a, uint256 _b) internal pure returns (uint256 _result) {
+    return _sub(_a, _b, 'subtraction underflow');
+  }
 
-    function sub_(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b <= a, errorMessage);
-        return a - b;
-    }
+  function _sub(uint256 _a, uint256 _b, string memory _errorMessage) internal pure returns (uint256 _result) {
+    require(_b <= _a, _errorMessage);
+    return _a - _b;
+  }
 
-    function mul_(Exp memory a, Exp memory b) internal pure returns (Exp memory) {
-        return Exp({mantissa: mul_(a.mantissa, b.mantissa) / expScale});
-    }
+  function _mul(Exp memory _a, Exp memory _b) internal pure returns (Exp memory _result) {
+    return Exp({mantissa: _mul(_a.mantissa, _b.mantissa) / EXP_SCALE});
+  }
 
-    function mul_(Exp memory a, uint256 b) internal pure returns (Exp memory) {
-        return Exp({mantissa: mul_(a.mantissa, b)});
-    }
+  function _mul(Exp memory _a, uint256 _b) internal pure returns (Exp memory _result) {
+    return Exp({mantissa: _mul(_a.mantissa, _b)});
+  }
 
-    function mul_(uint256 a, Exp memory b) internal pure returns (uint256) {
-        return mul_(a, b.mantissa) / expScale;
-    }
+  function _mul(uint256 _a, Exp memory _b) internal pure returns (uint256 _result) {
+    return _mul(_a, _b.mantissa) / EXP_SCALE;
+  }
 
-    function mul_(Double memory a, Double memory b) internal pure returns (Double memory) {
-        return Double({mantissa: mul_(a.mantissa, b.mantissa) / doubleScale});
-    }
+  function _mul(Double memory _a, Double memory _b) internal pure returns (Double memory _result) {
+    return Double({mantissa: _mul(_a.mantissa, _b.mantissa) / DOUBLE_SCALE});
+  }
 
-    function mul_(Double memory a, uint256 b) internal pure returns (Double memory) {
-        return Double({mantissa: mul_(a.mantissa, b)});
-    }
+  function _mul(Double memory _a, uint256 _b) internal pure returns (Double memory _result) {
+    return Double({mantissa: _mul(_a.mantissa, _b)});
+  }
 
-    function mul_(uint256 a, Double memory b) internal pure returns (uint256) {
-        return mul_(a, b.mantissa) / doubleScale;
-    }
+  function _mul(uint256 _a, Double memory _b) internal pure returns (uint256 _result) {
+    return _mul(_a, _b.mantissa) / DOUBLE_SCALE;
+  }
 
-    function mul_(uint256 a, uint256 b) internal pure returns (uint256) {
-        return mul_(a, b, 'multiplication overflow');
-    }
+  function _mul(uint256 _a, uint256 _b) internal pure returns (uint256 _result) {
+    return _mul(_a, _b, 'multiplication overflow');
+  }
 
-    function mul_(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        if (a == 0 || b == 0) return 0;
-        uint256 c = a * b;
-        require(c / a == b, errorMessage);
-        return c;
-    }
+  function _mul(uint256 _a, uint256 _b, string memory _errorMessage) internal pure returns (uint256 _result) {
+    if (_a == 0 || _b == 0) return 0;
+    uint256 _c = _a * _b;
+    require(_c / _a == _b, _errorMessage);
+    return _c;
+  }
 
-    function div_(Exp memory a, Exp memory b) internal pure returns (Exp memory) {
-        return Exp({mantissa: div_(mul_(a.mantissa, expScale), b.mantissa)});
-    }
+  function _div(Exp memory _a, Exp memory _b) internal pure returns (Exp memory _result) {
+    return Exp({mantissa: _div(_mul(_a.mantissa, EXP_SCALE), _b.mantissa)});
+  }
 
-    function div_(Exp memory a, uint256 b) internal pure returns (Exp memory) {
-        return Exp({mantissa: div_(a.mantissa, b)});
-    }
+  function _div(Exp memory _a, uint256 _b) internal pure returns (Exp memory _result) {
+    return Exp({mantissa: _div(_a.mantissa, _b)});
+  }
 
-    function div_(uint256 a, Exp memory b) internal pure returns (uint256) {
-        return div_(mul_(a, expScale), b.mantissa);
-    }
+  function _div(uint256 _a, Exp memory _b) internal pure returns (uint256 _result) {
+    return _div(_mul(_a, EXP_SCALE), _b.mantissa);
+  }
 
-    function div_(Double memory a, Double memory b) internal pure returns (Double memory) {
-        return Double({mantissa: div_(mul_(a.mantissa, doubleScale), b.mantissa)});
-    }
+  function _div(Double memory _a, Double memory _b) internal pure returns (Double memory _result) {
+    return Double({mantissa: _div(_mul(_a.mantissa, DOUBLE_SCALE), _b.mantissa)});
+  }
 
-    function div_(Double memory a, uint256 b) internal pure returns (Double memory) {
-        return Double({mantissa: div_(a.mantissa, b)});
-    }
+  function _div(Double memory _a, uint256 _b) internal pure returns (Double memory _result) {
+    return Double({mantissa: _div(_a.mantissa, _b)});
+  }
 
-    function div_(uint256 a, Double memory b) internal pure returns (uint256) {
-        return div_(mul_(a, doubleScale), b.mantissa);
-    }
+  function _div(uint256 _a, Double memory _b) internal pure returns (uint256 _result) {
+    return _div(_mul(_a, DOUBLE_SCALE), _b.mantissa);
+  }
 
-    function div_(uint256 a, uint256 b) internal pure returns (uint256) {
-        return div_(a, b, 'divide by zero');
-    }
+  function _div(uint256 _a, uint256 _b) internal pure returns (uint256 _result) {
+    return _div(_a, _b, 'divide by zero');
+  }
 
-    function div_(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b > 0, errorMessage);
-        return a / b;
-    }
+  function _div(uint256 _a, uint256 _b, string memory _errorMessage) internal pure returns (uint256 _result) {
+    require(_b > 0, _errorMessage);
+    return _a / _b;
+  }
 
-    function fraction(uint256 a, uint256 b) internal pure returns (Double memory) {
-        return Double({mantissa: div_(mul_(a, doubleScale), b)});
-    }
+  function _fraction(uint256 _a, uint256 _b) internal pure returns (Double memory _result) {
+    return Double({mantissa: _div(_mul(_a, DOUBLE_SCALE), _b)});
+  }
 }

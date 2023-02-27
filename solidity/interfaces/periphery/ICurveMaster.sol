@@ -4,15 +4,32 @@ pragma solidity ^0.8.9;
 /// @title CurveMaster Interface
 /// @notice Interface for interacting with CurveMaster
 interface ICurveMaster {
-    function vaultControllerAddress() external view returns (address);
+  /*///////////////////////////////////////////////////////////////
+                            ERRORS
+    //////////////////////////////////////////////////////////////*/
 
-    function getValueAt(address token_address, int256 x_value) external view returns (int256);
+  /// @notice Thrown when the token is not enabled
+  error CurveMaster_TokenNotEnabled();
 
-    function _curves(address curve_address) external view returns (address);
+  /// @notice Thrown when result is zero
+  error CurveMaster_ZeroResult();
 
-    function setVaultController(address vault_master_address) external;
+  /*///////////////////////////////////////////////////////////////
+                            VARIABLES
+    //////////////////////////////////////////////////////////////*/
 
-    function setCurve(address token_address, address curve_address) external;
+  function vaultControllerAddress() external view returns (address _vaultController);
 
-    function forceSetCurve(address token_address, address curve_address) external;
+  function getValueAt(address _tokenAddress, int256 _xValue) external view returns (int256 _value);
+
+  function curves(address _curveAddress) external view returns (address _curve);
+
+  /*///////////////////////////////////////////////////////////////
+                            LOGIC
+    //////////////////////////////////////////////////////////////*/
+  function setVaultController(address _vaultMasterAddress) external;
+
+  function setCurve(address _tokenAddress, address _curveAddress) external;
+
+  function forceSetCurve(address _tokenAddress, address _curveAddress) external;
 }
