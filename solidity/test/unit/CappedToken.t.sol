@@ -214,7 +214,9 @@ contract UnitCappedTokenMint is UnitCappedTokenBase {
     // set cap
     cappedToken.setCap(_sharesAmount);
 
-    vm.mockCall(address(underlying), abi.encodeWithSelector(IERC20.balanceOf.selector, address(cappedToken)), abi.encode(0));
+    vm.mockCall(
+      address(underlying), abi.encodeWithSelector(IERC20.balanceOf.selector, address(cappedToken)), abi.encode(0)
+    );
     vm.mockCall(address(underlying), abi.encodeWithSelector(IERC20.balanceOf.selector, alice), abi.encode(_amount));
     assert(cappedToken.maxMint(alice) == _amount - 1);
   }
@@ -228,7 +230,9 @@ contract UnitCappedTokenMint is UnitCappedTokenBase {
     // set cap
     cappedToken.setCap(_sharesAmount);
 
-    vm.mockCall(address(underlying), abi.encodeWithSelector(IERC20.balanceOf.selector, address(cappedToken)), abi.encode(0));
+    vm.mockCall(
+      address(underlying), abi.encodeWithSelector(IERC20.balanceOf.selector, address(cappedToken)), abi.encode(0)
+    );
     vm.mockCall(address(underlying), abi.encodeWithSelector(IERC20.balanceOf.selector, alice), abi.encode(_amount - 1));
     assert(cappedToken.maxMint(alice) == _amount - 1);
   }
@@ -277,7 +281,9 @@ contract UnitCappedTokenRedeem is UnitCappedTokenBase {
 
     deal(address(cappedToken), alice, _sharesAmount);
 
-    vm.mockCall(address(underlying), abi.encodeWithSelector(IERC20.balanceOf.selector, address(cappedToken)), abi.encode(_amount));
+    vm.mockCall(
+      address(underlying), abi.encodeWithSelector(IERC20.balanceOf.selector, address(cappedToken)), abi.encode(_amount)
+    );
     assert(cappedToken.maxRedeem(alice) == _sharesAmount);
   }
 
@@ -289,7 +295,11 @@ contract UnitCappedTokenRedeem is UnitCappedTokenBase {
 
     deal(address(cappedToken), alice, _sharesAmount);
 
-    vm.mockCall(address(underlying), abi.encodeWithSelector(IERC20.balanceOf.selector, address(cappedToken)), abi.encode(_amount - 1));
+    vm.mockCall(
+      address(underlying),
+      abi.encodeWithSelector(IERC20.balanceOf.selector, address(cappedToken)),
+      abi.encode(_amount - 1)
+    );
     assert(cappedToken.maxRedeem(alice) == cappedToken.convertToShares(_amount - 1));
   }
 

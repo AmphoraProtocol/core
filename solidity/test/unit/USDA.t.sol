@@ -25,7 +25,11 @@ abstract contract Base is DSTestPlus {
 
     vm.mockCall(address(_mockToken), abi.encodeWithSelector(IERC20.transfer.selector), abi.encode(true));
 
-    vm.mockCall(address(_vaultController), abi.encodeWithSelector(IVaultController.calculateInterest.selector), abi.encode(1 ether));
+    vm.mockCall(
+      address(_vaultController),
+      abi.encodeWithSelector(IVaultController.calculateInterest.selector),
+      abi.encode(1 ether)
+    );
 
     // solhint-disable-next-line reentrancy
     _usda = new USDA();
@@ -62,7 +66,9 @@ contract UnitUSDADeposit is Base {
   //  The maximum amount of tokens to deposit is 72.057.594.037 sUSD at a time
   function testDepositCallsTransferFrom(uint56 _amount) public {
     vm.assume(_amount > 0);
-    vm.expectCall(address(_mockToken), abi.encodeWithSelector(IERC20.transferFrom.selector, address(this), address(_usda), _amount));
+    vm.expectCall(
+      address(_mockToken), abi.encodeWithSelector(IERC20.transferFrom.selector, address(this), address(_usda), _amount)
+    );
 
     _usda.deposit(_amount);
   }
@@ -111,7 +117,9 @@ contract UnitUSDADepositTo is Base {
 
   function testDepositCallsTransferFrom(uint56 _amount) public {
     vm.assume(_amount > 0);
-    vm.expectCall(address(_mockToken), abi.encodeWithSelector(IERC20.transferFrom.selector, address(this), address(_usda), _amount));
+    vm.expectCall(
+      address(_mockToken), abi.encodeWithSelector(IERC20.transferFrom.selector, address(this), address(_usda), _amount)
+    );
 
     _usda.depositTo(_amount, _otherUser);
   }
@@ -234,7 +242,9 @@ contract UnitUSDAWithdrawAll is Base {
   }
 
   function testWithdrawCallsTransferOnToken() public {
-    vm.expectCall(address(_mockToken), abi.encodeWithSelector(_mockToken.transfer.selector, address(this), _depositAmount));
+    vm.expectCall(
+      address(_mockToken), abi.encodeWithSelector(_mockToken.transfer.selector, address(this), _depositAmount)
+    );
     _usda.withdrawAll();
   }
 
@@ -261,7 +271,9 @@ contract UnitUSDAWithdrawAll is Base {
     vm.prank(_vaultController);
     // Remove half the reserve
     _usda.vaultControllerTransfer(newAddress(), _depositAmount / 2);
-    vm.expectCall(address(_mockToken), abi.encodeWithSelector(_mockToken.transfer.selector, address(this), _depositAmount / 2));
+    vm.expectCall(
+      address(_mockToken), abi.encodeWithSelector(_mockToken.transfer.selector, address(this), _depositAmount / 2)
+    );
     _usda.withdrawAll();
   }
 }
@@ -336,7 +348,7 @@ contract UnitUSDABurn is Base {
 }
 
 contract UnitUSDADonate is Base {
-  uint256 internal _donateAmount = 10000 * 1e6;
+  uint256 internal _donateAmount = 10_000 * 1e6;
   address internal _otherUser = newAddress();
 
   function setUp() public virtual override {
@@ -359,7 +371,10 @@ contract UnitUSDADonate is Base {
   function testCallsTransferFromOnToken(uint256 _amount) public {
     vm.assume(_amount <= _donateAmount);
     vm.assume(_amount > 0);
-    vm.expectCall(address(_mockToken), abi.encodeWithSelector(_mockToken.transferFrom.selector, address(this), address(_usda), _amount));
+    vm.expectCall(
+      address(_mockToken),
+      abi.encodeWithSelector(_mockToken.transferFrom.selector, address(this), address(_usda), _amount)
+    );
     _usda.donate(_amount);
   }
 
@@ -397,7 +412,9 @@ contract UnitUSDADonate is Base {
     _usda.donate(_amount);
     uint256 _balanceOtherUserAfter = _usda.balanceOf(_otherUser);
     uint256 _balanceAdminAfter = _usda.balanceOf(address(this));
-    assertApproxEqAbs(_balanceOtherUserBefore + (_amount * 1e12 - _amountToZeroAddress) / 2, _balanceOtherUserAfter, _DELTA);
+    assertApproxEqAbs(
+      _balanceOtherUserBefore + (_amount * 1e12 - _amountToZeroAddress) / 2, _balanceOtherUserAfter, _DELTA
+    );
 
     assertApproxEqAbs(_balanceAdminBefore + (_amount * 1e12 - _amountToZeroAddress) / 2, _balanceAdminAfter, _DELTA);
   }
@@ -405,7 +422,7 @@ contract UnitUSDADonate is Base {
 
 contract UnitUSDARecoverDust is Base {
   uint256 internal _amountToRecover = 100 * 1e6;
-  uint256 internal _depositAmount = 100000 * 1e6;
+  uint256 internal _depositAmount = 100_000 * 1e6;
 
   function setUp() public virtual override {
     super.setUp();
@@ -425,7 +442,9 @@ contract UnitUSDARecoverDust is Base {
   }
 
   function testCallsTransferOnToken() public {
-    vm.expectCall(address(_mockToken), abi.encodeWithSelector(_mockToken.transfer.selector, address(this), _amountToRecover));
+    vm.expectCall(
+      address(_mockToken), abi.encodeWithSelector(_mockToken.transfer.selector, address(this), _amountToRecover)
+    );
     _usda.recoverDust(address(this));
   }
 
@@ -440,7 +459,9 @@ contract UnitUSDAVaultControllerMint is Base {
   uint256 internal _amountToMint = 100 * 1e18;
 
   function testRevertsIfCalledByNonVault() public {
-    vm.expectRevert(abi.encodeWithSelector(IRoles.Roles_Unauthorized.selector, address(this), _usda.VAULT_CONTROLLER_ROLE()));
+    vm.expectRevert(
+      abi.encodeWithSelector(IRoles.Roles_Unauthorized.selector, address(this), _usda.VAULT_CONTROLLER_ROLE())
+    );
     _usda.vaultControllerMint(address(this), _amountToMint);
   }
 
@@ -467,7 +488,9 @@ contract UnitUSDAVaultControllerTransfer is Base {
   uint256 internal _amountToTransfer = 100 * 1e18;
 
   function testRevertsIfCalledByNonVault() public {
-    vm.expectRevert(abi.encodeWithSelector(IRoles.Roles_Unauthorized.selector, address(this), _usda.VAULT_CONTROLLER_ROLE()));
+    vm.expectRevert(
+      abi.encodeWithSelector(IRoles.Roles_Unauthorized.selector, address(this), _usda.VAULT_CONTROLLER_ROLE())
+    );
     _usda.vaultControllerTransfer(address(this), _amountToTransfer);
   }
 
@@ -495,7 +518,11 @@ contract UnitUSDAAddVaultController is Base {
   }
 
   function testCallsPayInterestOnAllVaultControllers() public {
-    vm.mockCall(address(_vaultController2), abi.encodeWithSelector(IVaultController.calculateInterest.selector), abi.encode(1 ether));
+    vm.mockCall(
+      address(_vaultController2),
+      abi.encodeWithSelector(IVaultController.calculateInterest.selector),
+      abi.encode(1 ether)
+    );
 
     _usda.addVaultController(_vaultController2);
     vm.expectCall(address(_vaultController), abi.encodeWithSelector(IVaultController.calculateInterest.selector));

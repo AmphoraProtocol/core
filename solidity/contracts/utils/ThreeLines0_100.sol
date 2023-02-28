@@ -73,7 +73,12 @@ contract ThreeLines0_100 is ICurveSlave {
   /// @param _distance distance to interpolate. 'x' in our equation
   /// @param _b y intercept, 'b' in our equation
   /// @return _result value of g(x)
-  function _linearInterpolation(int256 _rise, int256 _run, int256 _distance, int256 _b) private pure returns (int256 _result) {
+  function _linearInterpolation(
+    int256 _rise,
+    int256 _run,
+    int256 _distance,
+    int256 _b
+  ) private pure returns (int256 _result) {
     // 6 digits of precision should be more than enough
     int256 _mE6 = (_rise * 1e6) / _run;
     // simply multiply the slope by the distance traveled and add the intercept

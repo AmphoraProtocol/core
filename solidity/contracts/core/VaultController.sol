@@ -19,7 +19,13 @@ import {PausableUpgradeable} from '@openzeppelin/contracts-upgradeable/security/
 /// @title Controller of all vaults in the USDA borrow/lend system
 /// @notice VaultController contains all business logic for borrowing and lending through the protocol.
 /// It is also in charge of accruing interest.
-contract VaultController is Initializable, PausableUpgradeable, IVaultController, ExponentialNoError, OwnableUpgradeable {
+contract VaultController is
+  Initializable,
+  PausableUpgradeable,
+  IVaultController,
+  ExponentialNoError,
+  OwnableUpgradeable
+{
   // mapping of vault id to vault address
   mapping(uint96 => address) public vaultIdVaultAddress;
 
@@ -417,10 +423,12 @@ contract VaultController is Initializable, PausableUpgradeable, IVaultController
   /// @notice the amount of tokens owed is a moving target and changes with each block as _payInterest is called
   /// @notice this function can serve to give an indication of how many tokens can be liquidated
   /// @dev all this function does is call _liquidationMath with 2**256-1 as the amount
-  function tokensToLiquidate(uint96 _id, address _assetAddress) external view override returns (uint256 _tokensToLiquidate) {
+  function tokensToLiquidate(
+    uint96 _id,
+    address _assetAddress
+  ) external view override returns (uint256 _tokensToLiquidate) {
     (
       _tokensToLiquidate, // bad fill price
-
     ) = _liquidationMath(_id, _assetAddress, 2 ** 256 - 1);
   }
 
@@ -575,7 +583,10 @@ contract VaultController is Initializable, PausableUpgradeable, IVaultController
     // first calculate how much the interest factor should increase by
     // this is equal to (timedifference * (curve value) / (seconds in a year)) * (interest factor)
     uint192 _e18FactorIncrease = _safeu192(
-      _truncate(_truncate((uint256(_timeDifference) * uint256(1e18) * uint256(_curveVal)) / (365 days + 6 hours)) * uint256(interest.factor))
+      _truncate(
+        _truncate((uint256(_timeDifference) * uint256(1e18) * uint256(_curveVal)) / (365 days + 6 hours))
+          * uint256(interest.factor)
+      )
     );
     // get the total outstanding value before we increase the interest factor
     uint192 _valueBefore = _safeu192(_truncate(uint256(totalBaseLiability) * uint256(interest.factor)));
@@ -607,7 +618,10 @@ contract VaultController is Initializable, PausableUpgradeable, IVaultController
   /// @param _start the vault to start looping
   /// @param _stop the vault to stop looping
   /// @return _vaultSummaries a collection of vault information
-  function vaultSummaries(uint96 _start, uint96 _stop) public view override returns (VaultSummary[] memory _vaultSummaries) {
+  function vaultSummaries(
+    uint96 _start,
+    uint96 _stop
+  ) public view override returns (VaultSummary[] memory _vaultSummaries) {
     VaultSummary[] memory _summaries = new VaultSummary[](_stop - _start + 1);
     for (uint96 _i = _start; _i <= _stop; _i++) {
       IVault _vault = _getVault(_i);
@@ -616,7 +630,8 @@ contract VaultController is Initializable, PausableUpgradeable, IVaultController
       for (uint256 _j = 0; _j < enabledTokens.length; _j++) {
         _tokenBalances[_j] = _vault.tokenBalance(enabledTokens[_j]);
       }
-      _summaries[_i - _start] = VaultSummary(_i, this.vaultBorrowingPower(_i), this.vaultLiability(_i), enabledTokens, _tokenBalances);
+      _summaries[_i - _start] =
+        VaultSummary(_i, this.vaultBorrowingPower(_i), this.vaultLiability(_i), enabledTokens, _tokenBalances);
     }
     return _summaries;
   }

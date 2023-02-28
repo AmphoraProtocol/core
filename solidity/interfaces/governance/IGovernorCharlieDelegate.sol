@@ -103,13 +103,25 @@ interface IGovernorCharlieDelegate is IGovernorCharlieEvents {
 
   function execute(uint256 _proposalId) external payable;
 
-  function executeTransaction(address _target, uint256 _value, string memory _signature, bytes memory _data, uint256 _eta) external payable;
+  function executeTransaction(
+    address _target,
+    uint256 _value,
+    string memory _signature,
+    bytes memory _data,
+    uint256 _eta
+  ) external payable;
 
   function cancel(uint256 _proposalId) external;
 
-  function getActions(
-    uint256 _proposalId
-  ) external view returns (address[] memory _targets, uint256[] memory _values, string[] memory _signatures, bytes[] memory _calldatas);
+  function getActions(uint256 _proposalId)
+    external
+    view
+    returns (
+      address[] memory _targets,
+      uint256[] memory _values,
+      string[] memory _signatures,
+      bytes[] memory _calldatas
+    );
 
   function getReceipt(uint256 _proposalId, address _voter) external view returns (Receipt memory _receipt);
 

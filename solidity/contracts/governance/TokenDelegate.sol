@@ -7,13 +7,15 @@ import {TokenDelegateStorageV1} from '@contracts/governance/TokenStorage.sol';
 
 contract AmphoraProtocolTokenDelegate is TokenDelegateStorageV1, ITokenDelegate {
   /// @notice The EIP-712 typehash for the contract's domain
-  bytes32 public constant DOMAIN_TYPEHASH = keccak256('EIP712Domain(string name,uint256 chainId,address verifyingContract)');
+  bytes32 public constant DOMAIN_TYPEHASH =
+    keccak256('EIP712Domain(string name,uint256 chainId,address verifyingContract)');
 
   /// @notice The EIP-712 typehash for the delegation struct used by the contract
   bytes32 public constant DELEGATION_TYPEHASH = keccak256('Delegation(address delegatee,uint256 nonce,uint256 expiry)');
 
   /// @notice The EIP-712 typehash for the permit struct used by the contract
-  bytes32 public constant PERMIT_TYPEHASH = keccak256('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)');
+  bytes32 public constant PERMIT_TYPEHASH =
+    keccak256('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)');
 
   uint96 public constant UINT96_MAX = 2 ** 96 - 1;
 
@@ -100,13 +102,23 @@ contract AmphoraProtocolTokenDelegate is TokenDelegateStorageV1, ITokenDelegate 
    * @param _r Half of the ECDSA signature pair
    * @param _s Half of the ECDSA signature pair
    */
-  function permit(address _owner, address _spender, uint256 _rawAmount, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s) external override {
+  function permit(
+    address _owner,
+    address _spender,
+    uint256 _rawAmount,
+    uint256 _deadline,
+    uint8 _v,
+    bytes32 _r,
+    bytes32 _s
+  ) external override {
     uint96 _amount;
     if (_rawAmount == UINT256_MAX) _amount = UINT96_MAX;
     else _amount = _safe96(_rawAmount, 'permit: amount exceeds 96 bits');
 
-    bytes32 _domainSeparator = keccak256(abi.encode(DOMAIN_TYPEHASH, keccak256(bytes(name)), _getChainId(), address(this)));
-    bytes32 _structHash = keccak256(abi.encode(PERMIT_TYPEHASH, _owner, _spender, _rawAmount, nonces[_owner]++, _deadline));
+    bytes32 _domainSeparator =
+      keccak256(abi.encode(DOMAIN_TYPEHASH, keccak256(bytes(name)), _getChainId(), address(this)));
+    bytes32 _structHash =
+      keccak256(abi.encode(PERMIT_TYPEHASH, _owner, _spender, _rawAmount, nonces[_owner]++, _deadline));
     bytes32 _digest = keccak256(abi.encodePacked('\x19\x01', _domainSeparator, _structHash));
     if (uint256(_s) > 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) {
       revert TokenDelegate_InvalidSignature();
@@ -155,7 +167,8 @@ contract AmphoraProtocolTokenDelegate is TokenDelegateStorageV1, ITokenDelegate 
     uint96 _amount = _safe96(_rawAmount, 'transferFrom: amount exceeds 96 bits');
 
     if (_spender != _src && _spenderAllowance != UINT96_MAX) {
-      uint96 _newAllowance = _sub96(_spenderAllowance, _amount, 'transferFrom: transfer amount exceeds spender allowance');
+      uint96 _newAllowance =
+        _sub96(_spenderAllowance, _amount, 'transferFrom: transfer amount exceeds spender allowance');
       _allowances[_src][_spender] = _newAllowance;
 
       emit Approval(_src, _spender, _newAllowance);
@@ -200,8 +213,16 @@ contract AmphoraProtocolTokenDelegate is TokenDelegateStorageV1, ITokenDelegate 
    * @param _r Half of the ECDSA signature pair
    * @param _s Half of the ECDSA signature pair
    */
-  function delegateBySig(address _delegatee, uint256 _nonce, uint256 _expiry, uint8 _v, bytes32 _r, bytes32 _s) public override {
-    bytes32 _domainSeparator = keccak256(abi.encode(DOMAIN_TYPEHASH, keccak256(bytes(name)), _getChainId(), address(this)));
+  function delegateBySig(
+    address _delegatee,
+    uint256 _nonce,
+    uint256 _expiry,
+    uint8 _v,
+    bytes32 _r,
+    bytes32 _s
+  ) public override {
+    bytes32 _domainSeparator =
+      keccak256(abi.encode(DOMAIN_TYPEHASH, keccak256(bytes(name)), _getChainId(), address(this)));
     bytes32 _structHash = keccak256(abi.encode(DELEGATION_TYPEHASH, _delegatee, _nonce, _expiry));
     bytes32 _digest = keccak256(abi.encodePacked('\x19\x01', _domainSeparator, _structHash));
     if (uint256(_s) > 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) {

@@ -48,7 +48,7 @@ contract UniswapV3OracleRelay is IOracleRelay {
     _input[0] = _seconds;
     _input[1] = 0;
 
-    (_tickCumulatives, ) = POOL.observe(_input);
+    (_tickCumulatives,) = POOL.observe(_input);
 
     uint32 _tickTimeDifference = _seconds;
     int56 _tickCumulativeDifference = _tickCumulatives[0] - _tickCumulatives[1];
@@ -58,7 +58,7 @@ contract UniswapV3OracleRelay is IOracleRelay {
     else _tickAbs = uint56(_tickCumulativeDifference);
 
     uint56 _bigTick = _tickAbs / _tickTimeDifference;
-    if (_bigTick >= 887272) revert UniswapV3OracleRelay_TickTimeDiffTooLarge();
+    if (_bigTick >= 887_272) revert UniswapV3OracleRelay_TickTimeDiffTooLarge();
     int24 _tick;
     if (_tickNegative) _tick = -int24(int56(_bigTick));
     else _tick = int24(int56(_bigTick));

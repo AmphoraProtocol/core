@@ -78,11 +78,17 @@ interface IGovernorCharlieEvents {
   event OptimisticQuorumVotesSet(uint256 _oldOptimisticQuorumVotes, uint256 _optimisticQuorumVotes);
 
   /// @notice Emitted when a transaction is canceled
-  event CancelTransaction(bytes32 indexed _txHash, address indexed _target, uint256 _value, string _signature, bytes _data, uint256 _eta);
+  event CancelTransaction(
+    bytes32 indexed _txHash, address indexed _target, uint256 _value, string _signature, bytes _data, uint256 _eta
+  );
 
   /// @notice Emitted when a transaction is executed
-  event ExecuteTransaction(bytes32 indexed _txHash, address indexed _target, uint256 _value, string _signature, bytes _data, uint256 _eta);
+  event ExecuteTransaction(
+    bytes32 indexed _txHash, address indexed _target, uint256 _value, string _signature, bytes _data, uint256 _eta
+  );
 
   /// @notice Emitted when a transaction is queued
-  event QueueTransaction(bytes32 indexed _txHash, address indexed _target, uint256 _value, string _signature, bytes _data, uint256 _eta);
+  event QueueTransaction(
+    bytes32 indexed _txHash, address indexed _target, uint256 _value, string _signature, bytes _data, uint256 _eta
+  );
 }

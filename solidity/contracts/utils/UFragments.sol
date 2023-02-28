@@ -82,8 +82,10 @@ contract UFragments is CustomInitializable, OwnableUpgradeable, ERC20Detailed {
   // EIP-2612: permit – 712-signed approvals
   // https://eips.ethereum.org/EIPS/eip-2612
   string public constant EIP712_REVISION = '1';
-  bytes32 public constant EIP712_DOMAIN = keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)');
-  bytes32 public constant PERMIT_TYPEHASH = keccak256('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)');
+  bytes32 public constant EIP712_DOMAIN =
+    keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)');
+  bytes32 public constant PERMIT_TYPEHASH =
+    keccak256('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)');
 
   // EIP-2612: keeps track of number of permits per address
   mapping(address => uint256) private _nonces;
@@ -160,7 +162,9 @@ contract UFragments is CustomInitializable, OwnableUpgradeable, ERC20Detailed {
     assembly {
       _chainId := chainid()
     }
-    return keccak256(abi.encode(EIP712_DOMAIN, keccak256(bytes(name())), keccak256(bytes(EIP712_REVISION)), _chainId, address(this)));
+    return keccak256(
+      abi.encode(EIP712_DOMAIN, keccak256(bytes(name())), keccak256(bytes(EIP712_REVISION)), _chainId, address(this))
+    );
   }
 
   /**
@@ -212,7 +216,11 @@ contract UFragments is CustomInitializable, OwnableUpgradeable, ERC20Detailed {
    * @param _value The amount of tokens to be transferred.
    * @return _success True on success, false otherwise.
    */
-  function transferFrom(address _from, address _to, uint256 _value) external override validRecipient(_to) returns (bool _success) {
+  function transferFrom(
+    address _from,
+    address _to,
+    uint256 _value
+  ) external override validRecipient(_to) returns (bool _success) {
     _allowedFragments[_from][msg.sender] = _allowedFragments[_from][msg.sender] - _value;
 
     uint256 _gonValue = _value * _gonsPerFragment;
@@ -301,7 +309,15 @@ contract UFragments is CustomInitializable, OwnableUpgradeable, ERC20Detailed {
    * @param _s Signature param
    * @param _r Signature param
    */
-  function permit(address _owner, address _spender, uint256 _value, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s) public {
+  function permit(
+    address _owner,
+    address _spender,
+    uint256 _value,
+    uint256 _deadline,
+    uint8 _v,
+    bytes32 _r,
+    bytes32 _s
+  ) public {
     require(block.timestamp <= _deadline);
 
     uint256 _ownerNonce = _nonces[_owner];

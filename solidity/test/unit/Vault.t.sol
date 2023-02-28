@@ -10,14 +10,15 @@ import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {DSTestPlus} from 'solidity-utils/test/DSTestPlus.sol';
 
 abstract contract Base is DSTestPlus {
-  IERC20 _mockToken = IERC20(mockContract(newAddress(), 'mockToken'));
-  IVaultController mockVaultController = IVaultController(mockContract(newAddress(), 'mockVaultController'));
+  IERC20 internal _mockToken = IERC20(mockContract(newAddress(), 'mockToken'));
+  IVaultController public mockVaultController = IVaultController(mockContract(newAddress(), 'mockVaultController'));
 
-  Vault vault;
-  address vaultOwner = label(newAddress(), 'vaultOwner');
+  Vault public vault;
+  address public vaultOwner = label(newAddress(), 'vaultOwner');
 
   function setUp() public virtual {
     vm.mockCall(address(_mockToken), abi.encodeWithSelector(IERC20.transfer.selector), abi.encode(true));
+    // solhint-disable-next-line reentrancy
     vault = new Vault(1, vaultOwner, address(mockVaultController));
   }
 }
@@ -31,7 +32,11 @@ contract UnitVaultGetters is Base {
 
   function testTokenBalance(uint256 _amount) public {
     vm.assume(_amount > 0);
-    vm.mockCall(address(mockVaultController), abi.encodeWithSelector(IVaultController.tokenId.selector, address(_mockToken)), abi.encode(1));
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenId.selector, address(_mockToken)),
+      abi.encode(1)
+    );
     vm.prank(vaultOwner);
     vault.depositERC20(address(_mockToken), _amount);
 
@@ -44,7 +49,11 @@ contract UnitVaultDepositERC20 is Base {
 
   function setUp() public virtual override {
     super.setUp();
-    vm.mockCall(address(mockVaultController), abi.encodeWithSelector(IVaultController.tokenId.selector, address(_mockToken)), abi.encode(1));
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenId.selector, address(_mockToken)),
+      abi.encode(1)
+    );
   }
 
   function testRevertIfNotVaultOwner(address _token, uint256 _amount) public {
@@ -55,7 +64,11 @@ contract UnitVaultDepositERC20 is Base {
 
   function testRevertIfTokenNotRegistered(address _token, uint256 _amount) public {
     vm.expectRevert(IVault.Vault_TokenNotRegistered.selector);
-    vm.mockCall(address(mockVaultController), abi.encodeWithSelector(IVaultController.tokenId.selector, address(_token)), abi.encode(0));
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenId.selector, address(_token)),
+      abi.encode(0)
+    );
     vm.prank(vaultOwner);
     vault.depositERC20(_token, _amount);
   }
@@ -80,13 +93,23 @@ contract UnitVaultWithdrawERC20 is Base {
 
   function setUp() public virtual override {
     super.setUp();
-    vm.mockCall(address(mockVaultController), abi.encodeWithSelector(IVaultController.tokenId.selector, address(_mockToken)), abi.encode(1));
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenId.selector, address(_mockToken)),
+      abi.encode(1)
+    );
 
     vm.prank(vaultOwner);
     vault.depositERC20(address(_mockToken), 1 ether);
 
-    vm.mockCall(address(mockVaultController), abi.encodeWithSelector(IVaultController.tokenId.selector, address(_mockToken)), abi.encode(1));
-    vm.mockCall(address(mockVaultController), abi.encodeWithSelector(IVaultController.checkVault.selector, 1), abi.encode(true));
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenId.selector, address(_mockToken)),
+      abi.encode(1)
+    );
+    vm.mockCall(
+      address(mockVaultController), abi.encodeWithSelector(IVaultController.checkVault.selector, 1), abi.encode(true)
+    );
   }
 
   function testRevertIfNotVaultOwner(address _token, uint256 _amount) public {
@@ -97,13 +120,19 @@ contract UnitVaultWithdrawERC20 is Base {
 
   function testRevertIfTokenNotRegistered(address _token, uint256 _amount) public {
     vm.expectRevert(IVault.Vault_TokenNotRegistered.selector);
-    vm.mockCall(address(mockVaultController), abi.encodeWithSelector(IVaultController.tokenId.selector, address(_token)), abi.encode(0));
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenId.selector, address(_token)),
+      abi.encode(0)
+    );
     vm.prank(vaultOwner);
     vault.withdrawERC20(_token, _amount);
   }
 
   function testRevertIfOverWithdrawal(uint256 _amount) public {
-    vm.mockCall(address(mockVaultController), abi.encodeWithSelector(IVaultController.checkVault.selector, 1), abi.encode(false));
+    vm.mockCall(
+      address(mockVaultController), abi.encodeWithSelector(IVaultController.checkVault.selector, 1), abi.encode(false)
+    );
     vm.expectRevert(IVault.Vault_OverWithdrawal.selector);
     vm.prank(vaultOwner);
     vault.withdrawERC20(address(_mockToken), _amount);

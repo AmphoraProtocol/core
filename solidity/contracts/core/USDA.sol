@@ -48,7 +48,7 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
 
   /// @notice any function with this modifier will call the pay_interest() function before any function logic is called
   modifier paysInterest() {
-    for (uint256 _i; _i < _vaultControllers.length(); ) {
+    for (uint256 _i; _i < _vaultControllers.length();) {
       IVaultController(_vaultControllers.at(_i)).calculateInterest();
       unchecked {
         _i++;

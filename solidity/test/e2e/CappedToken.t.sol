@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.4 <0.9.0;
 
-import {CommonE2EBase, IERC20, IVault, CappedToken, UniswapV3TokenOracleRelay, AnchoredViewRelay} from '@test/e2e/Common.sol';
+import {
+  CommonE2EBase,
+  IERC20,
+  IVault,
+  CappedToken,
+  UniswapV3TokenOracleRelay,
+  AnchoredViewRelay
+} from '@test/e2e/Common.sol';
 import {ICappedToken} from '@interfaces/utils/ICappedToken.sol';
 
 contract E2ECap is CommonE2EBase {
@@ -42,7 +49,13 @@ contract E2ECap is CommonE2EBase {
     _cappedToken.setCap(_cap);
   }
 
-  function _depositCapped(address _account, address _underlying, address _capped, uint256 _amountToDeposit, address _vaultAddress) internal {
+  function _depositCapped(
+    address _account,
+    address _underlying,
+    address _capped,
+    uint256 _amountToDeposit,
+    address _vaultAddress
+  ) internal {
     vm.startPrank(_account);
     IERC20(_underlying).approve(_capped, _amountToDeposit);
     ICappedToken(_capped).deposit(_amountToDeposit, _account);
@@ -51,7 +64,12 @@ contract E2ECap is CommonE2EBase {
     vm.stopPrank();
   }
 
-  function _withdrawERC20(address _account, address _vaultAddress, address _cappedToken, uint256 _amountToWithdraw) internal {
+  function _withdrawERC20(
+    address _account,
+    address _vaultAddress,
+    address _cappedToken,
+    uint256 _amountToWithdraw
+  ) internal {
     vm.prank(_account);
     IVault(_vaultAddress).withdrawERC20(_cappedToken, _amountToWithdraw);
     vm.stopPrank();
@@ -237,7 +255,8 @@ contract E2ECap is CommonE2EBase {
     uint256 _usdaDaveBalanceBefore = usdaToken.balanceOf(dave);
     uint256 _cappedAaveDaveBalanceBefore = aave.balanceOf(dave);
     uint256 _tokensToLiquidate = vaultController.tokensToLiquidate(uint96(bobVaultId), address(aaveCappedToken));
-    uint256 _tokensLiquidated = vaultController.liquidateVault(uint96(bobVaultId), address(aaveCappedToken), _tokensToLiquidate);
+    uint256 _tokensLiquidated =
+      vaultController.liquidateVault(uint96(bobVaultId), address(aaveCappedToken), _tokensToLiquidate);
     uint256 _usdaDaveBalanceAfter = usdaToken.balanceOf(dave);
     uint256 _cappedAaveDaveBalanceAfter = aaveCappedToken.balanceOf(dave);
     assert(_cappedAaveDaveBalanceAfter == _cappedAaveDaveBalanceBefore + _tokensLiquidated);

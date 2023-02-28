@@ -32,5 +32,8 @@ interface IVote is IERC20 {
   function getVotes(address _account) external view returns (uint256 _votes);
 
   //aave functions
-  function getDelegateeByType(address _delegator, DelegationType _delegationType) external view returns (address _delegatee);
+  function getDelegateeByType(
+    address _delegator,
+    DelegationType _delegationType
+  ) external view returns (address _delegatee);
 }

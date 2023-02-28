@@ -12,7 +12,9 @@ interface IVaultController {
   event InterestEvent(uint64 _epoch, uint192 _amount, uint256 _curveVal);
   event NewProtocolFee(uint256 _protocolFee);
   event RegisteredErc20(address _tokenAddress, uint256 _ltv, address _oracleAddress, uint256 _liquidationIncentive);
-  event UpdateRegisteredErc20(address _tokenAddress, uint256 _ltv, address _oracleAddress, uint256 _liquidationIncentive);
+  event UpdateRegisteredErc20(
+    address _tokenAddress, uint256 _ltv, address _oracleAddress, uint256 _liquidationIncentive
+  );
   event NewVault(address _vaultAddress, uint256 _vaultId, address _vaultOwner);
   event RegisterOracleMaster(address _oracleMasterAddress);
   event RegisterCurveMaster(address _curveMasterAddress);
@@ -128,7 +130,11 @@ interface IVaultController {
   // vault management business
   function mintVault() external returns (address _vaultAddress);
 
-  function liquidateVault(uint96 _id, address _assetAddress, uint256 _tokenAmount) external returns (uint256 _tokensToLiquidate);
+  function liquidateVault(
+    uint96 _id,
+    address _assetAddress,
+    uint256 _tokenAmount
+  ) external returns (uint256 _tokensToLiquidate);
 
   function borrowUSDA(uint96 _id, uint192 _amount) external;
 
@@ -153,9 +159,19 @@ interface IVaultController {
 
   function changeProtocolFee(uint192 _newProtocolFee) external;
 
-  function registerErc20(address _tokenAddress, uint256 _ltv, address _oracleAddress, uint256 _liquidationIncentive) external;
+  function registerErc20(
+    address _tokenAddress,
+    uint256 _ltv,
+    address _oracleAddress,
+    uint256 _liquidationIncentive
+  ) external;
 
   function registerUSDA(address _usdaAddress) external;
 
-  function updateRegisteredErc20(address _tokenAddress, uint256 _ltv, address _oracleAddress, uint256 _liquidationIncentive) external;
+  function updateRegisteredErc20(
+    address _tokenAddress,
+    uint256 _ltv,
+    address _oracleAddress,
+    uint256 _liquidationIncentive
+  ) external;
 }

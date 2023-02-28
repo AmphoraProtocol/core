@@ -12,6 +12,6 @@ contract E2EOracleMaster is CommonE2EBase {
   function testEthPriceFromChainlinkRelay() public {
     uint256 _anchorPrice = chainlinkEth.currentValue();
     assertGt(_anchorPrice, 1000 * 1 ether);
-    assertLt(_anchorPrice, 10000 * 1 ether);
+    assertLt(_anchorPrice, 10_000 * 1 ether);
   }
 }

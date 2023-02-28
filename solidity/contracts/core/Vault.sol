@@ -113,7 +113,10 @@ contract Vault is IVault, Context {
   /// @param _increase true to increase, false to decrease
   /// @param _baseAmount change in base liability
   /// @return _newLiability the new liability
-  function modifyLiability(bool _increase, uint256 _baseAmount) external override onlyVaultController returns (uint256 _newLiability) {
+  function modifyLiability(
+    bool _increase,
+    uint256 _baseAmount
+  ) external override onlyVaultController returns (uint256 _newLiability) {
     if (_increase) {
       baseLiability = baseLiability + _baseAmount;
     } else {

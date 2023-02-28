@@ -25,7 +25,7 @@ import {TestConstants} from '@test/utils/TestConstants.sol';
 
 // solhint-disable-next-line max-states-count
 contract CommonE2EBase is DSTestPlus, TestConstants {
-  uint256 public constant FORK_BLOCK = 15452788;
+  uint256 public constant FORK_BLOCK = 15_452_788;
 
   // AMPH token
   AmphoraProtocolTokenDelegate public amphToken;

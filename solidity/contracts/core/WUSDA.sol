@@ -33,7 +33,7 @@ contract WUSDA is IWUSDA, ERC20, ERC20Permit {
   // Constants
 
   /// @notice The maximum wUSDA supply.
-  uint256 public constant MAX_wUSDA_SUPPLY = 10000000 * (10 ** 18); // 10 M
+  uint256 public constant MAX_wUSDA_SUPPLY = 10_000_000 * (10 ** 18); // 10 M
 
   //--------------------------------------------------------------------------
   // Attributes

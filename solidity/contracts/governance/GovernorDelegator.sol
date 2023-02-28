@@ -38,9 +38,7 @@ contract GovernorCharlieDelegator is GovernorCharlieDelegatorStorage, IGovernorC
     (bool _success, bytes memory _returnData) = _callee.delegatecall(_data);
     //solhint-disable-next-line no-inline-assembly
     assembly {
-      if eq(_success, 0) {
-        revert(add(_returnData, 0x20), returndatasize())
-      }
+      if eq(_success, 0) { revert(add(_returnData, 0x20), returndatasize()) }
     }
   }
 
@@ -53,7 +51,7 @@ contract GovernorCharlieDelegator is GovernorCharlieDelegatorStorage, IGovernorC
   fallback() external payable override {
     // delegate all other functions to current implementation
     //solhint-disable-next-line avoid-low-level-calls
-    (bool _success, ) = implementation.delegatecall(msg.data);
+    (bool _success,) = implementation.delegatecall(msg.data);
 
     //solhint-disable-next-line no-inline-assembly
     assembly {
@@ -61,12 +59,8 @@ contract GovernorCharlieDelegator is GovernorCharlieDelegatorStorage, IGovernorC
       returndatacopy(_free_mem_ptr, 0, returndatasize())
 
       switch _success
-      case 0 {
-        revert(_free_mem_ptr, returndatasize())
-      }
-      default {
-        return(_free_mem_ptr, returndatasize())
-      }
+      case 0 { revert(_free_mem_ptr, returndatasize()) }
+      default { return(_free_mem_ptr, returndatasize()) }
     }
   }
 

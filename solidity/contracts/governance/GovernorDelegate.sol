@@ -16,7 +16,8 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
   uint256 public constant PROPOSAL_MAX_OPERATIONS = 10;
 
   /// @notice The EIP-712 typehash for the contract's domain
-  bytes32 public constant DOMAIN_TYPEHASH = keccak256('EIP712Domain(string name,uint256 chainId,address verifyingContract)');
+  bytes32 public constant DOMAIN_TYPEHASH =
+    keccak256('EIP712Domain(string name,uint256 chainId,address verifyingContract)');
 
   /// @notice The EIP-712 typehash for the ballot struct used by the contract
   bytes32 public constant BALLOT_TYPEHASH = keccak256('Ballot(uint256 proposalId,uint8 support)');
@@ -31,19 +32,19 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
   function initialize(address _amph) external override {
     if (initialized) revert GovernorCharlie_AlreadyInitialized();
     amph = IAMPH(_amph);
-    votingPeriod = 40320;
-    votingDelay = 13140;
-    proposalThreshold = 1000000000000000000000000;
-    proposalTimelockDelay = 172800;
+    votingPeriod = 40_320;
+    votingDelay = 13_140;
+    proposalThreshold = 1_000_000_000_000_000_000_000_000;
+    proposalTimelockDelay = 172_800;
     proposalCount = 0;
-    quorumVotes = 10000000000000000000000000;
-    emergencyQuorumVotes = 40000000000000000000000000;
+    quorumVotes = 10_000_000_000_000_000_000_000_000;
+    emergencyQuorumVotes = 40_000_000_000_000_000_000_000_000;
     emergencyVotingPeriod = 6570;
-    emergencyTimelockDelay = 43200;
+    emergencyTimelockDelay = 43_200;
 
-    optimisticQuorumVotes = 2000000000000000000000000;
-    optimisticVotingDelay = 25600;
-    maxWhitelistPeriod = 31536000;
+    optimisticQuorumVotes = 2_000_000_000_000_000_000_000_000;
+    optimisticVotingDelay = 25_600;
+    maxWhitelistPeriod = 31_536_000;
 
     initialized = true;
   }
@@ -78,8 +79,9 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
     if (amph.getPriorVotes(_msgSender(), (block.number - 1)) < proposalThreshold && !isWhitelisted(_msgSender())) {
       revert GovernorCharlie_VotesBelowThreshold();
     }
-    if (_targets.length != _values.length || _targets.length != _signatures.length || _targets.length != _calldatas.length)
-      revert GovernorCharlie_ArityMismatch();
+    if (
+      _targets.length != _values.length || _targets.length != _signatures.length || _targets.length != _calldatas.length
+    ) revert GovernorCharlie_ArityMismatch();
     if (_targets.length == 0) revert GovernorCharlie_NoActions();
     if (_targets.length > PROPOSAL_MAX_OPERATIONS) revert GovernorCharlie_TooManyActions();
 
@@ -87,9 +89,7 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
     if (_latestProposalId != 0) {
       ProposalState _proposersLatestProposalState = state(_latestProposalId);
       if (_proposersLatestProposalState == ProposalState.Active) revert GovernorCharlie_MultipleActiveProposals();
-      if (_proposersLatestProposalState == ProposalState.Pending) {
-        revert GovernorCharlie_MultiplePendingProposals();
-      }
+      if (_proposersLatestProposalState == ProposalState.Pending) revert GovernorCharlie_MultiplePendingProposals();
     }
 
     proposalCount++;
@@ -141,7 +141,7 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
       _newProposal.startBlock,
       _newProposal.endBlock,
       _description
-    );
+      );
     return _newProposal.id;
   }
 
@@ -155,11 +155,20 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
     uint256 _eta = block.timestamp + _proposal.delay;
     for (uint256 _i = 0; _i < _proposal.targets.length; _i++) {
       if (
-        queuedTransactions[
-          keccak256(abi.encode(_proposal.targets[_i], _proposal.values[_i], _proposal.signatures[_i], _proposal.calldatas[_i], _eta))
-        ]
+        queuedTransactions[keccak256(
+          abi.encode(
+            _proposal.targets[_i], _proposal.values[_i], _proposal.signatures[_i], _proposal.calldatas[_i], _eta
+          )
+        )]
       ) revert GovernorCharlie_ProposalAlreadyQueued();
-      _queueTransaction(_proposal.targets[_i], _proposal.values[_i], _proposal.signatures[_i], _proposal.calldatas[_i], _eta, _proposal.delay);
+      _queueTransaction(
+        _proposal.targets[_i],
+        _proposal.values[_i],
+        _proposal.signatures[_i],
+        _proposal.calldatas[_i],
+        _eta,
+        _proposal.delay
+      );
     }
     _proposal.eta = _eta;
     emit ProposalQueued(_proposalId, _eta);
@@ -199,11 +208,7 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
     _proposal.executed = true;
     for (uint256 _i = 0; _i < _proposal.targets.length; _i++) {
       this.executeTransaction{value: _proposal.values[_i]}(
-        _proposal.targets[_i],
-        _proposal.values[_i],
-        _proposal.signatures[_i],
-        _proposal.calldatas[_i],
-        _proposal.eta
+        _proposal.targets[_i], _proposal.values[_i], _proposal.signatures[_i], _proposal.calldatas[_i], _proposal.eta
       );
     }
     emit ProposalExecuted(_proposalId);
@@ -237,7 +242,7 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
     else _callData = abi.encodePacked(bytes4(keccak256(bytes(_signature))), _data);
 
     // solhint-disable-next-line avoid-low-level-calls
-    (bool _success /*bytes memory returnData*/, ) = _target.call{value: _value}(_callData);
+    (bool _success, /*bytes memory returnData*/ ) = _target.call{value: _value}(_callData);
     if (!_success) revert GovernorCharlie_TransactionReverted();
 
     emit ExecuteTransaction(_txHash, _target, _value, _signature, _data, _eta);
@@ -257,8 +262,10 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
     if (_msgSender() != _proposal.proposer) {
       // Whitelisted proposers can't be canceled for falling below proposal threshold
       if (isWhitelisted(_proposal.proposer)) {
-        if ((amph.getPriorVotes(_proposal.proposer, (block.number - 1)) >= proposalThreshold) || _msgSender() != whitelistGuardian)
-          revert GovernorCharlie_WhitelistedProposer();
+        if (
+          (amph.getPriorVotes(_proposal.proposer, (block.number - 1)) >= proposalThreshold)
+            || _msgSender() != whitelistGuardian
+        ) revert GovernorCharlie_WhitelistedProposer();
       } else {
         if ((amph.getPriorVotes(_proposal.proposer, (block.number - 1)) >= proposalThreshold)) {
           revert GovernorCharlie_ProposalAboveThreshold();
@@ -268,7 +275,9 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
 
     _proposal.canceled = true;
     for (uint256 _i = 0; _i < _proposal.targets.length; _i++) {
-      _cancelTransaction(_proposal.targets[_i], _proposal.values[_i], _proposal.signatures[_i], _proposal.calldatas[_i], _proposal.eta);
+      _cancelTransaction(
+        _proposal.targets[_i], _proposal.values[_i], _proposal.signatures[_i], _proposal.calldatas[_i], _proposal.eta
+      );
     }
 
     emit ProposalCanceled(_proposalId);
@@ -280,7 +289,13 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
   /// @param _signature Function signature for transaction
   /// @param _data Calldata for transaction
   /// @param _eta Timestamp for transaction
-  function _cancelTransaction(address _target, uint256 _value, string memory _signature, bytes memory _data, uint256 _eta) internal {
+  function _cancelTransaction(
+    address _target,
+    uint256 _value,
+    string memory _signature,
+    bytes memory _data,
+    uint256 _eta
+  ) internal {
     bytes32 _txHash = keccak256(abi.encode(_target, _value, _signature, _data, _eta));
     queuedTransactions[_txHash] = false;
 
@@ -295,13 +310,16 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
    * @return _signatures proposal signatures
    * @return _calldatas proposal calldatae
    */
-  function getActions(
-    uint256 _proposalId
-  )
+  function getActions(uint256 _proposalId)
     external
     view
     override
-    returns (address[] memory _targets, uint256[] memory _values, string[] memory _signatures, bytes[] memory _calldatas)
+    returns (
+      address[] memory _targets,
+      uint256[] memory _values,
+      string[] memory _signatures,
+      bytes[] memory _calldatas
+    )
   {
     Proposal storage _proposal = proposals[_proposalId];
     return (_proposal.targets, _proposal.values, _proposal.signatures, _proposal.calldatas);
@@ -313,7 +331,10 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
    * @param _voter The address of the voter
    * @return _votingReceipt The voting receipt
    */
-  function getReceipt(uint256 _proposalId, address _voter) external view override returns (Receipt memory _votingReceipt) {
+  function getReceipt(
+    uint256 _proposalId,
+    address _voter
+  ) external view override returns (Receipt memory _votingReceipt) {
     _votingReceipt = proposalReceipts[_proposalId][_voter];
   }
 
@@ -331,9 +352,9 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
     else if (block.number <= _proposal.startBlock) return ProposalState.Pending;
     else if (block.number <= _proposal.endBlock) return ProposalState.Active;
     else if (
-      (_whitelisted && _proposal.againstVotes > _proposal.quorumVotes) ||
-      (!_whitelisted && _proposal.forVotes <= _proposal.againstVotes) ||
-      (!_whitelisted && _proposal.forVotes < _proposal.quorumVotes)
+      (_whitelisted && _proposal.againstVotes > _proposal.quorumVotes)
+        || (!_whitelisted && _proposal.forVotes <= _proposal.againstVotes)
+        || (!_whitelisted && _proposal.forVotes < _proposal.quorumVotes)
     ) return ProposalState.Defeated;
     else if (_proposal.eta == 0) return ProposalState.Succeeded;
     else if (_proposal.executed) return ProposalState.Executed;
@@ -365,7 +386,8 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
    * @dev external override function that accepts EIP-712 signatures for voting on proposals.
    */
   function castVoteBySig(uint256 _proposalId, uint8 _support, uint8 _v, bytes32 _r, bytes32 _s) external override {
-    bytes32 _domainSeparator = keccak256(abi.encode(DOMAIN_TYPEHASH, keccak256(bytes(NAME)), _getChainIdInternal(), address(this)));
+    bytes32 _domainSeparator =
+      keccak256(abi.encode(DOMAIN_TYPEHASH, keccak256(bytes(NAME)), _getChainIdInternal(), address(this)));
     bytes32 _structHash = keccak256(abi.encode(BALLOT_TYPEHASH, _proposalId, _support));
 
     bytes32 _digest = keccak256(abi.encodePacked('\x19\x01', _domainSeparator, _structHash));
@@ -385,7 +407,11 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
    * @param _support The support value for the vote. 0=against, 1=for, 2=abstain
    * @return _numberOfVotes The number of votes cast
    */
-  function _castVoteInternal(address _voter, uint256 _proposalId, uint8 _support) internal returns (uint96 _numberOfVotes) {
+  function _castVoteInternal(
+    address _voter,
+    uint256 _proposalId,
+    uint8 _support
+  ) internal returns (uint96 _numberOfVotes) {
     if (state(_proposalId) != ProposalState.Active) revert GovernorCharlie_VotingClosed();
     if (_support > 2) revert GovernorCharlie_InvalidVoteType();
     Proposal storage _proposal = proposals[_proposalId];

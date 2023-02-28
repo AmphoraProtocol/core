@@ -4,17 +4,6 @@ pragma solidity ^0.8.9;
 /// @title Vault Interface
 interface IVault {
   /*///////////////////////////////////////////////////////////////
-                              STRUCTS
-    //////////////////////////////////////////////////////////////*/
-  /// @title VaultInfo struct
-  /// @notice this struct is used to store the vault metadata
-  /// this should reduce the cost of minting by ~15,000
-  /// by limiting us to max 2**96-1 vaults
-  struct VaultInfo {
-    uint96 id;
-    address minter;
-  }
-  /*///////////////////////////////////////////////////////////////
                               EVENTS
     //////////////////////////////////////////////////////////////*/
   /**
@@ -56,6 +45,18 @@ interface IVault {
 
   /// @notice Thrown when _msgSender is not the controller of the vault
   error Vault_NotVaultController();
+
+  /*///////////////////////////////////////////////////////////////
+                              STRUCTS
+    //////////////////////////////////////////////////////////////*/
+  /// @title VaultInfo struct
+  /// @notice this struct is used to store the vault metadata
+  /// this should reduce the cost of minting by ~15,000
+  /// by limiting us to max 2**96-1 vaults
+  struct VaultInfo {
+    uint96 id;
+    address minter;
+  }
 
   /*///////////////////////////////////////////////////////////////
                             VARIABLES

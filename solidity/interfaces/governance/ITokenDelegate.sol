@@ -65,11 +65,26 @@ interface ITokenDelegate is ITokenEvents {
 
   function mint(address _dst, uint256 _rawAmount) external;
 
-  function permit(address _owner, address _spender, uint256 _rawAmount, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s) external;
+  function permit(
+    address _owner,
+    address _spender,
+    uint256 _rawAmount,
+    uint256 _deadline,
+    uint8 _v,
+    bytes32 _r,
+    bytes32 _s
+  ) external;
 
   function delegate(address _delegatee) external;
 
-  function delegateBySig(address _delegatee, uint256 _nonce, uint256 _expiry, uint8 _v, bytes32 _r, bytes32 _s) external;
+  function delegateBySig(
+    address _delegatee,
+    uint256 _nonce,
+    uint256 _expiry,
+    uint8 _v,
+    bytes32 _r,
+    bytes32 _s
+  ) external;
 
   function getCurrentVotes(address _account) external view returns (uint96 _votes);
 
