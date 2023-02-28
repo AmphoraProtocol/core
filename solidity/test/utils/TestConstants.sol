@@ -4,7 +4,7 @@ pragma solidity >=0.8.0;
 contract TestConstants {
   // Token addresses
   address public constant WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-  address public constant SUSD_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+  address public constant SUSD_ADDRESS = 0x57Ab1ec28D129707052df4dF418D58a2D46d5f51;
   address public constant UNI_ADDRESS = 0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984;
   address public constant AAVE_ADDRESS = 0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9;
   address public constant DYDX_ADDRESS = 0x92D6C1e31e14520e676a687F0a93788B716BEff5;
@@ -31,4 +31,7 @@ contract TestConstants {
   // CAP
   uint256 public constant AAVE_CAP = 500 ether;
   uint256 public constant DYDX_CAP = 50 ether;
+
+  // MISC
+  address public constant SUSD_TOKEN_STATE = 0x05a9CBe762B36632b3594DA4F082340E0e5343e8;
 }

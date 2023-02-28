@@ -113,7 +113,7 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
   }
 
   /// @notice deposit sUSD to mint USDA
-  /// @dev caller should obtain 1e12 USDA for each sUSD
+  /// @dev caller should obtain 1 USDA for each sUSD
   /// the calculations for deposit mimic the calculations done by mint in the ampleforth contract, simply with the susd transfer
   /// 'fragments' are the units that we see, so 1000 fragments == 1000 USDA
   /// 'gons' are the internal accounting unit, used to keep scale.
@@ -129,32 +129,30 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
   }
 
   function _deposit(uint256 _susdAmount, address _target) internal paysInterest whenNotPaused {
-    // scale the _susdAmount to the usda decimal amount, aka 1e18. since susd is 6 decimals, we multiply by 1e12
-    uint256 _amount = _susdAmount * 1e12;
-    if (_amount == 0) revert USDA_ZeroAmount();
+    if (_susdAmount == 0) revert USDA_ZeroAmount();
     // Account for the susd received
     reserveAmount += _susdAmount;
     if (!reserve.transferFrom(_msgSender(), address(this), _susdAmount)) revert USDA_TransferFailed();
     // the gonbalances of the sender is in gons, therefore we must multiply the deposit amount, which is in fragments, by gonsperfragment
-    _gonBalances[_target] = _gonBalances[_target] + _amount * _gonsPerFragment;
+    _gonBalances[_target] = _gonBalances[_target] + _susdAmount * _gonsPerFragment;
     // total supply is in fragments, and so we add amount
-    _totalSupply = _totalSupply + _amount;
+    _totalSupply = _totalSupply + _susdAmount;
     // and totalgons of course is in gons, and so we multiply amount by gonsperfragment to get the amount of gons we must add to totalGons
-    _totalGons = _totalGons + _amount * _gonsPerFragment;
+    _totalGons = _totalGons + _susdAmount * _gonsPerFragment;
 
-    emit Transfer(address(0), _target, _amount);
-    emit Deposit(_target, _amount);
+    emit Transfer(address(0), _target, _susdAmount);
+    emit Deposit(_target, _susdAmount);
   }
 
   /// @notice withdraw sUSD by burning USDA
-  /// caller should obtain 1 sUSD for every 1e12 USDA
+  /// caller should obtain 1 sUSD for every 1 USDA
   /// @param _susdAmount amount of sUSD to withdraw
   function withdraw(uint256 _susdAmount) external override {
     _withdraw(_susdAmount, _msgSender());
   }
 
   ///@notice withdraw sUSD to a specific address by burning USDA from the caller
-  /// _target should obtain 1 sUSD for every 1e12 USDA burned from the caller
+  /// _target should obtain 1 sUSD for every 1 USDA burned from the caller
   /// @param _susdAmount amount of sUSD to withdraw
   /// @param _target address to receive the sUSD
   function withdrawTo(uint256 _susdAmount, address _target) external override {
@@ -163,97 +161,91 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
 
   ///@notice business logic to withdraw sUSD and burn USDA from the caller
   function _withdraw(uint256 _susdAmount, address _target) internal paysInterest whenNotPaused {
-    // scale the _susdAmount to the USDA decimal amount, aka 1e18
-    uint256 _amount = _susdAmount * 1e12;
     // check balances all around
-    if (_amount == 0) revert USDA_ZeroAmount();
-    if (_amount > this.balanceOf(_msgSender())) revert USDA_InsufficientFunds();
+    if (_susdAmount == 0) revert USDA_ZeroAmount();
+    if (_susdAmount > this.balanceOf(_msgSender())) revert USDA_InsufficientFunds();
     // Account for the susd withdrawn
     reserveAmount -= _susdAmount;
     // ensure transfer success
     if (!reserve.transfer(_target, _susdAmount)) revert USDA_TransferFailed();
     // modify the gonbalances of the sender, subtracting the amount of gons, therefore amount*gonsperfragment
-    _gonBalances[_msgSender()] = _gonBalances[_msgSender()] - _amount * _gonsPerFragment;
+    _gonBalances[_msgSender()] = _gonBalances[_msgSender()] - _susdAmount * _gonsPerFragment;
     // modify totalSupply and totalGons
-    _totalSupply = _totalSupply - _amount;
-    _totalGons = _totalGons - _amount * _gonsPerFragment;
+    _totalSupply = _totalSupply - _susdAmount;
+    _totalGons = _totalGons - _susdAmount * _gonsPerFragment;
     // emit both a Withdraw and transfer event
-    emit Transfer(_msgSender(), address(0), _amount);
-    emit Withdraw(_target, _amount);
+    emit Transfer(_msgSender(), address(0), _susdAmount);
+    emit Withdraw(_target, _susdAmount);
   }
 
   /// @notice withdraw sUSD by burning USDA
-  /// caller should obtain 1 sUSD for every 1e12 USDA
+  /// caller should obtain 1 sUSD for every 1 USDA
   /// this function is effectively just withdraw, but we calculate the amount for the sender
   function withdrawAll() external override {
     _withdrawAll(_msgSender());
   }
 
   /// @notice withdraw sUSD by burning USDA
-  /// @param _target should obtain 1 sUSD for every 1e12 USDA burned from caller
+  /// @param _target should obtain 1 sUSD for every 1 USDA burned from caller
   /// this function is effectively just withdraw, but we calculate the amount for the _target
   function withdrawAllTo(address _target) external override {
     _withdrawAll(_target);
   }
 
   /// @notice business logic for withdrawAll
-  /// @param _target should obtain 1 sUSD for every 1e12 USDA burned from caller
+  /// @param _target should obtain 1 sUSD for every 1 USDA burned from caller
   /// this function is effectively just withdraw, but we calculate the amount for the _target
   function _withdrawAll(address _target) internal paysInterest whenNotPaused {
     require(reserveAmount != 0, 'Reserve is empty');
-    uint256 _susdAmount = (this.balanceOf(_msgSender())) / 1e12;
+    uint256 _susdAmount = this.balanceOf(_msgSender());
     //user's USDA value is more than reserve
     if (_susdAmount > reserveAmount) _susdAmount = reserveAmount;
-    uint256 _amount = _susdAmount * 1e12;
     // Account for the susd withdrawn
     reserveAmount -= _susdAmount;
     if (!reserve.transfer(_target, _susdAmount)) revert USDA_TransferFailed();
     // see comments in the withdraw function for an explaination of this math
-    _gonBalances[_msgSender()] = _gonBalances[_msgSender()] - (_amount * _gonsPerFragment);
-    _totalSupply = _totalSupply - _amount;
-    _totalGons = _totalGons - (_amount * _gonsPerFragment);
+    _gonBalances[_msgSender()] = _gonBalances[_msgSender()] - (_susdAmount * _gonsPerFragment);
+    _totalSupply = _totalSupply - _susdAmount;
+    _totalGons = _totalGons - (_susdAmount * _gonsPerFragment);
     // emit both a Withdraw and transfer event
-    emit Transfer(_msgSender(), address(0), _amount);
-    emit Withdraw(_target, _amount);
+    emit Transfer(_msgSender(), address(0), _susdAmount);
+    emit Withdraw(_target, _susdAmount);
   }
 
   /// @notice admin function to mint USDA
   /// @param _susdAmount the amount of USDA to mint, denominated in sUSD
   function mint(uint256 _susdAmount) external override paysInterest onlyOwner {
     if (_susdAmount == 0) revert USDA_ZeroAmount();
-    uint256 _amount = _susdAmount * 1e12;
     // see comments in the deposit function for an explaination of this math
-    _gonBalances[_msgSender()] = _gonBalances[_msgSender()] + _amount * _gonsPerFragment;
-    _totalSupply = _totalSupply + _amount;
-    _totalGons = _totalGons + _amount * _gonsPerFragment;
+    _gonBalances[_msgSender()] = _gonBalances[_msgSender()] + _susdAmount * _gonsPerFragment;
+    _totalSupply = _totalSupply + _susdAmount;
+    _totalGons = _totalGons + _susdAmount * _gonsPerFragment;
     // emit both a mint and transfer event
-    emit Transfer(address(0), _msgSender(), _amount);
-    emit Mint(_msgSender(), _amount);
+    emit Transfer(address(0), _msgSender(), _susdAmount);
+    emit Mint(_msgSender(), _susdAmount);
   }
 
   /// @notice admin function to burn USDA
   /// @param _susdAmount the amount of USDA to burn, denominated in sUSD
   function burn(uint256 _susdAmount) external override paysInterest onlyOwner {
     if (_susdAmount == 0) revert USDA_ZeroAmount();
-    uint256 _amount = _susdAmount * 1e12;
     // see comments in the deposit function for an explaination of this math
-    _gonBalances[_msgSender()] = _gonBalances[_msgSender()] - _amount * _gonsPerFragment;
-    _totalSupply = _totalSupply - _amount;
-    _totalGons = _totalGons - _amount * _gonsPerFragment;
+    _gonBalances[_msgSender()] = _gonBalances[_msgSender()] - _susdAmount * _gonsPerFragment;
+    _totalSupply = _totalSupply - _susdAmount;
+    _totalGons = _totalGons - _susdAmount * _gonsPerFragment;
     // emit both a mint and transfer event
-    emit Transfer(_msgSender(), address(0), _amount);
-    emit Burn(_msgSender(), _amount);
+    emit Transfer(_msgSender(), address(0), _susdAmount);
+    emit Burn(_msgSender(), _susdAmount);
   }
 
   /// @notice donates susd to the protocol reserve
   /// @param _susdAmount the amount of sUSD to donate
   function donate(uint256 _susdAmount) external override paysInterest whenNotPaused {
     if (_susdAmount == 0) revert USDA_ZeroAmount();
-    uint256 _amount = _susdAmount * 1e12;
     // Account for the susd received
     reserveAmount += _susdAmount;
     if (!reserve.transferFrom(_msgSender(), address(this), _susdAmount)) revert USDA_TransferFailed();
-    _donation(_amount);
+    _donation(_susdAmount);
   }
 
   /// @notice Recovers accidentally sent sUSD to this contract
@@ -318,7 +310,7 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
   /// @notice get reserve ratio
   /// @return _e18reserveRatio USDA reserve ratio
   function reserveRatio() external view override returns (uint192 _e18reserveRatio) {
-    _e18reserveRatio = _safeu192(((reserve.balanceOf(address(this)) * EXP_SCALE) / _totalSupply) * 1e12);
+    _e18reserveRatio = _safeu192((reserve.balanceOf(address(this)) * EXP_SCALE) / _totalSupply);
   }
 
   /*///////////////////////////////////////////////////////////////

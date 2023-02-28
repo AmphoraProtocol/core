@@ -11,7 +11,7 @@ import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 abstract contract Base is DSTestPlus {
   uint256 internal constant _DELTA = 100;
-  uint256 internal _susdAmount = 500_000_000;
+  uint256 internal _susdAmount = 500 ether;
   USDA internal _usda;
   IERC20 internal _mockToken = IERC20(mockContract(newAddress(), 'mockToken'));
   address internal _vaultController = mockContract(newAddress(), 'mockVaultController');
@@ -95,13 +95,13 @@ contract UnitUSDADeposit is Base {
     vm.assume(_amount > 0);
     uint256 _totalSupplyBefore = _usda.totalSupply();
     _usda.deposit(_amount);
-    assertEq(_usda.totalSupply(), uint256(_amount) * 1e12 + _totalSupplyBefore);
+    assertEq(_usda.totalSupply(), uint256(_amount) + _totalSupplyBefore);
   }
 
   function testAddsToUserBalance(uint56 _amount) public {
     vm.assume(_amount > 0);
     _usda.deposit(_amount);
-    assertEq(_usda.balanceOf(address(this)), uint256(_amount) * 1e12);
+    assertEq(_usda.balanceOf(address(this)), uint256(_amount));
   }
 
   function testDepositRevertsIfPaused(uint56 _amount) public {
@@ -146,13 +146,13 @@ contract UnitUSDADepositTo is Base {
     vm.assume(_amount > 0);
     uint256 _totalSupplyBefore = _usda.totalSupply();
     _usda.depositTo(_amount, _otherUser);
-    assertEq(_usda.totalSupply(), uint256(_amount) * 1e12 + _totalSupplyBefore);
+    assertEq(_usda.totalSupply(), uint256(_amount) + _totalSupplyBefore);
   }
 
   function testAddsToUserBalance(uint56 _amount) public {
     vm.assume(_amount > 0);
     _usda.depositTo(_amount, _otherUser);
-    assertEq(_usda.balanceOf(_otherUser), uint256(_amount) * 1e12);
+    assertEq(_usda.balanceOf(_otherUser), uint256(_amount));
   }
 }
 
@@ -202,7 +202,7 @@ contract UnitUSDAWithdraw is Base {
     uint256 _totalSupplyBefore = _usda.totalSupply();
     _usda.withdraw(_amount);
     uint256 _totalSupplyAfter = _usda.totalSupply();
-    assertEq(_totalSupplyBefore - _amount * 1e12, _totalSupplyAfter);
+    assertEq(_totalSupplyBefore - _amount, _totalSupplyAfter);
   }
 
   function testWithdrawSubstractsFromUserBalance(uint256 _amount) public {
@@ -211,7 +211,7 @@ contract UnitUSDAWithdraw is Base {
     uint256 _balanceBefore = _usda.balanceOf(address(this));
     _usda.withdraw(_amount);
     uint256 _balanceAfter = _usda.balanceOf(address(this));
-    assertEq(_balanceBefore - _amount * 1e12, _balanceAfter);
+    assertEq(_balanceBefore - _amount, _balanceAfter);
   }
 
   function testWithdrawCallsPayInterest() public {
@@ -252,14 +252,14 @@ contract UnitUSDAWithdrawAll is Base {
     uint256 _totalSupplyBefore = _usda.totalSupply();
     _usda.withdrawAll();
     uint256 _totalSupplyAfter = _usda.totalSupply();
-    assertEq(_totalSupplyBefore - _depositAmount * 1e12, _totalSupplyAfter);
+    assertEq(_totalSupplyBefore - _depositAmount, _totalSupplyAfter);
   }
 
   function testWithdrawSubstractsFromUserBalance() public {
     uint256 _balanceBefore = _usda.balanceOf(address(this));
     _usda.withdrawAll();
     uint256 _balanceAfter = _usda.balanceOf(address(this));
-    assertEq(_balanceBefore - _depositAmount * 1e12, _balanceAfter);
+    assertEq(_balanceBefore - _depositAmount, _balanceAfter);
   }
 
   function testWithdrawCallsPayInterest() public {
@@ -297,7 +297,7 @@ contract UnitUSDAMint is Base {
     uint256 _totalSupplyBefore = _usda.totalSupply();
     _usda.mint(_amount);
     uint256 _totalSupplyAfter = _usda.totalSupply();
-    assertEq(_totalSupplyBefore + uint256(_amount) * 1e12, _totalSupplyAfter);
+    assertEq(_totalSupplyBefore + uint256(_amount), _totalSupplyAfter);
   }
 
   function testAddsToAdminBalance(uint56 _amount) public {
@@ -305,7 +305,7 @@ contract UnitUSDAMint is Base {
     uint256 _balanceBefore = _usda.balanceOf(address(this));
     _usda.mint(_amount);
     uint256 _balanceAfter = _usda.balanceOf(address(this));
-    assertEq(_balanceBefore + uint256(_amount) * 1e12, _balanceAfter);
+    assertEq(_balanceBefore + uint256(_amount), _balanceAfter);
   }
 }
 
@@ -334,7 +334,7 @@ contract UnitUSDABurn is Base {
     uint256 _totalSupplyBefore = _usda.totalSupply();
     _usda.burn(_amount);
     uint256 _totalSupplyAfter = _usda.totalSupply();
-    assertEq(_totalSupplyBefore - uint256(_amount) * 1e12, _totalSupplyAfter);
+    assertEq(_totalSupplyBefore - uint256(_amount), _totalSupplyAfter);
   }
 
   function testSubsToAdminBalance(uint56 _amount) public {
@@ -343,7 +343,7 @@ contract UnitUSDABurn is Base {
     uint256 _balanceBefore = _usda.balanceOf(address(this));
     _usda.burn(_amount);
     uint256 _balanceAfter = _usda.balanceOf(address(this));
-    assertEq(_balanceBefore - uint256(_amount) * 1e12, _balanceAfter);
+    assertEq(_balanceBefore - uint256(_amount), _balanceAfter);
   }
 }
 
@@ -393,7 +393,7 @@ contract UnitUSDADonate is Base {
     uint256 _totalSupplyBefore = _usda.totalSupply();
     _usda.donate(_amount);
     uint256 _totalSupplyAfter = _usda.totalSupply();
-    assertEq(_totalSupplyBefore + _amount * 1e12, _totalSupplyAfter);
+    assertEq(_totalSupplyBefore + _amount, _totalSupplyAfter);
   }
 
   // A part of the supply is assigned to the zero address on initialization
@@ -405,24 +405,25 @@ contract UnitUSDADonate is Base {
     uint256 _totalSupplyBefore = _usda.totalSupply();
 
     uint256 _balanceZeroBefore = _usda.balanceOf(address(0));
-    uint256 _amountToZeroAddress = (_amount * 1e12 * _balanceZeroBefore) / (_totalSupplyBefore);
+    uint256 _amountToZeroAddress = (_amount * _balanceZeroBefore) / (_totalSupplyBefore);
 
     uint256 _balanceOtherUserBefore = _usda.balanceOf(_otherUser);
     uint256 _balanceAdminBefore = _usda.balanceOf(address(this));
     _usda.donate(_amount);
     uint256 _balanceOtherUserAfter = _usda.balanceOf(_otherUser);
     uint256 _balanceAdminAfter = _usda.balanceOf(address(this));
+
     assertApproxEqAbs(
-      _balanceOtherUserBefore + (_amount * 1e12 - _amountToZeroAddress) / 2, _balanceOtherUserAfter, _DELTA
+      _balanceOtherUserBefore + (_amount - _amountToZeroAddress) / 2, _balanceOtherUserAfter, _DELTA
     );
 
-    assertApproxEqAbs(_balanceAdminBefore + (_amount * 1e12 - _amountToZeroAddress) / 2, _balanceAdminAfter, _DELTA);
+    assertApproxEqAbs(_balanceAdminBefore + (_amount - _amountToZeroAddress) / 2, _balanceAdminAfter, _DELTA);
   }
 }
 
 contract UnitUSDARecoverDust is Base {
-  uint256 internal _amountToRecover = 100 * 1e6;
-  uint256 internal _depositAmount = 100_000 * 1e6;
+  uint256 internal _amountToRecover = 100 ether;
+  uint256 internal _depositAmount = 100_000 ether;
 
   function setUp() public virtual override {
     super.setUp();
@@ -456,7 +457,7 @@ contract UnitUSDARecoverDust is Base {
 }
 
 contract UnitUSDAVaultControllerMint is Base {
-  uint256 internal _amountToMint = 100 * 1e18;
+  uint256 internal _amountToMint = 100 ether;
 
   function testRevertsIfCalledByNonVault() public {
     vm.expectRevert(
@@ -485,7 +486,7 @@ contract UnitUSDAVaultControllerMint is Base {
 }
 
 contract UnitUSDAVaultControllerTransfer is Base {
-  uint256 internal _amountToTransfer = 100 * 1e18;
+  uint256 internal _amountToTransfer = 100 ether;
 
   function testRevertsIfCalledByNonVault() public {
     vm.expectRevert(

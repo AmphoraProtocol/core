@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.4 <0.9.0;
 
-import {CommonE2EBase} from '@test/e2e/Common.sol';
+import {CommonE2EBase, IVault} from '@test/e2e/Common.sol';
 import {IUSDA} from '@interfaces/core/IUSDA.sol';
 
 contract E2EUSDA is CommonE2EBase {
-  uint256 public susdAmount = 500_000_000;
+  uint256 public susdAmount = 500 ether;
 
   event Deposit(address indexed _from, uint256 _value);
   event Withdraw(address indexed _from, uint256 _value);
@@ -16,7 +16,7 @@ contract E2EUSDA is CommonE2EBase {
 
   function testDepositSUSD() public {
     _depositSUSD(andy, andySUSDBalance);
-    assertEq(usdaToken.balanceOf(andy), andySUSDBalance * 1e12);
+    assertEq(usdaToken.balanceOf(andy), andySUSDBalance);
   }
 
   function testRevertIfBurnByNonAdmin() public {
@@ -46,13 +46,25 @@ contract E2EUSDA is CommonE2EBase {
 
     /// Test deposit
     vm.expectEmit(false, false, false, true);
-    emit Deposit(address(dave), susdAmount * 1e12);
+    emit Deposit(address(dave), susdAmount);
 
     vm.prank(dave);
     usdaToken.deposit(susdAmount);
 
     assertEq(susd.balanceOf(dave), daveSUSD - susdAmount);
+
+    /// Someone borrows
+    bobVaultId = _mintVault(bob);
+    vm.startPrank(bob);
+    bobVault = IVault(vaultController.vaultAddress(uint96(bobVaultId)));
+    weth.approve(address(bobVault), bobWETH);
+    IVault(address(bobVault)).depositERC20(address(weth), bobWETH);
+    uint256 _toBorrow = vaultController.vaultBorrowingPower(uint96(bobVaultId));
+    vaultController.borrowUSDA(uint96(bobVaultId), uint192(_toBorrow / 2));
+    vm.stopPrank();
+
     // some interest has accrued, USDA balance should be slightly higher than existingUSDA balance + sUSD amount deposited
+    vm.warp(block.timestamp + 1 days);
     vaultController.calculateInterest();
     assertGt(usdaToken.balanceOf(dave), _daveUSDABalance + susdAmount);
   }
@@ -63,7 +75,7 @@ contract E2EUSDA is CommonE2EBase {
     vm.startPrank(eric);
     susd.approve(address(usdaToken), susdAmount);
 
-    vm.expectRevert('ERC20: transfer amount exceeds balance');
+    vm.expectRevert('Insufficient balance after any settlement owing');
     usdaToken.deposit(susdAmount);
     vm.stopPrank();
   }
@@ -78,9 +90,23 @@ contract E2EUSDA is CommonE2EBase {
   }
 
   function testWithdrawSUSD() public {
+    /// USDA balance before
+    uint256 _usdaBalanceBefore = usdaToken.balanceOf(dave);
+
     /// Deposit
     _depositSUSD(dave, susdAmount);
 
+    /// Someone borrows
+    bobVaultId = _mintVault(bob);
+    vm.startPrank(bob);
+    bobVault = IVault(vaultController.vaultAddress(uint96(bobVaultId)));
+    weth.approve(address(bobVault), bobWETH);
+    IVault(address(bobVault)).depositERC20(address(weth), bobWETH);
+    uint256 _toBorrow = vaultController.vaultBorrowingPower(uint96(bobVaultId));
+    vaultController.borrowUSDA(uint96(bobVaultId), uint192(_toBorrow / 2));
+    vm.stopPrank();
+
+    /// Time travel
     vm.warp(block.timestamp + 1 days);
 
     /// Test pause/unpause
@@ -103,9 +129,8 @@ contract E2EUSDA is CommonE2EBase {
     usdaToken.withdraw(susdAmount);
     assertEq(susd.balanceOf(dave), daveSUSD);
 
-    /// TODO: FAILS
     /// Should end up with slightly more USDA than original due to interest
-    // assertGt(usdaToken.balanceOf(dave), _usdaBefore);
+    assertGt(usdaToken.balanceOf(dave), _usdaBalanceBefore);
   }
 
   function testRevertIfWithdrawMoreThanBalance() public {
@@ -130,15 +155,15 @@ contract E2EUSDA is CommonE2EBase {
     _depositSUSD(bob, bobSUSDBalance);
 
     uint256 _reserve = susd.balanceOf(address(usdaToken));
-    assertEq(_reserve * 1e12, usdaToken.balanceOf(bob));
+    assertEq(_reserve, usdaToken.balanceOf(bob));
 
     vm.prank(bob);
-    usdaToken.transfer(dave, _reserve * 1e12);
+    usdaToken.transfer(dave, _reserve);
 
     uint256 _susdBalance = susd.balanceOf(dave);
 
     vm.expectEmit(false, false, false, true);
-    emit Withdraw(address(dave), _reserve * 1e12);
+    emit Withdraw(address(dave), _reserve);
 
     /// Withdraw
     vm.prank(dave);
@@ -186,7 +211,7 @@ contract E2EUSDA is CommonE2EBase {
     uint256 _usdaSupply = usdaToken.totalSupply();
 
     vm.prank(dave);
-    susd.transfer(address(usdaToken), 1_000_000);
+    susd.transfer(address(usdaToken), 1 ether);
 
     uint256 _reserveAfter = susd.balanceOf(address(usdaToken));
     uint256 _reserveRatioAfter = usdaToken.reserveRatio();

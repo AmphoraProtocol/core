@@ -89,12 +89,12 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
 
   IVault public gusVault;
 
-  uint256 public andySUSDBalance = 100_000_000;
-  uint256 public bobSUSDBalance = 1_000_000_000;
+  uint256 public andySUSDBalance = 100 ether;
+  uint256 public bobSUSDBalance = 1000 ether;
   uint256 public bobWETH = 10 ether;
   uint256 public carolUni = 100 ether;
   uint256 public gusWBTC = 1_000_000_000;
-  uint256 public daveSUSD = 10_000_000_000_000_000;
+  uint256 public daveSUSD = 10_000_000_000 ether;
   uint256 public bobAAVE = 1000 ether;
   uint256 public carolDYDX = 100 ether;
 
@@ -102,9 +102,9 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     vm.createSelectFork(vm.rpcUrl('mainnet'), FORK_BLOCK);
 
     // Transfer some susd, weth and uni to users
-    deal(address(susd), andy, andySUSDBalance);
-    deal(address(susd), dave, daveSUSD);
-    deal(address(susd), bob, bobSUSDBalance);
+    _dealSUSD(andy, andySUSDBalance);
+    _dealSUSD(dave, daveSUSD);
+    _dealSUSD(bob, bobSUSDBalance);
     deal(address(weth), bob, bobWETH);
     deal(address(uni), carol, carolUni);
     deal(address(aave), bob, bobAAVE);
@@ -190,6 +190,12 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
 
     // TODO: add checks for everything being set
     vm.stopPrank();
+  }
+
+  function _dealSUSD(address _receiver, uint256 _amount) internal {
+    // sUSD is a proxy so doesn't work with `deal`
+    // here executes deal in the `TokenState` contract from sUSD
+    deal(SUSD_TOKEN_STATE, _receiver, _amount);
   }
 
   function _mintVault(address _minter) internal returns (uint256 _id) {

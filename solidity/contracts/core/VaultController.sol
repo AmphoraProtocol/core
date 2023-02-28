@@ -299,14 +299,12 @@ contract VaultController is
   /// @param _susdAmount amount of sUSD to borrow
   /// @param _target address to receive borrowed sUSD
   function borrowsUSDto(uint96 _id, uint192 _susdAmount, address _target) external override paysInterest whenNotPaused {
-    uint256 _amount = _susdAmount * 1e12;
-
     // grab the vault by id if part of our system. revert if not
     IVault _vault = _getVault(_id);
     // only the minter of the vault may borrow from their vault
     if (_msgSender() != _vault.minter()) revert VaultController_OnlyMinter();
     // the base amount is the amount of USDA they wish to borrow divided by the interest factor
-    uint192 _baseAmount = _safeu192(uint256(_amount * EXP_SCALE) / uint256(interest.factor));
+    uint192 _baseAmount = _safeu192(uint256(_susdAmount * EXP_SCALE) / uint256(interest.factor));
     // _baseLiability should contain the vault's new liability, in terms of base units
     // true indicates that we are adding to the liability
     uint256 _baseLiability = _vault.modifyLiability(true, _baseAmount);
@@ -320,7 +318,7 @@ contract VaultController is
     // the LTV must be above the newly calculated _usdaLiability, else revert
     if (_totalLiquidityValue < _usdaLiability) revert VaultController_VaultInsolvent();
     // emit the event
-    emit BorrowUSDA(_id, address(_vault), _amount);
+    emit BorrowUSDA(_id, address(_vault), _susdAmount);
     //send sUSD to the target from reserve instead of mint
     usda.vaultControllerTransfer(_target, _susdAmount);
   }

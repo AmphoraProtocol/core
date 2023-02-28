@@ -272,8 +272,8 @@ contract E2EVaultController is CommonE2EBase {
     _expectedBalanceWithInterest = _expectedBalanceWithInterest + _neededUSDA;
 
     vm.startPrank(bob);
-    susd.approve(address(usdaToken), (_neededUSDA / 1e12) + 1);
-    usdaToken.deposit((_neededUSDA / 1e12) + 1);
+    susd.approve(address(usdaToken), _neededUSDA + 1);
+    usdaToken.deposit(_neededUSDA + 1);
     vaultController.repayAllUSDA(1);
     vm.stopPrank();
     vm.warp(block.timestamp + 1);
