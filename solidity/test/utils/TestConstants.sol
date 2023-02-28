@@ -13,6 +13,7 @@ contract TestConstants {
   address public constant USDC_WETH_POOL_ADDRESS = 0x8ad599c3A0ff1De082011EFDDc58f1908eb6e6D8;
   address public constant USDC_UNI_POOL_ADDRESS = 0xD0fC8bA7E267f2bc56044A7715A489d851dC6D78;
   address public constant AAVE_WETH_POOL_ADDRESS = 0x5aB53EE1d50eeF2C1DD3d5402789cd27bB52c1bB;
+  address public constant DYDX_WETH_POOL_ADDRESS = 0xD8de6af55F618a7Bc69835D55DDC6582220c36c0;
 
   // Chainlink addresses
   address public constant CHAINLINK_ETH_FEED_ADDRESS = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;

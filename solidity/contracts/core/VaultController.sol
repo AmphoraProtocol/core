@@ -4,12 +4,12 @@ pragma solidity ^0.8.9;
 
 import {ExponentialNoError} from '@contracts/_external/ExponentialNoError.sol';
 import {Vault} from '@contracts/core/Vault.sol';
-import {OracleMaster} from '@contracts/periphery/OracleMaster.sol';
 import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
 
 import {IUSDA} from '@interfaces/core/IUSDA.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
+import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
 
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {OwnableUpgradeable} from '@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol';
@@ -38,14 +38,13 @@ contract VaultController is
   //mapping of tokenId to the LTV*1
   mapping(uint256 => uint256) public tokenIdTokenLTV;
 
-  //mapping of tokenId to its corresponding oracleAddress (which are addresses)
-  mapping(uint256 => address) public tokenIdOracleAddress;
+  //mappinng of token to its oracle
+  mapping(address => IOracleRelay) public tokenOracle;
 
   //mapping of token address to its corresponding liquidation incentive
   mapping(address => uint256) public tokenAddressLiquidationIncentive;
   address[] public enabledTokens;
 
-  OracleMaster public oracleMaster;
   CurveMaster public curveMaster;
   Interest public interest;
 
@@ -80,26 +79,28 @@ contract VaultController is
     totalBaseLiability = 0;
   }
 
-  /// @notice get current interest factor
-  /// @return _interestFactor interest factor
+  /// @notice Returns the latest interest factor
+  /// @return _interestFactor The latest interest factor
   function interestFactor() external view override returns (uint192 _interestFactor) {
     return interest.factor;
   }
 
-  /// @notice get last interest time
-  /// @return _lastInterestTime interest time
+  /// @notice Returns the block timestamp when pay interest was last called
+  /// @return _lastInterestTime The block timestamp when pay interest was last called
   function lastInterestTime() external view override returns (uint64 _lastInterestTime) {
     return interest.lastTime;
   }
 
-  /// @notice _id get vault address of id
-  /// @return _vaultAddress the address of vault
+  /// @notice Returns the address of a vault given it's id
+  /// @param _id The id of the vault to target
+  /// @return _vaultAddress The address of the targetted vault
   function vaultAddress(uint96 _id) external view override returns (address _vaultAddress) {
     return vaultIdVaultAddress[_id];
   }
 
-  ///@notice _wallet get vaultIDs of a particular wallet
-  ///@return _vaultIDs array of vault IDs owned by the wallet, from 0 to many
+  /// @notice Returns an array of all the vault ids a specific wallet has
+  /// @param _wallet The address of the wallet to target
+  /// @return _vaultIDs The ids of the vaults the wallet has
   function vaultIDs(address _wallet) external view override returns (uint96[] memory _vaultIDs) {
     return walletVaultIDs[_wallet];
   }
@@ -111,8 +112,15 @@ contract VaultController is
     return tokenAddressTokenId[_tokenAddress];
   }
 
-  /// @notice create a new vault
-  /// @return _vaultAddress address of the new vault
+  /// @notice Returns the oracle given a token's address
+  /// @param _tokenAddress The id of the token
+  /// @return _oracle The address of the token's oracle
+  function tokensOracle(address _tokenAddress) external view override returns (IOracleRelay _oracle) {
+    return tokenOracle[_tokenAddress];
+  }
+
+  /// @notice Creates a new vault and returns it's address
+  /// @return _vaultAddress The address of the newly created vault
   function mintVault() public override whenNotPaused returns (address _vaultAddress) {
     // increment  minted vaults
     vaultsMinted = vaultsMinted + 1;
@@ -130,63 +138,48 @@ contract VaultController is
     return _vaultAddress;
   }
 
-  /// @notice pause the contract
+  /// @notice Pauses the functionality of the contract
   function pause() external override onlyPauser {
     _pause();
   }
 
-  /// @notice unpause the contract
+  /// @notice Unpauses the functionality of the contract
   function unpause() external override onlyPauser {
     _unpause();
   }
 
-  /// @notice register the USDA contract
-  /// @param _usdaAddress address to register as USDA
+  /// @notice Registers the USDA contract
+  /// @param _usdaAddress The address to register as USDA
   function registerUSDA(address _usdaAddress) external override onlyOwner {
     usda = IUSDA(_usdaAddress);
   }
 
-  /// @notice get oraclemaster address
-  /// @return _oracleMasterAddress the address
-  function getOracleMaster() external view override returns (address _oracleMasterAddress) {
-    return address(oracleMaster);
-  }
-
-  /// @notice register the OracleMaster contract
-  /// @param _masterOracleAddress address to register as OracleMaster
-  function registerOracleMaster(address _masterOracleAddress) external override onlyOwner {
-    oracleMaster = OracleMaster(_masterOracleAddress);
-    emit RegisterOracleMaster(_masterOracleAddress);
-  }
-
-  /// @notice register the CurveMaster address
-  /// @param _masterCurveAddress address to register as CurveMaster
+  /// @notice Emited when the owner registers a curve master
+  /// @param _masterCurveAddress The address of the curve master
   function registerCurveMaster(address _masterCurveAddress) external override onlyOwner {
     curveMaster = CurveMaster(_masterCurveAddress);
     emit RegisterCurveMaster(_masterCurveAddress);
   }
 
-  /// @notice update the protocol fee
-  /// @param _newProtocolFee protocol fee in terms of 1e18=100%
+  /// @notice Updates the protocol fee
+  /// @param _newProtocolFee The new protocol fee in terms of 1e18=100%
   function changeProtocolFee(uint192 _newProtocolFee) external override onlyOwner {
     if (_newProtocolFee >= 1e18) revert VaultController_FeeTooLarge();
     protocolFee = _newProtocolFee;
     emit NewProtocolFee(_newProtocolFee);
   }
 
-  /// @notice register a new token to be used as collateral
-  /// @param _tokenAddress token to register
-  /// @param _ltv LTV of the token, 1e18=100%
-  /// @param _oracleAddress address of the token which should be used when querying oracles
-  /// @param _liquidationIncentive liquidation penalty for the token, 1e18=100%
+  /// @notice Register a new token to be used as collateral
+  /// @param _tokenAddress The address of the token to register
+  /// @param _ltv The LTV of the token, 1e18=100%
+  /// @param _oracleAddress The address of oracle to fetch the price of the token
+  /// @param _liquidationIncentive The liquidation penalty for the token, 1e18=100%
   function registerErc20(
     address _tokenAddress,
     uint256 _ltv,
     address _oracleAddress,
     uint256 _liquidationIncentive
   ) external override onlyOwner {
-    // the oracle must be registered & the token must be unregistered
-    if (oracleMaster.relays(_oracleAddress) == address(0)) revert VaultController_OracleNotRegistered();
     if (tokenAddressTokenId[_tokenAddress] != 0) revert VaultController_TokenAlreadyRegistered();
     //LTV must be compatible with liquidation incentive
     if (_ltv >= (EXP_SCALE - _liquidationIncentive)) revert VaultController_LTVIncompatible();
@@ -195,7 +188,7 @@ contract VaultController is
     // set & give the token an id
     tokenAddressTokenId[_tokenAddress] = tokensRegistered;
     // set the token's oracle
-    tokenIdOracleAddress[tokensRegistered] = _oracleAddress;
+    tokenOracle[_tokenAddress] = IOracleRelay(_oracleAddress);
     // set the token's ltv
     tokenIdTokenLTV[tokensRegistered] = _ltv;
     // set the token's liquidation incentive
@@ -205,26 +198,24 @@ contract VaultController is
     emit RegisteredErc20(_tokenAddress, _ltv, _oracleAddress, _liquidationIncentive);
   }
 
-  /// @notice update an existing collateral with new collateral parameters
-  /// @param _tokenAddress the token to modify
-  /// @param _ltv new loan-to-value of the token, 1e18=100%
-  /// @param _oracleAddress new oracle to attach to the token
-  /// @param _liquidationIncentive new liquidation penalty for the token, 1e18=100%
+  /// @notice Updates an existing collateral with new collateral parameters
+  /// @param _tokenAddress The address of the token to modify
+  /// @param _ltv The new loan-to-value of the token, 1e18=100%
+  /// @param _oracleAddress The address of oracle to modify for the price of the token
+  /// @param _liquidationIncentive The new liquidation penalty for the token, 1e18=100%
   function updateRegisteredErc20(
     address _tokenAddress,
     uint256 _ltv,
     address _oracleAddress,
     uint256 _liquidationIncentive
   ) external override onlyOwner {
-    // the oracle and token must both exist and be registerd
-    if (oracleMaster.relays(_oracleAddress) == address(0)) revert VaultController_OracleNotRegistered();
     if (tokenAddressTokenId[_tokenAddress] == 0) revert VaultController_TokenNotRegistered();
     // we know the token has been registered, get the Id
     uint256 _tokenId = tokenAddressTokenId[_tokenAddress];
     //_ltv must be compatible with liquidation incentive
     if (_ltv >= (EXP_SCALE - _liquidationIncentive)) revert VaultController_LTVIncompatible();
     // set the oracle of the token
-    tokenIdOracleAddress[_tokenId] = _oracleAddress;
+    tokenOracle[_tokenAddress] = IOracleRelay(_oracleAddress);
     // set the ltv of the token
     tokenIdTokenLTV[_tokenId] = _ltv;
     // set the liquidation incentive of the token
@@ -233,9 +224,9 @@ contract VaultController is
     emit UpdateRegisteredErc20(_tokenAddress, _ltv, _oracleAddress, _liquidationIncentive);
   }
 
-  /// @notice check an vault for over-collateralization. returns false if amount borrowed is greater than borrowing power.
-  /// @param _id the vault to check
-  /// @return _overCollateralized true if vault over-collateralized false if not
+  /// @notice Check a vault for over-collateralization
+  /// @param _id The id of vault we want to target
+  /// @return _overCollateralized Returns true if vault over-collateralized; false if vault under-collaterlized
   function checkVault(uint96 _id) public view override returns (bool _overCollateralized) {
     // grab the vault by id if part of our system. revert if not
     IVault _vault = _getVault(_id);
@@ -247,18 +238,17 @@ contract VaultController is
     return (_totalLiquidityValue >= _usdaLiability);
   }
 
-  /// @notice borrow USDA from a vault. only vault minter may borrow from their vault
-  /// @param _id vault to borrow against
-  /// @param _amount amount of USDA to borrow
+  /// @notice Borrows USDA from a vault. Only the vault minter may borrow from their vault
+  /// @param _id The id of vault we want to target
+  /// @param _amount The amount of USDA to borrow
   function borrowUSDA(uint96 _id, uint192 _amount) external override {
     _borrowUSDA(_id, _amount, _msgSender());
   }
 
-  /// @notice borrow USDA from a vault and send the USDA to a specific address
-  /// @notice Only vault minter may borrow from their vault
-  /// @param _id vault to borrow against
-  /// @param _amount amount of USDA to borrow
-  /// @param _target address to receive borrowed USDA
+  /// @notice Borrows USDA from a vault and send the USDA to a specific address
+  /// @param _id The id of vault we want to target
+  /// @param _amount The amount of USDA to borrow
+  /// @param _target The address to receive borrowed USDA
   function borrowUSDAto(uint96 _id, uint192 _amount, address _target) external override {
     _borrowUSDA(_id, _amount, _target);
   }
@@ -293,11 +283,10 @@ contract VaultController is
     emit BorrowUSDA(_id, address(_vault), _amount);
   }
 
-  /// @notice borrow sUSD directly from reserve
-  /// @notice liability is still in USDA, and USDA must be repaid
-  /// @param _id vault to borrow against
-  /// @param _susdAmount amount of sUSD to borrow
-  /// @param _target address to receive borrowed sUSD
+  /// @notice Borrows sUSD directly from reserve, liability is still in USDA, and USDA must be repaid
+  /// @param _id The id of vault we want to target
+  /// @param _susdAmount The amount of sUSD to borrow
+  /// @param _target The address to receive borrowed sUSD
   function borrowsUSDto(uint96 _id, uint192 _susdAmount, address _target) external override paysInterest whenNotPaused {
     // grab the vault by id if part of our system. revert if not
     IVault _vault = _getVault(_id);
@@ -323,10 +312,10 @@ contract VaultController is
     usda.vaultControllerTransfer(_target, _susdAmount);
   }
 
-  /// @notice repay a vault's USDA loan. anyone may repay
-  /// @param _id vault to repay
-  /// @param _amount amount of USDA to repay
-  /// @dev pays interest
+  /// @notice Repays a vault's USDA loan. Anyone may repay
+  /// @dev Pays interest
+  /// @param _id The id of vault we want to target
+  /// @param _amount The amount of USDA to repay
   function repayUSDA(uint96 _id, uint192 _amount) external override paysInterest whenNotPaused {
     // grab the vault by id if part of our system. revert if not
     IVault _vault = _getVault(_id);
@@ -345,9 +334,9 @@ contract VaultController is
     emit RepayUSDA(_id, address(_vault), _amount);
   }
 
-  /// @notice repay all of a vault's USDA. anyone may repay a vault's liabilities
-  /// @param _id the vault to repay
-  /// @dev pays interest
+  /// @notice Repays all of a vault's USDA. Anyone may repay a vault's liabilities
+  /// @dev Pays interest
+  /// @param _id The id of vault we want to target
   function repayAllUSDA(uint96 _id) external override paysInterest whenNotPaused {
     // grab the vault by id if part of our system. revert if not
     IVault _vault = _getVault(_id);
@@ -366,13 +355,12 @@ contract VaultController is
     emit RepayUSDA(_id, address(_vault), _usdaLiability);
   }
 
-  /// @notice liquidate an underwater vault
-  /// @notice vaults may be liquidated up to the point where they are exactly solvent
-  /// @param _id the vault to liquidate
-  /// @param _assetAddress the token the liquidator wishes to liquidate
-  /// @param _tokensToLiquidate  number of tokens to liquidate
-  /// @return _toLiquidate the amount of tokens to liquidate
-  /// @dev pays interest before liquidation
+  /// @notice Liquidates an underwater vault
+  /// @dev Pays interest before liquidation. Vaults may be liquidated up to the point where they are exactly solvent
+  /// @param _id The id of vault we want to target
+  /// @param _assetAddress The address of the token the liquidator wishes to liquidate
+  /// @param _tokensToLiquidate The number of tokens to liquidate
+  /// @return _toLiquidate The number of tokens that got liquidated
   function liquidateVault(
     uint96 _id,
     address _assetAddress,
@@ -414,13 +402,13 @@ contract VaultController is
     return _tokensToLiquidate;
   }
 
-  /// @notice calculate amount of tokens to liquidate for a vault
-  /// @param _id the vault to get info for
-  /// @param _assetAddress the token to calculate how many tokens to liquidate
-  /// @return _tokensToLiquidate amount of tokens liquidatable
-  /// @notice the amount of tokens owed is a moving target and changes with each block as _payInterest is called
-  /// @notice this function can serve to give an indication of how many tokens can be liquidated
-  /// @dev all this function does is call _liquidationMath with 2**256-1 as the amount
+  /// @notice Returns the calculated amount of tokens to liquidate for a vault
+  /// @dev The amount of tokens owed is a moving target and changes with each block as payInterest is called
+  ///      This function can serve to give an indication of how many tokens can be liquidated
+  ///      All this function does is call _liquidationMath with 2**256-1 as the amount
+  /// @param _id The id of vault we want to target
+  /// @param _assetAddress The address of token to calculate how many tokens to liquidate
+  /// @return _tokensToLiquidate The amount of tokens liquidatable
   function tokensToLiquidate(
     uint96 _id,
     address _assetAddress
@@ -446,8 +434,8 @@ contract VaultController is
 
     IVault _vault = _getVault(_id);
 
-    //get price of asset scaled to decimal 18
-    uint256 _price = oracleMaster.getLivePrice(_assetAddress);
+    if (address(tokenOracle[_assetAddress]) == address(0)) revert VaultController_OracleNotRegistered();
+    uint256 _price = tokenOracle[_assetAddress].currentValue();
 
     // get price discounted by liquidation penalty
     // price * (100% - liquidationIncentive)
@@ -484,10 +472,10 @@ contract VaultController is
     _vault = IVault(_vaultAddress);
   }
 
-  /// @notice amount of USDA needed to reach even solvency
-  /// @notice this amount is a moving target and changes with each block as _payInterest is called
-  /// @param _id id of vault
-  /// @return _usdaToSolvency amount of USDA needed to reach even solvency
+  /// @notice Returns the amount of USDA needed to reach even solvency
+  /// @dev this amount is a moving target and changes with each block as payInterest is called
+  /// @param _id The id of vault we want to target
+  /// @return _usdaToSolvency The amount of USDA needed to reach even solvency
   function amountToSolvency(uint96 _id) public view override returns (uint256 _usdaToSolvency) {
     if (checkVault(_id)) revert VaultController_VaultSolvent();
     return _amountToSolvency(_id);
@@ -507,8 +495,10 @@ contract VaultController is
     return _vaultLiability(_id);
   }
 
-  /// @notice bussiness logic for vaultLiability
-  /// @param _id id of vault
+  /// @notice Returns the liability of a vault
+  /// @dev Implementation in _vaultLiability
+  /// @param _id The id of vault we want to target
+  /// @return _liability The amount of USDA the vault owes
   function _vaultLiability(uint96 _id) internal view returns (uint192 _liability) {
     address _vaultAddress = vaultIdVaultAddress[_id];
     if (_vaultAddress == address(0)) revert VaultController_VaultDoesNotExist();
@@ -516,10 +506,10 @@ contract VaultController is
     return _safeu192(_truncate(_vault.baseLiability() * interest.factor));
   }
 
-  /// @notice get vault borrowing power for vault
-  /// @param _id id of vault
-  /// @return _borrowPower amount of USDA the vault can borrow
-  /// @dev implementation in _getVaultBorrowingPower
+  /// @notice Returns the vault borrowing power for vault
+  /// @dev Implementation in getVaultBorrowingPower
+  /// @param _id The id of vault we want to target
+  /// @return _borrowPower The amount of USDA the vault can borrow
   function vaultBorrowingPower(uint96 _id) external view override returns (uint192 _borrowPower) {
     return _getVaultBorrowingPower(_getVault(_id));
   }
@@ -539,8 +529,8 @@ contract VaultController is
       // the balance is the vault's token balance of the current collateral token in the loop
       uint256 _balance = _vault.tokenBalance(_tokenAddress);
       if (_balance == 0) continue;
-      // the raw price is simply the oraclemaster price of the token
-      uint192 _rawPrice = _safeu192(oracleMaster.getLivePrice(_tokenAddress));
+      // the raw price is simply the oracle price of the token
+      uint192 _rawPrice = _safeu192(tokenOracle[_tokenAddress].currentValue());
       if (_rawPrice == 0) continue;
       // the token value is equal to the price * balance * tokenLTV
       uint192 _tokenValue = _safeu192(_truncate(_truncate(_rawPrice * _balance * tokenIdTokenLTV[_i])));
@@ -549,9 +539,9 @@ contract VaultController is
     }
   }
 
-  /// @notice calls the pay interest function
-  /// @dev implementation in _payInterest
-  /// @return _interest the interest to distribute to USDA holders
+  /// @notice Returns the increase amount of the interest factor. Accrues interest to borrowers and distribute it to USDA holders
+  /// @dev Implementation in payInterest
+  /// @return _interest The increase amount of the interest factor
   function calculateInterest() external override returns (uint256 _interest) {
     return _payInterest();
   }
@@ -611,16 +601,15 @@ contract VaultController is
   }
 
   /// special view only function to help liquidators
-
-  /// @notice helper function to view the status of a range of vaults
-  /// @param _start the vault to start looping
-  /// @param _stop the vault to stop looping
-  /// @return _vaultSummaries a collection of vault information
+  /// @notice Returns the status of a range of vaults
+  /// @param _start The id of the vault to start looping
+  /// @param _stop The id of vault to stop looping
+  /// @return _vaultSummaries An array of vault information
   function vaultSummaries(
     uint96 _start,
     uint96 _stop
   ) public view override returns (VaultSummary[] memory _vaultSummaries) {
-    VaultSummary[] memory _summaries = new VaultSummary[](_stop - _start + 1);
+    _vaultSummaries = new VaultSummary[](_stop - _start + 1);
     for (uint96 _i = _start; _i <= _stop; _i++) {
       IVault _vault = _getVault(_i);
       uint256[] memory _tokenBalances = new uint256[](enabledTokens.length);
@@ -628,9 +617,9 @@ contract VaultController is
       for (uint256 _j = 0; _j < enabledTokens.length; _j++) {
         _tokenBalances[_j] = _vault.tokenBalance(enabledTokens[_j]);
       }
-      _summaries[_i - _start] =
+      _vaultSummaries[_i - _start] =
         VaultSummary(_i, this.vaultBorrowingPower(_i), this.vaultLiability(_i), enabledTokens, _tokenBalances);
     }
-    return _summaries;
+    return _vaultSummaries;
   }
 }

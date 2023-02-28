@@ -2,24 +2,83 @@
 pragma solidity ^0.8.9;
 
 import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
+import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
 
 /// @title VaultController Interface
 interface IVaultController {
   /*///////////////////////////////////////////////////////////////
                             EVENTS
     //////////////////////////////////////////////////////////////*/
-
+  /**
+   * @notice Emited when payInterest is called to accrue interest and distribute it
+   * @param _epoch The block timestamp when the function called
+   * @param _amount The increase amount of the interest factor
+   * @param _curveVal The value at the curve
+   */
   event InterestEvent(uint64 _epoch, uint192 _amount, uint256 _curveVal);
-  event NewProtocolFee(uint256 _protocolFee);
+
+  /**
+   * @notice Emited when a new protocol fee is being set
+   * @param _protocolFee The new fee for the protocol
+   */
+  event NewProtocolFee(uint192 _protocolFee);
+
+  /**
+   * @notice Emited when a new erc20 token is being registered as acceptable collateral
+   * @param _tokenAddress The addres of the erc20 token
+   * @param _ltv The loan to value amount of the erc20
+   * @param _oracleAddress The address of the oracle to use to fetch the price
+   * @param _liquidationIncentive The liquidation penalty for the token
+   */
   event RegisteredErc20(address _tokenAddress, uint256 _ltv, address _oracleAddress, uint256 _liquidationIncentive);
+
+  /**
+   * @notice Emited when the information about an acceptable erc20 token is being update
+   *  @param _tokenAddress The addres of the erc20 token to update
+   *  @param _ltv The new loan to value amount of the erc20
+   *  @param _oracleAddress The new address of the oracle to use to fetch the price
+   *  @param _liquidationIncentive The new liquidation penalty for the token
+   */
   event UpdateRegisteredErc20(
     address _tokenAddress, uint256 _ltv, address _oracleAddress, uint256 _liquidationIncentive
   );
+
+  /**
+   * @notice Emited when a new vault is being minted
+   * @param _vaultAddress The address of the new vault
+   * @param _vaultId The id of the vault
+   * @param _vaultOwner The address of the owner of the vault
+   */
   event NewVault(address _vaultAddress, uint256 _vaultId, address _vaultOwner);
-  event RegisterOracleMaster(address _oracleMasterAddress);
+
+  /**
+   * @notice Emited when the owner registers a curve master
+   * @param _curveMasterAddress The address of the curve master
+   */
   event RegisterCurveMaster(address _curveMasterAddress);
+  /**
+   * @notice Emited when someone successfully borrows USDA
+   * @param _vaultId The id of the vault that borrowed against
+   * @param _vaultAddress The address of the vault that borrowed against
+   * @param _borrowAmount The amounnt that was borrowed
+   */
   event BorrowUSDA(uint256 _vaultId, address _vaultAddress, uint256 _borrowAmount);
+
+  /**
+   * @notice Emited when someone successfully repayed a vault's loan
+   * @param _vaultId The id of the vault that was repayed
+   * @param _vaultAddress The address of the vault that was repayed
+   * @param _repayAmount The amount that was repayed
+   */
   event RepayUSDA(uint256 _vaultId, address _vaultAddress, uint256 _repayAmount);
+
+  /**
+   * @notice Emited when someone successfully liquidates a vault
+   * @param _vaultId The id of the vault that was liquidated
+   * @param _assetAddress The address of the token that was liquidated
+   * @param _usdaToRepurchase The amount of USDA that was repurchased
+   * @param _tokensToLiquidate The number of tokens that were liquidated
+   */
   event Liquidate(uint256 _vaultId, address _assetAddress, uint256 _usdaToRepurchase, uint256 _tokensToLiquidate);
 
   /*///////////////////////////////////////////////////////////////
@@ -86,8 +145,6 @@ interface IVaultController {
                             VARIABLES
     //////////////////////////////////////////////////////////////*/
 
-  function initialize() external;
-
   function tokensRegistered() external view returns (uint256 _tokensRegistered);
 
   function vaultsMinted() external view returns (uint96 _vaultsMinted);
@@ -106,9 +163,15 @@ interface IVaultController {
 
   function curveMaster() external view returns (CurveMaster _curveMaster);
 
+  function tokenId(address _tokenAddress) external view returns (uint256 _tokenId);
+
+  function tokensOracle(address _tokenAddress) external view returns (IOracleRelay _oracle);
+
   /*///////////////////////////////////////////////////////////////
                             LOGIC
     //////////////////////////////////////////////////////////////*/
+
+  function initialize() external;
 
   function amountToSolvency(uint96 _id) external view returns (uint256 _amountToSolvency);
 
@@ -117,8 +180,6 @@ interface IVaultController {
   function vaultBorrowingPower(uint96 _id) external view returns (uint192 _vaultBorrowingPower);
 
   function tokensToLiquidate(uint96 _id, address _token) external view returns (uint256 _tokensToLiquidate);
-
-  function tokenId(address _tokenAddress) external view returns (uint256 _tokenId);
 
   function checkVault(uint96 _id) external view returns (bool _overCollateralized);
 
@@ -150,10 +211,6 @@ interface IVaultController {
   function pause() external;
 
   function unpause() external;
-
-  function getOracleMaster() external view returns (address _oracleMasterAddress);
-
-  function registerOracleMaster(address _masterOracleAddress) external;
 
   function registerCurveMaster(address _masterCurveAddress) external;
 

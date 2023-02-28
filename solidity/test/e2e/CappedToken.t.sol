@@ -33,14 +33,14 @@ contract E2ECap is CommonE2EBase {
     string memory _label,
     string memory _name,
     string memory _symbol,
-    address _underlyingTokenAddress
+    address _underlyingTokenAddress,
+    address _oracle
   ) internal returns (CappedToken _cappedToken) {
     vm.startPrank(_owner);
     _cappedToken = new CappedToken();
     label(address(_cappedToken), _label);
     _cappedToken.initialize(_name, _symbol, _underlyingTokenAddress);
-    oracleMaster.setRelay(address(_cappedToken), address(anchoredViewAave));
-    vaultController.registerErc20(address(_cappedToken), OTHER_LTV, address(_cappedToken), LIQUIDATION_INCENTIVE);
+    vaultController.registerErc20(address(_cappedToken), OTHER_LTV, _oracle, LIQUIDATION_INCENTIVE);
     vm.stopPrank();
   }
 
@@ -130,7 +130,8 @@ contract E2ECap is CommonE2EBase {
 
   function testDepositSecondToken() public {
     // deploy DYDX capped Token
-    dydxCappedToken = _createCappedToken(frank, 'dydxCappedToken', 'CappedDydx', 'cDydx', DYDX_ADDRESS);
+    dydxCappedToken =
+      _createCappedToken(frank, 'dydxCappedToken', 'CappedDydx', 'cDydx', DYDX_ADDRESS, address(anchoredViewDydx));
 
     // set cap
     _setCap(dydxCappedToken, DYDX_CAP);
@@ -143,7 +144,8 @@ contract E2ECap is CommonE2EBase {
 
   function testWithdrawSecondToken() public {
     // Deploy DYDX capped Token
-    dydxCappedToken = _createCappedToken(frank, 'dydxCappedToken', 'CappedDydx', 'cDydx', DYDX_ADDRESS);
+    dydxCappedToken =
+      _createCappedToken(frank, 'dydxCappedToken', 'CappedDydx', 'cDydx', DYDX_ADDRESS, address(anchoredViewDydx));
 
     // set cap
     _setCap(dydxCappedToken, DYDX_CAP);
@@ -167,7 +169,7 @@ contract E2ECap is CommonE2EBase {
     // check borrow power
     uint256 _borrowPower = vaultController.vaultBorrowingPower(uint96(bobVaultId));
     uint256 _balance = aaveCappedToken.balanceOf(address(bobVault));
-    uint256 _price = oracleMaster.getLivePrice(address(aaveCappedToken));
+    uint256 _price = vaultController.tokensOracle(address(aaveCappedToken)).currentValue();
     uint256 _totalValue = (_balance * _price) / 1e18;
     uint256 _expectedBorrowPower = (_totalValue * AAVE_LTV) / 1e18;
     assert(_borrowPower == _expectedBorrowPower);

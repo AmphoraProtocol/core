@@ -12,13 +12,13 @@ import {AmphoraProtocolTokenDelegate} from '@contracts/governance/TokenDelegate.
 import {ChainlinkOracleRelay} from '@contracts/periphery/ChainlinkOracleRelay.sol';
 import {AnchoredViewRelay} from '@contracts/periphery/AnchoredViewRelay.sol';
 import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
-import {OracleMaster} from '@contracts/periphery/OracleMaster.sol';
 import {UniswapV3OracleRelay} from '@contracts/periphery/UniswapV3OracleRelay.sol';
 import {UniswapV3TokenOracleRelay} from '@contracts/periphery/UniswapV3TokenOracleRelay.sol';
 import {ThreeLines0_100} from '@contracts/utils/ThreeLines0_100.sol';
 
 import {IWUSDA} from '@interfaces/core/IWUSDA.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
+import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
 
 import {IVote} from '@contracts/_external/IVote.sol';
 import {TestConstants} from '@test/utils/TestConstants.sol';
@@ -39,11 +39,10 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   // Curve Master and ThreeLines0_100 curve
   CurveMaster public curveMaster;
   ThreeLines0_100 public threeLines;
-  // Oracle Master
-  OracleMaster public oracleMaster;
   // uniswapv3 oracles
   UniswapV3OracleRelay public uniswapRelayEthUsdc;
   UniswapV3OracleRelay public uniswapRelayUniUsdc;
+  UniswapV3OracleRelay public uniswapRelayDydxWeth;
   UniswapV3TokenOracleRelay public uniswapRelayAaveWeth;
   // Chainlink oracles
   ChainlinkOracleRelay public chainLinkUni;
@@ -53,6 +52,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   AnchoredViewRelay public anchoredViewEth;
   AnchoredViewRelay public anchoredViewUni;
   AnchoredViewRelay public anchoredViewAave;
+  AnchoredViewRelay public anchoredViewDydx;
 
   IWUSDA public wusda;
   IERC20 public susd = IERC20(label(SUSD_ADDRESS, 'SUSD'));
@@ -129,10 +129,6 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     curveMaster = new CurveMaster();
     label(address(curveMaster), 'CurveMaster');
 
-    // Deploy OracleMaster
-    oracleMaster = new OracleMaster();
-    label(address(oracleMaster), 'OracleMaster');
-
     // Deploy AAVE capped Token
     aaveCappedToken = new CappedToken();
     label(address(aaveCappedToken), 'aaveCappedToken');
@@ -141,9 +137,6 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     // Add curveMaster to VaultController
     vaultController.registerCurveMaster(address(curveMaster));
 
-    // Add oracleMaster to VaultController
-    vaultController.registerOracleMaster(address(oracleMaster));
-
     // Set VaultController address for usdatoken
     usdaToken.addVaultController(address(vaultController));
 
@@ -151,34 +144,32 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     uniswapRelayEthUsdc = new UniswapV3OracleRelay(60, USDC_WETH_POOL_ADDRESS, true, 1_000_000_000_000, 1);
     // Deploy uniswapRelayUniUsdc oracle relay
     uniswapRelayUniUsdc = new UniswapV3OracleRelay(60, USDC_UNI_POOL_ADDRESS, true, 1_000_000_000_000, 1);
-    // Deploy uniswapRelayUniUsdc oracle relay
+    // Deploys uniswapRelayDydxWeth oracle relay
+    uniswapRelayDydxWeth = new UniswapV3OracleRelay(60, DYDX_WETH_POOL_ADDRESS, true, 1_000_000_000_000, 1);
+    // Deploy uniswapRelayAaveWeth oracle relay
     uniswapRelayAaveWeth = new UniswapV3TokenOracleRelay(60, AAVE_WETH_POOL_ADDRESS, false, 1, 1);
     // Deploy chainLinkUni oracle relay
     chainLinkUni = new ChainlinkOracleRelay(CHAINLINK_UNI_FEED_ADDRESS, 10_000_000_000, 1);
     // Deploy chainlinkEth oracle relay
     chainlinkEth = new ChainlinkOracleRelay(CHAINLINK_ETH_FEED_ADDRESS, 10_000_000_000, 1);
-    // Deploy chainlinkEth oracle relay
+    // Deploy chainlinkAave oracle relay
     chainlinkAave = new ChainlinkOracleRelay(CHAINLINK_AAVE_FEED_ADDRESS, 10_000_000_000, 1);
     // Deploy anchoredViewEth relay
     anchoredViewEth = new AnchoredViewRelay(address(uniswapRelayEthUsdc), address(chainlinkEth), 10, 100);
-    // Deploy anchoredViewEth relay
+    // Deploy anchoredViewUni relay
     anchoredViewUni = new AnchoredViewRelay(address(uniswapRelayUniUsdc), address(chainLinkUni), 30, 100);
-    // Deploy anchoredViewEth relay
+    // Deploy anchoredViewAave relay
     anchoredViewAave = new AnchoredViewRelay(address(uniswapRelayAaveWeth), address(chainlinkAave), 10, 100);
-
-    // Set first relay for oracle master
-    oracleMaster.setRelay(UNI_ADDRESS, address(anchoredViewUni));
-    // Set second relay for oracle master
-    oracleMaster.setRelay(WETH_ADDRESS, address(anchoredViewEth));
-    // Set second relay for oracle master
-    oracleMaster.setRelay(address(aaveCappedToken), address(anchoredViewAave));
+    // Deploy anchoredViewDydx relay
+    // We use same oracle because chainlink doesnt support dydx/usd feed
+    anchoredViewDydx = new AnchoredViewRelay(address(uniswapRelayDydxWeth), address(uniswapRelayDydxWeth), 10, 100);
 
     // Register WETH as acceptable erc20 to vault controller
-    vaultController.registerErc20(WETH_ADDRESS, WETH_LTV, WETH_ADDRESS, LIQUIDATION_INCENTIVE);
+    vaultController.registerErc20(WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE);
     // Register UNI as acceptable erc20 to vault controller
-    vaultController.registerErc20(UNI_ADDRESS, UNI_LTV, UNI_ADDRESS, LIQUIDATION_INCENTIVE);
+    vaultController.registerErc20(UNI_ADDRESS, UNI_LTV, address(anchoredViewUni), LIQUIDATION_INCENTIVE);
     // Register cAAVE as acceptable erc20 to vault controller
-    vaultController.registerErc20(address(aaveCappedToken), AAVE_LTV, address(aaveCappedToken), LIQUIDATION_INCENTIVE);
+    vaultController.registerErc20(address(aaveCappedToken), AAVE_LTV, address(anchoredViewAave), LIQUIDATION_INCENTIVE);
     // Register USDA as acceptable erc20 to vault controller
     vaultController.registerUSDA(address(usdaToken));
 
