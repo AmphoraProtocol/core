@@ -16,6 +16,7 @@ import {UniswapV3OracleRelay} from '@contracts/periphery/UniswapV3OracleRelay.so
 import {UniswapV3TokenOracleRelay} from '@contracts/periphery/UniswapV3TokenOracleRelay.sol';
 import {ThreeLines0_100} from '@contracts/utils/ThreeLines0_100.sol';
 
+import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {IWUSDA} from '@interfaces/core/IWUSDA.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
@@ -33,6 +34,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   USDA public usdaToken;
   // VaultControllers
   VaultController public vaultController;
+  VaultController public vaultController2;
   // Capped Token
   CappedToken public aaveCappedToken;
   CappedToken public dydxCappedToken;
@@ -101,6 +103,8 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   function setUp() public virtual {
     vm.createSelectFork(vm.rpcUrl('mainnet'), FORK_BLOCK);
 
+    address[] memory _tokens = new address[](1);
+
     // Transfer some susd, weth and uni to users
     _dealSUSD(andy, andySUSDBalance);
     _dealSUSD(dave, daveSUSD);
@@ -114,7 +118,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     // Deploy VaultController
     vaultController = new VaultController();
     label(address(vaultController), 'VaultController');
-    vaultController.initialize();
+    vaultController.initialize(IVaultController(address(0)), _tokens);
 
     // Deploy and initialize USDA
     usdaToken = new USDA();

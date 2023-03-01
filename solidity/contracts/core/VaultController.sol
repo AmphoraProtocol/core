@@ -67,8 +67,13 @@ contract VaultController is
     _;
   }
 
-  /// @notice no initialization arguments.
-  function initialize() external override initializer {
+  /// @notice Can initialize collaterals from an older vault controller
+  /// @param _oldVaultController The old vault controller
+  /// @param _tokenAddresses The addresses of the collateral we want to take information for
+  function initialize(
+    IVaultController _oldVaultController,
+    address[] memory _tokenAddresses
+  ) external override initializer {
     __Ownable_init();
     __Pausable_init();
     interest = Interest(uint64(block.timestamp), 1e18);
@@ -77,6 +82,8 @@ contract VaultController is
     vaultsMinted = 0;
     tokensRegistered = 0;
     totalBaseLiability = 0;
+
+    if (address(_oldVaultController) != address(0)) _migrateCollateralsFrom(_oldVaultController, _tokenAddresses);
   }
 
   /// @notice Returns the latest interest factor
@@ -117,6 +124,40 @@ contract VaultController is
   /// @return _oracle The address of the token's oracle
   function tokensOracle(address _tokenAddress) external view override returns (IOracleRelay _oracle) {
     return tokenOracle[_tokenAddress];
+  }
+
+  /// @notice Returns the ltv of a given tokenId
+  /// @param _tokenId The id of the token
+  /// @return _ltv The loan-to-value of a token
+  function tokenLTV(uint256 _tokenId) external view override returns (uint256 _ltv) {
+    return tokenIdTokenLTV[_tokenId];
+  }
+
+  /// @notice Returns the liquidation incentive of an accepted token collateral
+  /// @param _token The address of the token
+  /// @return _liquidationIncentive The liquidation incentive of the token
+  function tokenLiquidationIncentive(address _token) external view override returns (uint256 _liquidationIncentive) {
+    return tokenAddressLiquidationIncentive[_token];
+  }
+
+  /// @notice Migrates all collateral information from previous vault controller
+  /// @param _oldVaultController The address of the vault controller to take the information from
+  /// @param _tokenAddresses The addresses of the tokens we want to target
+  function _migrateCollateralsFrom(IVaultController _oldVaultController, address[] memory _tokenAddresses) internal {
+    uint256 _tokenId;
+    uint256 _tokensRegistered;
+    for (uint256 _i = 0; _i < _tokenAddresses.length; _i++) {
+      _tokenId = _oldVaultController.tokenId(_tokenAddresses[_i]);
+      if (_tokenId == 0) revert VaultController_WrongCollateralAddress();
+      _tokensRegistered++;
+      tokenAddressTokenId[_tokenAddresses[_i]] = _tokensRegistered;
+      tokenOracle[_tokenAddresses[_i]] = _oldVaultController.tokensOracle(_tokenAddresses[_i]);
+      tokenIdTokenLTV[_tokensRegistered] = _oldVaultController.tokenLTV(_tokenId);
+      tokenAddressLiquidationIncentive[_tokenAddresses[_i]] =
+        _oldVaultController.tokenLiquidationIncentive(_tokenAddresses[_i]);
+      enabledTokens.push(_tokenAddresses[_i]);
+    }
+    tokensRegistered += _tokensRegistered;
   }
 
   /// @notice Creates a new vault and returns it's address

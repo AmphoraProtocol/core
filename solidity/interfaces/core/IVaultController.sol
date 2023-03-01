@@ -124,6 +124,9 @@ interface IVaultController {
   /// @notice Thrown when vault does not exist
   error VaultController_VaultDoesNotExist();
 
+  /// @notice Thrown when migrating collaterals to a new vault controller
+  error VaultController_WrongCollateralAddress();
+
   /*///////////////////////////////////////////////////////////////
                             STRUCTS
     //////////////////////////////////////////////////////////////*/
@@ -167,11 +170,15 @@ interface IVaultController {
 
   function tokensOracle(address _tokenAddress) external view returns (IOracleRelay _oracle);
 
+  function tokenLTV(uint256 _tokenId) external view returns (uint256 _ltv);
+
+  function tokenLiquidationIncentive(address _token) external view returns (uint256 _liquidationIncentive);
+
   /*///////////////////////////////////////////////////////////////
                             LOGIC
     //////////////////////////////////////////////////////////////*/
 
-  function initialize() external;
+  function initialize(IVaultController _oldVaultController, address[] memory _tokenAddresses) external;
 
   function amountToSolvency(uint96 _id) external view returns (uint256 _amountToSolvency);
 

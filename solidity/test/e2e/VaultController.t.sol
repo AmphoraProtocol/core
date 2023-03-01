@@ -3,6 +3,7 @@ pragma solidity >=0.8.4 <0.9.0;
 
 import {CommonE2EBase} from '@test/e2e/Common.sol';
 
+import {VaultController} from '@contracts/core/VaultController.sol';
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
 
@@ -105,6 +106,22 @@ contract E2EVaultController is CommonE2EBase {
   /**
    * ----------------------- Public Function Tests -----------------------
    */
+
+  function testInitializeFromOldVaultController() public {
+    address[] memory _tokens = new address[](1);
+    _tokens[0] = WETH_ADDRESS;
+    vm.startPrank(frank);
+    // Deploy the new vault controller
+    vaultController2 = new VaultController();
+    vaultController2.initialize(IVaultController(address(vaultController)), _tokens);
+    vm.stopPrank();
+
+    assertEq(address(vaultController2.tokensOracle(WETH_ADDRESS)), address(anchoredViewEth));
+    assertEq(vaultController2.tokensRegistered(), 1);
+    assertEq(vaultController2.tokenId(WETH_ADDRESS), 1);
+    assertEq(vaultController2.tokenIdTokenLTV(1), WETH_LTV);
+    assertEq(vaultController2.tokenAddressLiquidationIncentive(WETH_ADDRESS), LIQUIDATION_INCENTIVE);
+  }
 
   function testMintVault() public {
     assertEq(bobVault.minter(), bob);

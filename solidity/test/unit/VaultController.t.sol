@@ -16,19 +16,27 @@ import {IERC20} from 'isolmate/interfaces/tokens/IERC20.sol';
 import {DSTestPlus} from 'solidity-utils/test/DSTestPlus.sol';
 import {TestConstants} from '@test/utils/TestConstants.sol';
 
+contract VaultControllerForTest is VaultController {
+  function migrateCollateralsFrom(IVaultController _oldVaultController, address[] memory _tokenAddresses) public {
+    _migrateCollateralsFrom(_oldVaultController, _tokenAddresses);
+  }
+}
+
 abstract contract Base is DSTestPlus, TestConstants {
   address public governance = label(newAddress(), 'governance');
   address public alice = label(newAddress(), 'alice');
   VaultController public vaultController;
+  VaultControllerForTest public mockVaultController;
   UniswapV3OracleRelay public uniswapRelayEthUsdc;
   ChainlinkOracleRelay public chainlinkEth;
   AnchoredViewRelay public anchoredViewEth;
   USDA public usdaToken;
 
   function setUp() public virtual {
+    address[] memory _tokens = new address[](1);
     vm.startPrank(governance);
     vaultController = new VaultController();
-    vaultController.initialize();
+    vaultController.initialize(IVaultController(address(0)), _tokens);
 
     usdaToken = new USDA();
     usdaToken.initialize(SUSD_ADDRESS);
@@ -57,6 +65,26 @@ contract UnitVaultControllerInitialize is Base {
     assertEq(vaultController.vaultsMinted(), 0);
     assertEq(vaultController.tokensRegistered(), 0);
     assertEq(vaultController.totalBaseLiability(), 0);
+  }
+}
+
+contract UnitVaultControllerMigrateCollateralsFrom is Base {
+  function testMigrateCollaterallsFrom() public {
+    address[] memory _tokens = new address[](1);
+    _tokens[0] = WETH_ADDRESS;
+    vm.startPrank(governance);
+    // Add erc20 collateral in first vault controller
+    vaultController.registerErc20(WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE);
+    // Deploy the new vault controller
+    mockVaultController = new VaultControllerForTest();
+    mockVaultController.migrateCollateralsFrom(IVaultController(address(vaultController)), _tokens);
+    vm.stopPrank();
+
+    assertEq(address(mockVaultController.tokensOracle(WETH_ADDRESS)), address(anchoredViewEth));
+    assertEq(mockVaultController.tokensRegistered(), 1);
+    assertEq(mockVaultController.tokenId(WETH_ADDRESS), 1);
+    assertEq(mockVaultController.tokenIdTokenLTV(1), WETH_LTV);
+    assertEq(mockVaultController.tokenAddressLiquidationIncentive(WETH_ADDRESS), LIQUIDATION_INCENTIVE);
   }
 }
 
@@ -147,7 +175,12 @@ contract UnitVaultControllerRegisterCurveMaster is Base {
 contract UnitVaultControllerRegisterERC20 is Base {
   event RegisteredErc20(address _tokenAddress, uint256 _ltv, address _oracleAddress, uint256 _liquidationIncentive);
 
-  function testRevertIfRegisterFromNonOwner(IERC20 _token, address _oracle, uint256 _ltv, uint256 _liquidationIncentive) public {
+  function testRevertIfRegisterFromNonOwner(
+    IERC20 _token,
+    address _oracle,
+    uint256 _ltv,
+    uint256 _liquidationIncentive
+  ) public {
     vm.expectRevert('Ownable: caller is not the owner');
     vm.prank(alice);
     vaultController.registerErc20(address(_token), _ltv, _oracle, _liquidationIncentive);
@@ -177,7 +210,7 @@ contract UnitVaultControllerRegisterERC20 is Base {
 
     vm.prank(governance);
     vaultController.registerErc20(address(_token), WETH_LTV, _oracle, LIQUIDATION_INCENTIVE);
-    assertEq(address(vaultController.tokenOracle(address(_token))), _oracle);
+    assertEq(address(vaultController.tokensOracle(address(_token))), _oracle);
     assertEq(vaultController.tokensRegistered(), 1);
     assertEq(vaultController.tokenId(address(_token)), 1);
     assertEq(vaultController.tokenIdTokenLTV(1), WETH_LTV);
@@ -186,7 +219,9 @@ contract UnitVaultControllerRegisterERC20 is Base {
 }
 
 contract UnitVaultControllerUpdateERC20 is Base {
-  event UpdateRegisteredErc20(address _tokenAddress, uint256 _ltv, address _oracleAddress, uint256 _liquidationIncentive);
+  event UpdateRegisteredErc20(
+    address _tokenAddress, uint256 _ltv, address _oracleAddress, uint256 _liquidationIncentive
+  );
 
   function setUp() public virtual override {
     super.setUp();
@@ -194,7 +229,12 @@ contract UnitVaultControllerUpdateERC20 is Base {
     vaultController.registerErc20(WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE);
   }
 
-  function testRevertIfUpdateFromNonOwner(IERC20 _token, address _oracle, uint64 _ltv, uint256 _liquidationIncentive) public {
+  function testRevertIfUpdateFromNonOwner(
+    IERC20 _token,
+    address _oracle,
+    uint64 _ltv,
+    uint256 _liquidationIncentive
+  ) public {
     vm.expectRevert('Ownable: caller is not the owner');
     vm.prank(alice);
     vaultController.updateRegisteredErc20(address(_token), _ltv, _oracle, _liquidationIncentive);
@@ -222,7 +262,7 @@ contract UnitVaultControllerUpdateERC20 is Base {
 
     vm.prank(governance);
     vaultController.updateRegisteredErc20(WETH_ADDRESS, _ltv, _oracle, LIQUIDATION_INCENTIVE);
-    assertEq(address(vaultController.tokenOracle(WETH_ADDRESS)), _oracle);
+    assertEq(address(vaultController.tokensOracle(WETH_ADDRESS)), _oracle);
     assertEq(vaultController.tokenIdTokenLTV(1), _ltv);
     assertEq(vaultController.tokenAddressLiquidationIncentive(WETH_ADDRESS), LIQUIDATION_INCENTIVE);
   }
