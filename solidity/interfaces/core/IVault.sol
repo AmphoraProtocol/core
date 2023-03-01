@@ -16,10 +16,17 @@ interface IVault {
 
   /**
    * @notice Emited after withdrawing a token
-   * @param _token The address of the token to deposit
-   * @param _amount The amount to deposit
+   * @param _token The address of the token to withdraw
+   * @param _amount The amount to withdraw
    */
   event Withdraw(address _token, uint256 _amount);
+
+  /**
+   * @notice Emited after recovering dust from vault
+   * @param _token The address of the token to recover
+   * @param _amount The amount to recover
+   */
+  event Recover(address _token, uint256 _amount);
 
   /*///////////////////////////////////////////////////////////////
                               ERRORS
@@ -103,6 +110,11 @@ interface IVault {
    * @param _amount The amount of the token to withdraw
    */
   function withdrawERC20(address _token, uint256 _amount) external;
+
+  /// @notice Recovers dust from vault
+  /// this can only be called by the minter
+  /// @param _tokenAddress address of erc20 token
+  function recoverDust(address _tokenAddress) external;
 
   /**
    * @notice Function used by the VaultController to transfer tokens

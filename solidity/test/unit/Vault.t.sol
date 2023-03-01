@@ -145,3 +145,73 @@ contract UnitVaultWithdrawERC20 is Base {
     vault.withdrawERC20(address(_mockToken), 1 ether);
   }
 }
+
+contract UnitVaultRecoverDust is Base {
+  event Recover(address _token, uint256 _amount);
+
+  uint256 internal _dust = 10 ether;
+  uint256 internal _deposit = 5 ether;
+
+  function setUp() public virtual override {
+    super.setUp();
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenId.selector, address(_mockToken)),
+      abi.encode(1)
+    );
+
+    vm.prank(vaultOwner);
+    vault.depositERC20(address(_mockToken), _deposit);
+
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenId.selector, address(_mockToken)),
+      abi.encode(1)
+    );
+    vm.mockCall(
+      address(mockVaultController), abi.encodeWithSelector(IVaultController.checkVault.selector, 1), abi.encode(true)
+    );
+
+    vm.mockCall(address(_mockToken), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(_dust + _deposit));
+  }
+
+  function testRevertIfNotVaultOwner(address _token) public {
+    vm.expectRevert(IVault.Vault_NotMinter.selector);
+    vm.prank(newAddress());
+    vault.recoverDust(_token);
+  }
+
+  function testRevertIfTokenNotRegistered(address _token) public {
+    vm.expectRevert(IVault.Vault_TokenNotRegistered.selector);
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenId.selector, address(_token)),
+      abi.encode(0)
+    );
+    vm.prank(vaultOwner);
+    vault.recoverDust(_token);
+  }
+
+  function testRevertIfOverWithdrawal() public {
+    vm.mockCall(
+      address(mockVaultController), abi.encodeWithSelector(IVaultController.checkVault.selector, 1), abi.encode(false)
+    );
+    vm.expectRevert(IVault.Vault_OverWithdrawal.selector);
+    vm.prank(vaultOwner);
+    vault.recoverDust(address(_mockToken));
+  }
+
+  function testRevertIfZeroDust() public {
+    vm.mockCall(address(_mockToken), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(_deposit));
+    vm.expectRevert(IVault.Vault_AmountZero.selector);
+    vm.prank(vaultOwner);
+    vault.recoverDust(address(_mockToken));
+  }
+
+  function testRecoverDust() public {
+    vm.expectEmit(false, false, false, true);
+    emit Recover(address(_mockToken), _dust);
+    vm.prank(vaultOwner);
+    vault.recoverDust(address(_mockToken));
+  }
+}

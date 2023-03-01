@@ -99,6 +99,21 @@ contract Vault is IVault, Context {
     emit Withdraw(_tokenAddress, _amount);
   }
 
+  /// @notice Recovers dust from vault
+  /// this can only be called by the minter
+  /// @param _tokenAddress address of erc20 token
+  function recoverDust(address _tokenAddress) external override onlyMinter {
+    if (CONTROLLER.tokenId(_tokenAddress) == 0) revert Vault_TokenNotRegistered();
+    IERC20Upgradeable _token = IERC20Upgradeable(_tokenAddress);
+    uint256 _dust = _token.balanceOf(address(this)) - balances[_tokenAddress];
+    if (_dust == 0) revert Vault_AmountZero();
+    // transfer the token to the owner
+    SafeERC20Upgradeable.safeTransfer(_token, _msgSender(), _dust);
+    //  check if the account is solvent just in case of any attacks
+    if (!CONTROLLER.checkVault(vaultInfo.id)) revert Vault_OverWithdrawal();
+    emit Recover(_tokenAddress, _dust);
+  }
+
   /// @notice function used by the VaultController to transfer tokens
   /// callable by the VaultController only
   /// @param _token token to transfer
