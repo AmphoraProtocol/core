@@ -9,10 +9,21 @@ import {IUSDA} from '@interfaces/core/IUSDA.sol';
 import {DSTestPlus} from 'solidity-utils/test/DSTestPlus.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
+contract USDAForTest is USDA {
+  /// Overriding this functions to test that the methods can't be called again afterwards
+  function erc20DetailedInitForTest(string memory __name, string memory __symbol, uint8 __decimals) public {
+    _erc20DetailedInit(__name, __symbol, __decimals);
+  }
+
+  function uFragmentsInitForTest(string memory __name, string memory __symbol) public {
+    _UFragments_init(__name, __symbol);
+  }
+}
+
 abstract contract Base is DSTestPlus {
   uint256 internal constant _DELTA = 100;
   uint256 internal _susdAmount = 500 ether;
-  USDA internal _usda;
+  USDAForTest internal _usda;
   IERC20 internal _mockToken = IERC20(mockContract(newAddress(), 'mockToken'));
   address internal _vaultController = mockContract(newAddress(), 'mockVaultController');
   address internal _vaultController2 = mockContract(newAddress(), 'mockVaultController2');
@@ -30,12 +41,28 @@ abstract contract Base is DSTestPlus {
       abi.encodeWithSelector(IVaultController.calculateInterest.selector),
       abi.encode(1 ether)
     );
-
     // solhint-disable-next-line reentrancy
-    _usda = new USDA();
+    _usda = new USDAForTest();
     _usda.initialize(address(_mockToken));
     _usda.addVaultController(_vaultController);
     _usda.setPauser(address(this));
+  }
+}
+
+contract UnitUSDAInit is Base {
+  function testRevertsWhenInitializingAgain() public {
+    vm.expectRevert('Initializable: contract is already initialized');
+    _usda.initialize(address(_mockToken));
+  }
+
+  function testRevertsWhenInitializingUFragmentsAgain() public {
+    vm.expectRevert('Initializable: contract is not initializing');
+    _usda.uFragmentsInitForTest('NAME', 'SYMBOL');
+  }
+
+  function testRevertsWhenInitializingOwnableAgain() public {
+    vm.expectRevert('Initializable: contract is not initializing');
+    _usda.erc20DetailedInitForTest('name', 'symbol', 18);
   }
 }
 
@@ -413,9 +440,7 @@ contract UnitUSDADonate is Base {
     uint256 _balanceOtherUserAfter = _usda.balanceOf(_otherUser);
     uint256 _balanceAdminAfter = _usda.balanceOf(address(this));
 
-    assertApproxEqAbs(
-      _balanceOtherUserBefore + (_amount - _amountToZeroAddress) / 2, _balanceOtherUserAfter, _DELTA
-    );
+    assertApproxEqAbs(_balanceOtherUserBefore + (_amount - _amountToZeroAddress) / 2, _balanceOtherUserAfter, _DELTA);
 
     assertApproxEqAbs(_balanceAdminBefore + (_amount - _amountToZeroAddress) / 2, _balanceAdminAfter, _DELTA);
   }

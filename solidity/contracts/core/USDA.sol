@@ -61,7 +61,7 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
   /// @param _reserveAddr the address of sUSD
   /// @dev consider adding decimals?
   function initialize(address _reserveAddr) public override initializer {
-    __UFragments_init('USDA Token', 'USDA');
+    _UFragments_init('USDA Token', 'USDA');
     __Pausable_init();
     reserve = IERC20(_reserveAddr);
   }
