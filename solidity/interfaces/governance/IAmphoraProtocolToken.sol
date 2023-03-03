@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 import {ITokenEvents} from '@interfaces/governance/ITokenEvents.sol';
 
 /// @title interface to interact with TokenDelgate
-interface ITokenDelegate is ITokenEvents {
+interface IAmphoraProtocolToken is ITokenEvents {
   /*///////////////////////////////////////////////////////////////
                             ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -42,6 +42,15 @@ interface ITokenDelegate is ITokenEvents {
 
   /// @notice Thrown when transfer exceeds balance
   error TokenDelegate_TransferExceedsBalance();
+
+  /*///////////////////////////////////////////////////////////////
+                            STRUCT
+    //////////////////////////////////////////////////////////////*/
+  /// @notice A checkpoint for marking number of votes from a given block
+  struct Checkpoint {
+    uint32 fromBlock;
+    uint96 votes;
+  }
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC

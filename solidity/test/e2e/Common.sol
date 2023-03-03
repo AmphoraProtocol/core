@@ -8,7 +8,9 @@ import {DSTestPlus} from 'solidity-utils/test/DSTestPlus.sol';
 import {VaultController} from '@contracts/core/VaultController.sol';
 import {CappedToken} from '@contracts/utils/CappedToken.sol';
 import {USDA} from '@contracts/core/USDA.sol';
-import {AmphoraProtocolTokenDelegate} from '@contracts/governance/TokenDelegate.sol';
+import {AmphoraProtocolToken} from '@contracts/governance/AmphoraProtocolToken.sol';
+import {GovernorCharlieDelegate} from '@contracts/governance/GovernorDelegate.sol';
+import {GovernorCharlieDelegator} from '@contracts/governance/GovernorDelegator.sol';
 import {ChainlinkOracleRelay} from '@contracts/periphery/ChainlinkOracleRelay.sol';
 import {AnchoredViewRelay} from '@contracts/periphery/AnchoredViewRelay.sol';
 import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
@@ -29,7 +31,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   uint256 public constant FORK_BLOCK = 15_452_788;
 
   // AMPH token
-  AmphoraProtocolTokenDelegate public amphToken;
+  AmphoraProtocolToken public amphToken;
   // USDA token
   USDA public usdaToken;
   // VaultControllers
@@ -55,6 +57,9 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   AnchoredViewRelay public anchoredViewUni;
   AnchoredViewRelay public anchoredViewAave;
   AnchoredViewRelay public anchoredViewDydx;
+  // Governance
+  GovernorCharlieDelegate public governorDelegate;
+  GovernorCharlieDelegator public governorDelegator;
 
   IWUSDA public wusda;
   IERC20 public susd = IERC20(label(SUSD_ADDRESS, 'SUSD'));
@@ -99,6 +104,8 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   uint256 public daveSUSD = 10_000_000_000 ether;
   uint256 public bobAAVE = 1000 ether;
   uint256 public carolDYDX = 100 ether;
+
+  uint256 public initialAMPH = 100_000_000 ether;
 
   function setUp() public virtual {
     vm.createSelectFork(vm.rpcUrl('mainnet'), FORK_BLOCK);
@@ -182,6 +189,20 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
 
     // Set pauser
     usdaToken.setPauser(address(frank));
+
+    // Deploy governance
+    amphToken = new AmphoraProtocolToken();
+    amphToken.initialize(frank, initialAMPH);
+
+    governorDelegate = new GovernorCharlieDelegate();
+    governorDelegator = new GovernorCharlieDelegator(address(amphToken), address(governorDelegate));
+
+    usdaToken.setPauser(address(governorDelegator));
+
+    usdaToken.transferOwnership(address(governorDelegator));
+    vaultController.transferOwnership(address(governorDelegator));
+    aaveCappedToken.transferOwnership(address(governorDelegator));
+    curveMaster.transferOwnership(address(governorDelegator));
 
     // TODO: add checks for everything being set
     vm.stopPrank();

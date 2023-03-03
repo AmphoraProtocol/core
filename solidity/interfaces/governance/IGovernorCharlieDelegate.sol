@@ -123,6 +123,13 @@ interface IGovernorCharlieDelegate is IGovernorCharlieEvents {
       bytes[] memory _calldatas
     );
 
+  /**
+   * @notice Returns the proposal
+   * @param _proposalId the id of proposal
+   * @return _proposal The proposal
+   */
+  function getProposal(uint256 _proposalId) external view returns (Proposal memory _proposal);
+
   function getReceipt(uint256 _proposalId, address _voter) external view returns (Receipt memory _receipt);
 
   function state(uint256 _proposalId) external view returns (ProposalState _proposalState);

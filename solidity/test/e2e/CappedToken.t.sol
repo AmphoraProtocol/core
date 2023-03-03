@@ -45,7 +45,7 @@ contract E2ECap is CommonE2EBase {
   }
 
   function _setCap(CappedToken _cappedToken, uint256 _cap) internal {
-    vm.prank(frank);
+    vm.prank(address(governorDelegator));
     _cappedToken.setCap(_cap);
   }
 
@@ -130,8 +130,9 @@ contract E2ECap is CommonE2EBase {
 
   function testDepositSecondToken() public {
     // deploy DYDX capped Token
-    dydxCappedToken =
-      _createCappedToken(frank, 'dydxCappedToken', 'CappedDydx', 'cDydx', DYDX_ADDRESS, address(anchoredViewDydx));
+    dydxCappedToken = _createCappedToken(
+      address(governorDelegator), 'dydxCappedToken', 'CappedDydx', 'cDydx', DYDX_ADDRESS, address(anchoredViewDydx)
+    );
 
     // set cap
     _setCap(dydxCappedToken, DYDX_CAP);
@@ -144,8 +145,9 @@ contract E2ECap is CommonE2EBase {
 
   function testWithdrawSecondToken() public {
     // Deploy DYDX capped Token
-    dydxCappedToken =
-      _createCappedToken(frank, 'dydxCappedToken', 'CappedDydx', 'cDydx', DYDX_ADDRESS, address(anchoredViewDydx));
+    dydxCappedToken = _createCappedToken(
+      address(governorDelegator), 'dydxCappedToken', 'CappedDydx', 'cDydx', DYDX_ADDRESS, address(anchoredViewDydx)
+    );
 
     // set cap
     _setCap(dydxCappedToken, DYDX_CAP);

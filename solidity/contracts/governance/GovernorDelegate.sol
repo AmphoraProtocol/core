@@ -326,6 +326,15 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
   }
 
   /**
+   * @notice Returns the proposal
+   * @param _proposalId the id of proposal
+   * @return _proposal The proposal
+   */
+  function getProposal(uint256 _proposalId) external view returns (Proposal memory _proposal) {
+    _proposal = proposals[_proposalId];
+  }
+
+  /**
    * @notice Gets the receipt for a voter on a given proposal
    * @param _proposalId the id of proposal
    * @param _voter The address of the voter

@@ -2,10 +2,10 @@
 pragma solidity ^0.8.9;
 pragma experimental ABIEncoderV2;
 
-import {ITokenDelegate} from '@interfaces/governance/ITokenDelegate.sol';
-import {TokenDelegateStorageV1} from '@contracts/governance/TokenStorage.sol';
+import {IAmphoraProtocolToken} from '@interfaces/governance/IAmphoraProtocolToken.sol';
+import {Context} from '@openzeppelin/contracts/utils/Context.sol';
 
-contract AmphoraProtocolTokenDelegate is TokenDelegateStorageV1, ITokenDelegate {
+contract AmphoraProtocolToken is IAmphoraProtocolToken, Context {
   /// @notice The EIP-712 typehash for the contract's domain
   bytes32 public constant DOMAIN_TYPEHASH =
     keccak256('EIP712Domain(string name,uint256 chainId,address verifyingContract)');
@@ -20,6 +20,46 @@ contract AmphoraProtocolTokenDelegate is TokenDelegateStorageV1, ITokenDelegate 
   uint96 public constant UINT96_MAX = 2 ** 96 - 1;
 
   uint256 public constant UINT256_MAX = 2 ** 256 - 1;
+
+  /// @notice EIP-20 token decimals for this token
+  uint8 public constant decimals = 18;
+  /// @notice Active brains of Token
+  address public implementation;
+
+  /// @notice EIP-20 token name for this token
+  string public name = 'Amphora Protocol';
+
+  /// @notice EIP-20 token symbol for this token
+  string public symbol = 'AMPH';
+
+  /// @notice Total number of tokens in circulation
+  uint256 public totalSupply;
+
+  address public owner;
+
+  // Allowance amounts on behalf of others
+  mapping(address => mapping(address => uint96)) internal _allowances;
+
+  // Official record of token balances for each account
+  mapping(address => uint96) internal _balances;
+
+  /// @notice A record of each accounts delegate
+  mapping(address => address) public delegates;
+
+  /// @notice A record of votes checkpoints for each account, by index
+  mapping(address => mapping(uint32 => Checkpoint)) public checkpoints;
+
+  /// @notice The number of checkpoints for each account
+  mapping(address => uint32) public numCheckpoints;
+
+  /// @notice A record of states for signing / validating signatures
+  mapping(address => uint256) public nonces;
+
+  /// @notice onlyOwner modifier checks if sender is owner
+  modifier onlyOwner() {
+    require(owner == _msgSender(), 'onlyOwner: sender not owner');
+    _;
+  }
 
   /**
    * @notice Used to initialize the contract during delegator constructor

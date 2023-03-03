@@ -236,13 +236,13 @@ contract E2EVaultController is CommonE2EBase {
     uint256 _liability = bobVault.baseLiability();
     uint256 _partialLiability = _liability / 2; // half
 
-    vm.prank(frank);
+    vm.prank(address(governorDelegator));
     vaultController.pause();
     vm.warp(block.timestamp + 1);
     vm.expectRevert('Pausable: paused');
     vm.prank(bob);
     vaultController.repayUSDA(1, uint192(_liability / 2));
-    vm.prank(frank);
+    vm.prank(address(governorDelegator));
     vaultController.unpause();
     vm.warp(block.timestamp + 1);
 
