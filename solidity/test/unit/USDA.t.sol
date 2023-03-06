@@ -604,3 +604,37 @@ contract UnitUSDARemoveVaultControllerFromList is Base {
     _usda.mint(1);
   }
 }
+
+contract UnitUSDAReserveRatio is Base {
+  uint256 internal _depositAmount = 100 ether;
+  uint256 internal _initialSupply = 1 ether;
+
+  function setUp() public virtual override {
+    super.setUp();
+    _usda.deposit(_depositAmount);
+  }
+
+  function testReserveRatio() public {
+    uint256 _reserveRatio = (_depositAmount) * (1 ether) / (_depositAmount + _initialSupply);
+    assertEq(_usda.reserveRatio(), _reserveRatio);
+  }
+
+  function testReserveRatioAfterMint(uint64 _amount) public {
+    vm.prank(_vaultController);
+    _usda.vaultControllerMint(_vaultController, _amount);
+
+    uint256 _reserveRatio = (_depositAmount) * (1 ether) / (_depositAmount + _initialSupply + _amount);
+    assertEq(_usda.reserveRatio(), _reserveRatio);
+  }
+
+  function testReserveRatioDoesntChangeWithBalance(uint64 _amount) public {
+    vm.mockCall(
+      address(_mockToken),
+      abi.encodeWithSelector(IERC20.balanceOf.selector, address(_usda)),
+      abi.encode(_depositAmount + _amount)
+    );
+
+    uint256 _reserveRatio = (_depositAmount) * (1 ether) / (_depositAmount + _initialSupply);
+    assertEq(_usda.reserveRatio(), _reserveRatio);
+  }
+}

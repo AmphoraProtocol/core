@@ -206,19 +206,19 @@ contract E2EUSDA is CommonE2EBase {
   }
 
   function testTransferSUSDtoUSDA() public {
-    uint256 _reserve = susd.balanceOf(address(usdaToken));
+    uint256 _balance = susd.balanceOf(address(usdaToken));
     uint256 _reserveRatio = usdaToken.reserveRatio();
     uint256 _usdaSupply = usdaToken.totalSupply();
 
     vm.prank(dave);
     susd.transfer(address(usdaToken), 1 ether);
 
-    uint256 _reserveAfter = susd.balanceOf(address(usdaToken));
+    uint256 _balanceAfter = susd.balanceOf(address(usdaToken));
     uint256 _reserveRatioAfter = usdaToken.reserveRatio();
     uint256 _usdaSupplyAfter = usdaToken.totalSupply();
 
     assertEq(_usdaSupply, _usdaSupplyAfter);
-    assertGt(_reserveAfter, _reserve);
-    assertGt(_reserveRatioAfter, _reserveRatio);
+    assertGt(_balanceAfter, _balance);
+    assertEq(_reserveRatioAfter, _reserveRatio);
   }
 }

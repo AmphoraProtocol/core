@@ -310,7 +310,7 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
   /// @notice get reserve ratio
   /// @return _e18reserveRatio USDA reserve ratio
   function reserveRatio() external view override returns (uint192 _e18reserveRatio) {
-    _e18reserveRatio = _safeu192((reserve.balanceOf(address(this)) * EXP_SCALE) / _totalSupply);
+    _e18reserveRatio = _safeu192((reserveAmount * EXP_SCALE) / _totalSupply);
   }
 
   /*///////////////////////////////////////////////////////////////
