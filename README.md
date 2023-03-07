@@ -1,6 +1,24 @@
 # Amphora Protocol
 
-## repository
+## Deploy (Local)
+
+To deploy the protocol locally and run the deployment script we need to have `foundry` installed.
+
+1. Start anvil, which is our local Ethereum node.
+
+```
+anvil
+```
+
+2. After you run anvil, 10 accounts are gonna be auto-generated with their private keys. We can take one of the private keys and use it as the deployer wallet. So, add one of private keys to `.env` with key `DEPLOYER_ANVIL_LOCAL_PRIVATE_KEY`.
+
+3. The we are ready to run the `Deploy` script.
+
+```
+yarn deploy:local
+```
+
+## Repository
 
 ```
 ~~ Structure ~~

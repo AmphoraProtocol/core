@@ -42,8 +42,7 @@ abstract contract Deploy is Script, TestConstants {
     address[] memory _tokens = new address[](1);
 
     // TODO: pass deployer rights to governance?
-    vm.startBroadcast();
-    vm.startPrank(_deployer);
+    vm.startBroadcast(_deployer);
 
     // Deploy governance and amph token
     amphToken = new AmphoraProtocolToken();
@@ -94,7 +93,6 @@ abstract contract Deploy is Script, TestConstants {
     // Set pauser
     usda.setPauser(_deployer);
 
-    vm.stopPrank();
     vm.stopBroadcast();
   }
 }
@@ -109,6 +107,14 @@ contract DeployMainnet is Deploy {
 
 contract DeployGoerli is Deploy {
   address public deployer = vm.rememberKey(vm.envUint('DEPLOYER_GOERLI_PRIVATE_KEY'));
+
+  function run() external {
+    _deploy(deployer);
+  }
+}
+
+contract DeployLocal is Deploy {
+  address public deployer = vm.rememberKey(vm.envUint('DEPLOYER_ANVIL_LOCAL_PRIVATE_KEY'));
 
   function run() external {
     _deploy(deployer);
