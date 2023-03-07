@@ -9,8 +9,11 @@ import {IVault} from '@interfaces/core/IVault.sol';
 
 contract E2EVaultController is CommonE2EBase {
   uint256 public borrowAmount = 500 ether;
+  uint96 public bobsVaultId = 1;
+  uint96 public carolsVaultId = 2;
 
-  event BorrowUSDA(uint256 _vaultId, address _vaultAddress, uint256 _borrowAmount);
+  event Liquidate(uint256 vaultId, address assetAddress, uint256 usdaToRepurchase, uint256 tokensToLiquidate);
+  event BorrowUSDA(uint256 vaultId, address vaultAddress, uint256 borrowAmount);
 
   function setUp() public override {
     super.setUp();
@@ -18,7 +21,7 @@ contract E2EVaultController is CommonE2EBase {
     // Bob mints vault
     _mintVault(bob);
     // Since we only have 1 vault the id: 1 is gonna be Bob's vault
-    bobVault = IVault(vaultController.vaultAddress(1));
+    bobVault = IVault(vaultController.vaultAddress(bobsVaultId));
 
     vm.startPrank(bob);
     weth.approve(address(bobVault), bobWETH);
@@ -28,7 +31,7 @@ contract E2EVaultController is CommonE2EBase {
     // Carol mints vault
     _mintVault(carol);
     // Since we only have 2 vaults the id: 2 is gonna be Carol's vault
-    carolVault = IVault(vaultController.vaultAddress(2));
+    carolVault = IVault(vaultController.vaultAddress(carolsVaultId));
 
     vm.startPrank(carol);
     uni.approve(address(carolVault), carolUni);
@@ -101,6 +104,49 @@ contract E2EVaultController is CommonE2EBase {
     uint256 _gonBalance = usdaToken.scaledBalanceOf(_user);
 
     _balance = _gonBalance / _gpf;
+  }
+
+  /**
+   * @notice Returns the number of tokens to liquidate
+   * @param _vault The vault to target and liquidate
+   * @param _asset The asset to target
+   * @param _totalToLiquidate The expected number of tokens to liquidate
+   * @param _calculatedLiability The expected liability
+   * @return _finalTokensToLiquidate The final number of tokens to liquidate
+   */
+  function _calculatetokensToLiquidate(
+    IVault _vault,
+    address _asset,
+    uint256 _totalToLiquidate,
+    uint256 _calculatedLiability
+  ) internal view returns (uint256 _finalTokensToLiquidate) {
+    uint256 _assetPrice = vaultController.tokensOracle(_asset).currentValue();
+    uint256 _ltv = WETH_LTV;
+
+    uint256 _denominator = (_assetPrice * 1 ether - LIQUIDATION_INCENTIVE - _ltv) / 1 ether;
+    uint96 _vaultId = _vault.id();
+    uint192 _borrowingPower = vaultController.vaultBorrowingPower(_vaultId);
+
+    uint256 _maxTokens = ((_calculatedLiability - _borrowingPower) * 1 ether) / _denominator;
+
+    if (_totalToLiquidate > _maxTokens) _finalTokensToLiquidate = _maxTokens;
+    uint256 _vaultTokenBalance = _vault.tokenBalance(_asset);
+    if (_finalTokensToLiquidate > _vaultTokenBalance) _finalTokensToLiquidate = _vaultTokenBalance;
+  }
+
+  /**
+   * @notice Returns the total USDA to repurchase when liquidating
+   * @param _asset The asset's address to target
+   * @param _tokensToLiquidate The number of tokens to liquidate
+   * @return _usdaToRepurchase The number of USDA tokens to repurchase
+   */
+  function _calculateUSDAToRepurchase(
+    address _asset,
+    uint256 _tokensToLiquidate
+  ) internal view returns (uint256 _usdaToRepurchase) {
+    uint256 _assetPrice = vaultController.tokensOracle(_asset).currentValue();
+    uint256 _badFillPrice = ((_assetPrice * 1 ether) - LIQUIDATION_INCENTIVE) / 1 ether;
+    _usdaToRepurchase = (_badFillPrice * _tokensToLiquidate) / 1 ether;
   }
 
   /**
@@ -294,10 +340,6 @@ contract E2EVaultController is CommonE2EBase {
     vaultController.repayAllUSDA(1);
     vm.stopPrank();
     vm.warp(block.timestamp + 1);
-
-    // const args = await getArgs(repayResult)
-    // assert.equal(args.repayAmount.toString(), expectedUSDAliability.toString(), "Expected USDA amount repayed and burned")
-    // assert.equal(expectedBalanceWithInterest.toString(), args.repayAmount.toString(), "Expected balance at the time of repay is correct")
 
     vm.prank(bob);
     uint256 _newLiability = bobVault.baseLiability();

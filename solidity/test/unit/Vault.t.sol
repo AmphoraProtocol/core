@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4 <0.9.0;
 
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import {IERC20Upgradeable} from '@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol';
 
 import {Vault} from '@contracts/core/Vault.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
@@ -213,5 +214,28 @@ contract UnitVaultRecoverDust is Base {
     emit Recover(address(_mockToken), _dust);
     vm.prank(vaultOwner);
     vault.recoverDust(address(_mockToken));
+  }
+}
+
+contract UnitVaultControllerTransfer is Base {
+  uint256 internal _deposit = 5 ether;
+
+  function setUp() public virtual override {
+    super.setUp();
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenId.selector, address(_mockToken)),
+      abi.encode(1)
+    );
+
+    vm.prank(vaultOwner);
+    vault.depositERC20(address(_mockToken), _deposit);
+  }
+
+  function testControllerTransfer(address _to) public {
+    assertEq(vault.balances(address(_mockToken)), _deposit);
+    vm.prank(address(mockVaultController));
+    vault.controllerTransfer(address(_mockToken), _to, _deposit);
+    assertEq(vault.balances(address(_mockToken)), 0);
   }
 }

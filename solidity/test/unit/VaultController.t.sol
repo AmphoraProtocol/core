@@ -267,3 +267,49 @@ contract UnitVaultControllerUpdateERC20 is Base {
     assertEq(vaultController.tokenAddressLiquidationIncentive(WETH_ADDRESS), LIQUIDATION_INCENTIVE);
   }
 }
+
+contract UnitVaultControllerLiquidateVault is Base {
+  function setUp() public virtual override {
+    super.setUp();
+    vm.prank(governance);
+    vaultController.registerErc20(WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE);
+    vm.prank(alice);
+    vaultController.mintVault();
+  }
+
+  function testRevertIfPaused(uint96 _id, address _assetAddress, uint256 _tokensToLiquidate) public {
+    vm.startPrank(governance);
+    vaultController.pause();
+    vm.stopPrank();
+
+    vm.expectRevert('Pausable: paused');
+    vaultController.liquidateVault(_id, _assetAddress, _tokensToLiquidate);
+  }
+
+  function testRevertIfLiquidateZeroAmount(uint96 _id, address _assetAddress) public {
+    vm.expectRevert(IVaultController.VaultController_LiquidateZeroTokens.selector);
+    vaultController.liquidateVault(_id, _assetAddress, 0);
+  }
+
+  function testRevertIfLiquidateTokenNotRegistered(
+    uint96 _id,
+    address _assetAddress,
+    uint256 _tokensToLiquidate
+  ) public {
+    vm.assume(_assetAddress != WETH_ADDRESS && _tokensToLiquidate != 0);
+    vm.expectRevert(IVaultController.VaultController_TokenNotRegistered.selector);
+    vaultController.liquidateVault(_id, _assetAddress, _tokensToLiquidate);
+  }
+
+  function testRevertIfVaultDoesNotExist(uint96 _id, uint256 _tokensToLiquidate) public {
+    vm.assume(_tokensToLiquidate != 0 && _id != 1);
+    vm.expectRevert(IVaultController.VaultController_VaultDoesNotExist.selector);
+    vaultController.liquidateVault(_id, WETH_ADDRESS, _tokensToLiquidate);
+  }
+
+  function testRevertIfVaultIsSolvent(uint256 _tokensToLiquidate) public {
+    vm.assume(_tokensToLiquidate != 0);
+    vm.expectRevert(IVaultController.VaultController_VaultSolvent.selector);
+    vaultController.liquidateVault(1, WETH_ADDRESS, _tokensToLiquidate);
+  }
+}

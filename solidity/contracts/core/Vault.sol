@@ -121,6 +121,7 @@ contract Vault is IVault, Context {
   /// @param _amount amount of coins to move
   function controllerTransfer(address _token, address _to, uint256 _amount) external override onlyVaultController {
     SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(_token), _to, _amount);
+    balances[_token] -= _amount;
   }
 
   /// @notice function used by the VaultController to reduce a vault's liability
