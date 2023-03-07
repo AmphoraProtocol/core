@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {ERC20Detailed} from '@contracts/_external/ERC20Detailed.sol';
-import {ExponentialNoError} from '@contracts/_external/ExponentialNoError.sol';
+import {ERC20Detailed} from '@contracts/utils/ERC20Detailed.sol';
+import {ExponentialNoError} from '@contracts/utils/ExponentialNoError.sol';
 import {Roles} from '@contracts/utils/Roles.sol';
 import {UFragments} from '@contracts/utils/UFragments.sol';
 

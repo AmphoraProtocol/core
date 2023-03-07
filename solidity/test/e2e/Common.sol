@@ -23,7 +23,6 @@ import {IWUSDA} from '@interfaces/core/IWUSDA.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
 
-import {IVote} from '@contracts/_external/IVote.sol';
 import {TestConstants} from '@test/utils/TestConstants.sol';
 
 // solhint-disable-next-line max-states-count
@@ -64,9 +63,9 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   IWUSDA public wusda;
   IERC20 public susd = IERC20(label(SUSD_ADDRESS, 'SUSD'));
   IERC20 public weth = IERC20(label(WETH_ADDRESS, 'WETH'));
-  IVote public uni = IVote(label(UNI_ADDRESS, 'UNI'));
-  IVote public aave = IVote(label(AAVE_ADDRESS, 'AAVE'));
-  IVote public dydx = IVote(label(DYDX_ADDRESS, 'DYDX'));
+  IERC20 public uni = IERC20(label(UNI_ADDRESS, 'UNI'));
+  IERC20 public aave = IERC20(label(AAVE_ADDRESS, 'AAVE'));
+  IERC20 public dydx = IERC20(label(DYDX_ADDRESS, 'DYDX'));
 
   // frank is the Frank and master of USDA, and symbolizes the power of governance
   address public frank = label(newAddress(), 'frank');

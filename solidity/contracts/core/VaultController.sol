@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.9;
 
-import {ExponentialNoError} from '@contracts/_external/ExponentialNoError.sol';
+import {ExponentialNoError} from '@contracts/utils/ExponentialNoError.sol';
 import {Vault} from '@contracts/core/Vault.sol';
 import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
 
