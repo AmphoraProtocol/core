@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.4 <0.9.0;
 
-import {CommonE2EBase} from '@test/e2e/Common.sol';
+import {CommonE2EBase, IERC20} from '@test/e2e/Common.sol';
 
 import {VaultController} from '@contracts/core/VaultController.sol';
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
@@ -12,8 +12,8 @@ contract E2EVaultController is CommonE2EBase {
   uint96 public bobsVaultId = 1;
   uint96 public carolsVaultId = 2;
 
-  event Liquidate(uint256 vaultId, address assetAddress, uint256 usdaToRepurchase, uint256 tokensToLiquidate);
-  event BorrowUSDA(uint256 vaultId, address vaultAddress, uint256 borrowAmount);
+  event Liquidate(uint256 _vaultId, address _assetAddress, uint256 _usdaToRepurchase, uint256 _tokensToLiquidate);
+  event BorrowUSDA(uint256 _vaultId, address _vaultAddress, uint256 _borrowAmount);
 
   function setUp() public override {
     super.setUp();
@@ -104,6 +104,18 @@ contract E2EVaultController is CommonE2EBase {
     uint256 _gonBalance = usdaToken.scaledBalanceOf(_user);
 
     _balance = _gonBalance / _gpf;
+  }
+
+  // @notice Calculates the amount of USDA to repurchase
+  // @param _collateralPrice Price of the collateral token
+  // @param _tokensToLiquidate Amount of tokens to liquidate
+  // @return _usdaToRepurchase Amount of USDA to repurchase
+  function _calculateUSDAToRepurchase(
+    uint256 _collateralPrice,
+    uint256 _tokensToLiquidate
+  ) internal pure returns (uint256 _usdaToRepurchase) {
+    uint256 _badFillPrice = _collateralPrice * (1 ether - LIQUIDATION_INCENTIVE) / 1 ether;
+    _usdaToRepurchase = (_badFillPrice * _tokensToLiquidate) / 1 ether;
   }
 
   /**
@@ -344,5 +356,128 @@ contract E2EVaultController is CommonE2EBase {
     vm.prank(bob);
     uint256 _newLiability = bobVault.baseLiability();
     assertEq(0, _newLiability);
+  }
+
+  function testLiquidateCompleteVault() public {
+    uint192 _borrowInterestFactor = vaultController.interestFactor();
+    uint192 _if = _payInterestMath(_borrowInterestFactor);
+    uint192 _accountBorrowingPower = vaultController.vaultBorrowingPower(bobsVaultId);
+    uint256 _vaultInitialWethBalance = bobVault.tokenBalance(WETH_ADDRESS);
+
+    // Borrow the maximum amount
+    vm.prank(bob);
+    vaultController.borrowUSDA(bobsVaultId, _accountBorrowingPower);
+    uint192 _initIF = vaultController.interestFactor();
+    assertEq(_initIF, _if);
+
+    // Let time pass so the vault becomes liquidatable because of interest
+    uint256 _tenYears = 10 * (365 days + 6 hours);
+    vm.warp(block.timestamp + _tenYears);
+    uint192 _tenYearInterestFactor = _payInterestMath(_if);
+
+    // Calculate interest to update the protocol, vault should now be liquidatable
+    vaultController.calculateInterest();
+    assertEq(vaultController.interestFactor(), _tenYearInterestFactor);
+
+    // Vault shouldnt be liquidated if protocol is paused
+    vm.prank(address(governorDelegator));
+    vaultController.pause();
+    vm.expectRevert('Pausable: paused');
+    vm.prank(dave);
+    vaultController.liquidateVault(bobsVaultId, WETH_ADDRESS, 1 ether);
+    vm.prank(address(governorDelegator));
+    vaultController.unpause();
+
+    uint256 _expectedUSDAToRepurchase =
+      _calculateUSDAToRepurchase(anchoredViewEth.currentValue(), _vaultInitialWethBalance);
+    uint256 _liabilityBeforeLiquidation = vaultController.vaultLiability(bobsVaultId);
+
+    // Liquidate vault
+    uint256 _daveInitialWeth = IERC20(WETH_ADDRESS).balanceOf(dave);
+    uint256 _daveUSDA = 1_000_000 ether;
+    vm.startPrank(dave);
+    susd.approve(address(usdaToken), _daveUSDA);
+    usdaToken.deposit(_daveUSDA);
+    uint256 _liquidated = vaultController.liquidateVault(bobsVaultId, WETH_ADDRESS, _vaultInitialWethBalance);
+    vm.stopPrank();
+
+    {
+      // Check that everything was liquidate
+      assertEq(_liquidated, _vaultInitialWethBalance);
+
+      // Check that dave now has the weth of the vault
+      uint256 _daveFinalWeth = IERC20(WETH_ADDRESS).balanceOf(dave);
+      assertEq(_daveFinalWeth - _daveInitialWeth, _liquidated);
+
+      // Check that the vault's borrowing power is now zero
+      uint192 _newAccountBorrowingPower = vaultController.vaultBorrowingPower(bobsVaultId);
+      assertEq(_newAccountBorrowingPower, 0);
+
+      // Check that the vault is now empty
+      uint256 _vaultWethBalance = bobVault.tokenBalance(WETH_ADDRESS);
+      uint256 _vaultWethBalanceOf = IERC20(WETH_ADDRESS).balanceOf(address(bobVault));
+      assertEq(_vaultWethBalance, _vaultWethBalanceOf);
+      assertEq(_vaultWethBalance, 0);
+
+      // Check that the correct USDA amount was taken from dave
+      uint256 _daveFinalUSDA = usdaToken.balanceOf(dave);
+      assertEq(_daveUSDA - _expectedUSDAToRepurchase, _daveFinalUSDA);
+    }
+
+    {
+      // Check that the vault's liability is correct
+      uint256 _newAccountLiability = vaultController.vaultLiability(bobsVaultId);
+      assertApproxEqAbs(_newAccountLiability, _liabilityBeforeLiquidation - _expectedUSDAToRepurchase, DELTA);
+    }
+  }
+
+  function testOverLiquidationAndLiquidateInsolventVault() public {
+    uint256 _carolVaultStartUniBalance = carolVault.tokenBalance(UNI_ADDRESS);
+
+    uint192 _carolMaxBorrow = vaultController.vaultBorrowingPower(carolsVaultId);
+
+    // Carol borrows max amount
+    vm.prank(carol);
+    vaultController.borrowUSDA(carolsVaultId, _carolMaxBorrow);
+    assertEq(usdaToken.balanceOf(carol), _carolMaxBorrow);
+    assertTrue(vaultController.checkVault(carolsVaultId));
+
+    // Advance 1 week and add interest
+    vm.warp(block.timestamp + 1 weeks);
+    vaultController.calculateInterest();
+
+    // Carol's vault is now not solvent
+    assertTrue(!vaultController.checkVault(carolsVaultId));
+    uint256 _liquidatableTokens = vaultController.tokensToLiquidate(carolsVaultId, UNI_ADDRESS);
+
+    uint256 _expectedUSDAToRepurchase = _calculateUSDAToRepurchase(anchoredViewUni.currentValue(), _liquidatableTokens);
+    uint256 _liabilityBeforeLiquidation = vaultController.vaultLiability(carolsVaultId);
+
+    // Liquidate vault with a way higher maximum
+    uint256 _daveStartUniBalance = IERC20(UNI_ADDRESS).balanceOf(dave);
+    uint256 _daveUSDA = 1_000_000 ether;
+    vm.startPrank(dave);
+    susd.approve(address(usdaToken), _daveUSDA);
+    usdaToken.deposit(_daveUSDA);
+    uint256 _liquidated = vaultController.liquidateVault(carolsVaultId, UNI_ADDRESS, _liquidatableTokens * 10);
+    vm.stopPrank();
+
+    // Only the max liquidatable amount should be liquidated
+    assertEq(_liquidated, _liquidatableTokens);
+
+    // The correct amount of USDA was taken from dave
+    assertEq(usdaToken.balanceOf(dave), _daveUSDA - _expectedUSDAToRepurchase);
+
+    // The vault's liability is correct
+    assertApproxEqAbs(
+      vaultController.vaultLiability(carolsVaultId), _liabilityBeforeLiquidation - _expectedUSDAToRepurchase, DELTA
+    );
+
+    // Dave got the correct amount of uni tokens
+    assertEq(_daveStartUniBalance + _liquidated, IERC20(UNI_ADDRESS).balanceOf(dave));
+
+    // Carol's vault got some UNI tokens removed
+    assertEq(_carolVaultStartUniBalance - _liquidated, carolVault.tokenBalance(UNI_ADDRESS));
+    assertGt(carolVault.tokenBalance(UNI_ADDRESS), 0);
   }
 }

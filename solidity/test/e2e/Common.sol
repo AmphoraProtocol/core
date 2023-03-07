@@ -28,6 +28,7 @@ import {TestConstants} from '@test/utils/TestConstants.sol';
 // solhint-disable-next-line max-states-count
 contract CommonE2EBase is DSTestPlus, TestConstants {
   uint256 public constant FORK_BLOCK = 15_452_788;
+  uint256 public constant DELTA = 100;
 
   // AMPH token
   AmphoraProtocolToken public amphToken;
@@ -153,7 +154,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     // Deploy uniswapRelayEthUsdc oracle relay
     uniswapRelayEthUsdc = new UniswapV3OracleRelay(60, USDC_WETH_POOL_ADDRESS, true, 1_000_000_000_000, 1);
     // Deploy uniswapRelayUniUsdc oracle relay
-    uniswapRelayUniUsdc = new UniswapV3OracleRelay(60, USDC_UNI_POOL_ADDRESS, true, 1_000_000_000_000, 1);
+    uniswapRelayUniUsdc = new UniswapV3OracleRelay(60, USDC_UNI_POOL_ADDRESS, false, 1_000_000_000_000, 1);
     // Deploys uniswapRelayDydxWeth oracle relay
     uniswapRelayDydxWeth = new UniswapV3OracleRelay(60, DYDX_WETH_POOL_ADDRESS, true, 1_000_000_000_000, 1);
     // Deploy uniswapRelayAaveWeth oracle relay
