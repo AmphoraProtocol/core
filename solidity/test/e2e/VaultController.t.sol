@@ -177,8 +177,9 @@ contract E2EVaultController is CommonE2EBase {
     assertEq(address(vaultController2.tokensOracle(WETH_ADDRESS)), address(anchoredViewEth));
     assertEq(vaultController2.tokensRegistered(), 1);
     assertEq(vaultController2.tokenId(WETH_ADDRESS), 1);
-    assertEq(vaultController2.tokenIdTokenLTV(1), WETH_LTV);
-    assertEq(vaultController2.tokenAddressLiquidationIncentive(WETH_ADDRESS), LIQUIDATION_INCENTIVE);
+    assertEq(vaultController2.tokenLTV(WETH_ADDRESS), WETH_LTV);
+    assertEq(vaultController2.tokenLiquidationIncentive(WETH_ADDRESS), LIQUIDATION_INCENTIVE);
+    assertEq(vaultController2.tokenCap(WETH_ADDRESS), type(uint256).max);
   }
 
   function testMintVault() public {
@@ -190,6 +191,23 @@ contract E2EVaultController is CommonE2EBase {
     assertEq(bobVault.tokenBalance(WETH_ADDRESS), bobWETH);
 
     assertEq(carolVault.tokenBalance(UNI_ADDRESS), carolUni);
+  }
+
+  function testCap() public {
+    vm.startPrank(bob);
+    aave.approve(address(bobVault), type(uint256).max);
+    bobVault.depositERC20(address(aave), AAVE_CAP);
+    vm.stopPrank();
+  }
+
+  function testRevertCapReached() public {
+    vm.startPrank(bob);
+    aave.approve(address(bobVault), type(uint256).max);
+
+    uint256 _bobBalance = aave.balanceOf(bob);
+    vm.expectRevert(IVaultController.VaultController_CapReached.selector);
+    bobVault.depositERC20(address(aave), _bobBalance);
+    vm.stopPrank();
   }
 
   function testRevertVaultDepositETH() public {

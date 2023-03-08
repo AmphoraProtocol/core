@@ -23,10 +23,6 @@ contract E2EGovernance is CommonE2EBase {
     assertEq(usdaToken.owner(), address(governorDelegator));
   }
 
-  function testAaveCappedTokenOwner() public {
-    assertEq(aaveCappedToken.owner(), address(governorDelegator));
-  }
-
   function testCanDelegateVotes() public {
     uint256 _transferAmount = 80_000 ether;
     vm.prank(frank);

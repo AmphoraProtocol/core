@@ -81,6 +81,7 @@ contract Vault is IVault, Context {
     if (_amount == 0) revert Vault_AmountZero();
     SafeERC20Upgradeable.safeTransferFrom(IERC20Upgradeable(_token), _msgSender(), address(this), _amount);
     balances[_token] += _amount;
+    CONTROLLER.modifyTotalDeposited(vaultInfo.id, _amount, _token, true);
     emit Deposit(_token, _amount);
   }
 
@@ -96,6 +97,7 @@ contract Vault is IVault, Context {
     //  check if the account is solvent
     if (!CONTROLLER.checkVault(vaultInfo.id)) revert Vault_OverWithdrawal();
     balances[_tokenAddress] -= _amount;
+    CONTROLLER.modifyTotalDeposited(vaultInfo.id, _amount, _tokenAddress, false);
     emit Withdraw(_tokenAddress, _amount);
   }
 

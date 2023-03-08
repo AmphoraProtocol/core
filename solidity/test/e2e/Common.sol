@@ -6,7 +6,6 @@ import {IERC20} from 'isolmate/interfaces/tokens/IERC20.sol';
 import {DSTestPlus} from 'solidity-utils/test/DSTestPlus.sol';
 
 import {VaultController} from '@contracts/core/VaultController.sol';
-import {CappedToken} from '@contracts/utils/CappedToken.sol';
 import {USDA} from '@contracts/core/USDA.sol';
 import {AmphoraProtocolToken} from '@contracts/governance/AmphoraProtocolToken.sol';
 import {GovernorCharlieDelegate} from '@contracts/governance/GovernorDelegate.sol';
@@ -37,9 +36,6 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   // VaultControllers
   VaultController public vaultController;
   VaultController public vaultController2;
-  // Capped Token
-  CappedToken public aaveCappedToken;
-  CappedToken public dydxCappedToken;
   // Curve Master and ThreeLines0_100 curve
   CurveMaster public curveMaster;
   ThreeLines0_100 public threeLines;
@@ -140,11 +136,6 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     curveMaster = new CurveMaster();
     label(address(curveMaster), 'CurveMaster');
 
-    // Deploy AAVE capped Token
-    aaveCappedToken = new CappedToken();
-    label(address(aaveCappedToken), 'aaveCappedToken');
-    aaveCappedToken.initialize('CappedAave', 'cAave', AAVE_ADDRESS);
-
     // Add curveMaster to VaultController
     vaultController.registerCurveMaster(address(curveMaster));
 
@@ -176,11 +167,15 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     anchoredViewDydx = new AnchoredViewRelay(address(uniswapRelayDydxWeth), address(uniswapRelayDydxWeth), 10, 100);
 
     // Register WETH as acceptable erc20 to vault controller
-    vaultController.registerErc20(WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE);
+    vaultController.registerErc20(
+      WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE, type(uint256).max
+    );
     // Register UNI as acceptable erc20 to vault controller
-    vaultController.registerErc20(UNI_ADDRESS, UNI_LTV, address(anchoredViewUni), LIQUIDATION_INCENTIVE);
-    // Register cAAVE as acceptable erc20 to vault controller
-    vaultController.registerErc20(address(aaveCappedToken), AAVE_LTV, address(anchoredViewAave), LIQUIDATION_INCENTIVE);
+    vaultController.registerErc20(
+      UNI_ADDRESS, UNI_LTV, address(anchoredViewUni), LIQUIDATION_INCENTIVE, type(uint256).max
+    );
+    // Register AAVE as acceptable erc20 to vault controller
+    vaultController.registerErc20(AAVE_ADDRESS, AAVE_LTV, address(anchoredViewAave), LIQUIDATION_INCENTIVE, AAVE_CAP);
     // Register USDA as acceptable erc20 to vault controller
     vaultController.registerUSDA(address(usdaToken));
 
@@ -201,7 +196,6 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
 
     usdaToken.transferOwnership(address(governorDelegator));
     vaultController.transferOwnership(address(governorDelegator));
-    aaveCappedToken.transferOwnership(address(governorDelegator));
     curveMaster.transferOwnership(address(governorDelegator));
 
     // TODO: add checks for everything being set

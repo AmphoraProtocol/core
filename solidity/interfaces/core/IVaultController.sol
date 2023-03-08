@@ -29,8 +29,11 @@ interface IVaultController {
    * @param _ltv The loan to value amount of the erc20
    * @param _oracleAddress The address of the oracle to use to fetch the price
    * @param _liquidationIncentive The liquidation penalty for the token
+   * @param _cap The maximum amount that can be deposited
    */
-  event RegisteredErc20(address _tokenAddress, uint256 _ltv, address _oracleAddress, uint256 _liquidationIncentive);
+  event RegisteredErc20(
+    address _tokenAddress, uint256 _ltv, address _oracleAddress, uint256 _liquidationIncentive, uint256 _cap
+  );
 
   /**
    * @notice Emited when the information about an acceptable erc20 token is being update
@@ -38,9 +41,10 @@ interface IVaultController {
    *  @param _ltv The new loan to value amount of the erc20
    *  @param _oracleAddress The new address of the oracle to use to fetch the price
    *  @param _liquidationIncentive The new liquidation penalty for the token
+   *  @param _cap The maximum amount that can be deposited
    */
   event UpdateRegisteredErc20(
-    address _tokenAddress, uint256 _ltv, address _oracleAddress, uint256 _liquidationIncentive
+    address _tokenAddress, uint256 _ltv, address _oracleAddress, uint256 _liquidationIncentive, uint256 _cap
   );
 
   /**
@@ -127,6 +131,12 @@ interface IVaultController {
   /// @notice Thrown when migrating collaterals to a new vault controller
   error VaultController_WrongCollateralAddress();
 
+  /// @notice Thrown when a not valid vault is trying to modify the total deposited
+  error VaultController_NotValidVault();
+
+  /// @notice Thrown when a deposit surpass the cap
+  error VaultController_CapReached();
+
   /*///////////////////////////////////////////////////////////////
                             STRUCTS
     //////////////////////////////////////////////////////////////*/
@@ -142,6 +152,15 @@ interface IVaultController {
   struct Interest {
     uint64 lastTime;
     uint192 factor;
+  }
+
+  struct CollateralInfo {
+    uint256 tokenId;
+    uint256 ltv;
+    uint256 cap;
+    uint256 totalDeposited;
+    uint256 liquidationIncentive;
+    IOracleRelay oracle;
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -170,9 +189,15 @@ interface IVaultController {
 
   function tokensOracle(address _tokenAddress) external view returns (IOracleRelay _oracle);
 
-  function tokenLTV(uint256 _tokenId) external view returns (uint256 _ltv);
+  function tokenLTV(address _tokenAddress) external view returns (uint256 _ltv);
 
-  function tokenLiquidationIncentive(address _token) external view returns (uint256 _liquidationIncentive);
+  function tokenLiquidationIncentive(address _tokenAddress) external view returns (uint256 _liquidationIncentive);
+
+  function tokenCap(address _tokenAddress) external view returns (uint256 _cap);
+
+  function tokenTotalDeposited(address _tokenAddress) external view returns (uint256 _totalDeposited);
+
+  function tokenCollateralInfo(address _tokenAddress) external view returns (CollateralInfo memory _collateralInfo);
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC
@@ -214,6 +239,8 @@ interface IVaultController {
 
   function repayAllUSDA(uint96 _id) external;
 
+  function modifyTotalDeposited(uint96 _vaultID, uint256 _amount, address _token, bool _increase) external;
+
   // admin
   function pause() external;
 
@@ -227,7 +254,8 @@ interface IVaultController {
     address _tokenAddress,
     uint256 _ltv,
     address _oracleAddress,
-    uint256 _liquidationIncentive
+    uint256 _liquidationIncentive,
+    uint256 _cap
   ) external;
 
   function registerUSDA(address _usdaAddress) external;
@@ -236,6 +264,7 @@ interface IVaultController {
     address _tokenAddress,
     uint256 _ltv,
     address _oracleAddress,
-    uint256 _liquidationIncentive
+    uint256 _liquidationIncentive,
+    uint256 _cap
   ) external;
 }

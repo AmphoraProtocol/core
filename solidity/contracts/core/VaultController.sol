@@ -29,20 +29,12 @@ contract VaultController is
   // mapping of vault id to vault address
   mapping(uint96 => address) public vaultIdVaultAddress;
 
-  //mapping of wallet address to vault IDs []
+  // mapping of wallet address to vault IDs []
   mapping(address => uint96[]) public walletVaultIDs;
 
-  // mapping of token address to token id
-  mapping(address => uint256) public tokenAddressTokenId;
+  // mapping of token address to collateral info
+  mapping(address => CollateralInfo) public tokenAddressCollateralInfo;
 
-  //mapping of tokenId to the LTV*1
-  mapping(uint256 => uint256) public tokenIdTokenLTV;
-
-  //mappinng of token to its oracle
-  mapping(address => IOracleRelay) public tokenOracle;
-
-  //mapping of token address to its corresponding liquidation incentive
-  mapping(address => uint256) public tokenAddressLiquidationIncentive;
   address[] public enabledTokens;
 
   CurveMaster public curveMaster;
@@ -116,28 +108,54 @@ contract VaultController is
   /// @param _tokenAddress The address of the token to target
   /// @return _tokenId The id of the token
   function tokenId(address _tokenAddress) external view override returns (uint256 _tokenId) {
-    return tokenAddressTokenId[_tokenAddress];
+    return tokenAddressCollateralInfo[_tokenAddress].tokenId;
   }
 
   /// @notice Returns the oracle given a token's address
   /// @param _tokenAddress The id of the token
   /// @return _oracle The address of the token's oracle
   function tokensOracle(address _tokenAddress) external view override returns (IOracleRelay _oracle) {
-    return tokenOracle[_tokenAddress];
+    return tokenAddressCollateralInfo[_tokenAddress].oracle;
   }
 
-  /// @notice Returns the ltv of a given tokenId
-  /// @param _tokenId The id of the token
+  /// @notice Returns the ltv of a given token address
+  /// @param _tokenAddress The address of the token
   /// @return _ltv The loan-to-value of a token
-  function tokenLTV(uint256 _tokenId) external view override returns (uint256 _ltv) {
-    return tokenIdTokenLTV[_tokenId];
+  function tokenLTV(address _tokenAddress) external view override returns (uint256 _ltv) {
+    return tokenAddressCollateralInfo[_tokenAddress].ltv;
   }
 
   /// @notice Returns the liquidation incentive of an accepted token collateral
-  /// @param _token The address of the token
+  /// @param _tokenAddress The address of the token
   /// @return _liquidationIncentive The liquidation incentive of the token
-  function tokenLiquidationIncentive(address _token) external view override returns (uint256 _liquidationIncentive) {
-    return tokenAddressLiquidationIncentive[_token];
+  function tokenLiquidationIncentive(address _tokenAddress)
+    external
+    view
+    override
+    returns (uint256 _liquidationIncentive)
+  {
+    return tokenAddressCollateralInfo[_tokenAddress].liquidationIncentive;
+  }
+
+  /// @notice Returns the cap of a given token address
+  /// @param _tokenAddress The address of the token
+  /// @return _cap The cap of the token
+  function tokenCap(address _tokenAddress) external view override returns (uint256 _cap) {
+    return tokenAddressCollateralInfo[_tokenAddress].cap;
+  }
+
+  /// @notice Returns the total deposited of a given token address
+  /// @param _tokenAddress The address of the token
+  /// @return _totalDeposited The total deposited of a token
+  function tokenTotalDeposited(address _tokenAddress) external view override returns (uint256 _totalDeposited) {
+    return tokenAddressCollateralInfo[_tokenAddress].totalDeposited;
+  }
+
+  /// @notice Returns the collateral info of a given token address
+  /// @param _tokenAddress The address of the token
+  /// @return _collateralInfo The complete collateral info of the token
+  function tokenCollateralInfo(address _tokenAddress) external view returns (CollateralInfo memory _collateralInfo) {
+    return tokenAddressCollateralInfo[_tokenAddress];
   }
 
   /// @notice Migrates all collateral information from previous vault controller
@@ -150,12 +168,13 @@ contract VaultController is
       _tokenId = _oldVaultController.tokenId(_tokenAddresses[_i]);
       if (_tokenId == 0) revert VaultController_WrongCollateralAddress();
       _tokensRegistered++;
-      tokenAddressTokenId[_tokenAddresses[_i]] = _tokensRegistered;
-      tokenOracle[_tokenAddresses[_i]] = _oldVaultController.tokensOracle(_tokenAddresses[_i]);
-      tokenIdTokenLTV[_tokensRegistered] = _oldVaultController.tokenLTV(_tokenId);
-      tokenAddressLiquidationIncentive[_tokenAddresses[_i]] =
-        _oldVaultController.tokenLiquidationIncentive(_tokenAddresses[_i]);
+
+      CollateralInfo memory _collateral = _oldVaultController.tokenCollateralInfo(_tokenAddresses[_i]);
+      _collateral.tokenId = _tokensRegistered;
+      _collateral.totalDeposited = 0;
+
       enabledTokens.push(_tokenAddresses[_i]);
+      tokenAddressCollateralInfo[_tokenAddresses[_i]] = _collateral;
     }
     tokensRegistered += _tokensRegistered;
   }
@@ -212,31 +231,38 @@ contract VaultController is
 
   /// @notice Register a new token to be used as collateral
   /// @param _tokenAddress The address of the token to register
-  /// @param _ltv The LTV of the token, 1e18=100%
+  /// @param _ltv The ltv of the token, 1e18=100%
   /// @param _oracleAddress The address of oracle to fetch the price of the token
   /// @param _liquidationIncentive The liquidation penalty for the token, 1e18=100%
+  /// @param _cap The maximum amount to be deposited
   function registerErc20(
     address _tokenAddress,
     uint256 _ltv,
     address _oracleAddress,
-    uint256 _liquidationIncentive
+    uint256 _liquidationIncentive,
+    uint256 _cap
   ) external override onlyOwner {
-    if (tokenAddressTokenId[_tokenAddress] != 0) revert VaultController_TokenAlreadyRegistered();
-    //LTV must be compatible with liquidation incentive
+    CollateralInfo memory _collateral = tokenAddressCollateralInfo[_tokenAddress];
+    if (_collateral.tokenId != 0) revert VaultController_TokenAlreadyRegistered();
+    //ltv must be compatible with liquidation incentive
     if (_ltv >= (EXP_SCALE - _liquidationIncentive)) revert VaultController_LTVIncompatible();
     // increment the amount of registered token
     tokensRegistered = tokensRegistered + 1;
     // set & give the token an id
-    tokenAddressTokenId[_tokenAddress] = tokensRegistered;
+    _collateral.tokenId = tokensRegistered;
     // set the token's oracle
-    tokenOracle[_tokenAddress] = IOracleRelay(_oracleAddress);
+    _collateral.oracle = IOracleRelay(_oracleAddress);
     // set the token's ltv
-    tokenIdTokenLTV[tokensRegistered] = _ltv;
+    _collateral.ltv = _ltv;
     // set the token's liquidation incentive
-    tokenAddressLiquidationIncentive[_tokenAddress] = _liquidationIncentive;
+    _collateral.liquidationIncentive = _liquidationIncentive;
+    // set the cap
+    _collateral.cap = _cap;
     // finally, add the token to the array of enabled tokens
     enabledTokens.push(_tokenAddress);
-    emit RegisteredErc20(_tokenAddress, _ltv, _oracleAddress, _liquidationIncentive);
+    // and save in mapping
+    tokenAddressCollateralInfo[_tokenAddress] = _collateral;
+    emit RegisteredErc20(_tokenAddress, _ltv, _oracleAddress, _liquidationIncentive, _cap);
   }
 
   /// @notice Updates an existing collateral with new collateral parameters
@@ -244,25 +270,30 @@ contract VaultController is
   /// @param _ltv The new loan-to-value of the token, 1e18=100%
   /// @param _oracleAddress The address of oracle to modify for the price of the token
   /// @param _liquidationIncentive The new liquidation penalty for the token, 1e18=100%
+  /// @param _cap The maximum amount to be deposited
   function updateRegisteredErc20(
     address _tokenAddress,
     uint256 _ltv,
     address _oracleAddress,
-    uint256 _liquidationIncentive
+    uint256 _liquidationIncentive,
+    uint256 _cap
   ) external override onlyOwner {
-    if (tokenAddressTokenId[_tokenAddress] == 0) revert VaultController_TokenNotRegistered();
-    // we know the token has been registered, get the Id
-    uint256 _tokenId = tokenAddressTokenId[_tokenAddress];
+    CollateralInfo memory _collateral = tokenAddressCollateralInfo[_tokenAddress];
+    if (_collateral.tokenId == 0) revert VaultController_TokenNotRegistered();
     //_ltv must be compatible with liquidation incentive
     if (_ltv >= (EXP_SCALE - _liquidationIncentive)) revert VaultController_LTVIncompatible();
     // set the oracle of the token
-    tokenOracle[_tokenAddress] = IOracleRelay(_oracleAddress);
+    _collateral.oracle = IOracleRelay(_oracleAddress);
     // set the ltv of the token
-    tokenIdTokenLTV[_tokenId] = _ltv;
+    _collateral.ltv = _ltv;
     // set the liquidation incentive of the token
-    tokenAddressLiquidationIncentive[_tokenAddress] = _liquidationIncentive;
+    _collateral.liquidationIncentive = _liquidationIncentive;
+    // set the cap
+    _collateral.cap = _cap;
+    // finally save in mapping
+    tokenAddressCollateralInfo[_tokenAddress] = _collateral;
 
-    emit UpdateRegisteredErc20(_tokenAddress, _ltv, _oracleAddress, _liquidationIncentive);
+    emit UpdateRegisteredErc20(_tokenAddress, _ltv, _oracleAddress, _liquidationIncentive, _cap);
   }
 
   /// @notice Check a vault for over-collateralization
@@ -275,7 +306,7 @@ contract VaultController is
     uint256 _totalLiquidityValue = _getVaultBorrowingPower(_vault);
     // calculate the total liability of the vault
     uint256 _usdaLiability = _truncate((_vault.baseLiability() * interest.factor));
-    // if the LTV >= liability, the vault is solvent
+    // if the ltv >= liability, the vault is solvent
     return (_totalLiquidityValue >= _usdaLiability);
   }
 
@@ -314,9 +345,9 @@ contract VaultController is
     totalBaseLiability = totalBaseLiability + _safeu192(_baseAmount);
     // now take the vault's total base liability and multiply it by the interest factor
     uint256 _usdaLiability = _truncate(uint256(interest.factor) * _baseLiability);
-    // now get the LTV of the vault, aka their borrowing power, in usda
+    // now get the ltv of the vault, aka their borrowing power, in usda
     uint256 _totalLiquidityValue = _getVaultBorrowingPower(_vault);
-    // the LTV must be above the newly calculated _usdaLiability, else revert
+    // the ltv must be above the newly calculated _usdaLiability, else revert
     if (_totalLiquidityValue < _usdaLiability) revert VaultController_VaultInsolvent();
     // now send usda to the target, equal to the amount they are owed
     usda.vaultControllerMint(_target, _amount);
@@ -343,9 +374,9 @@ contract VaultController is
     totalBaseLiability = totalBaseLiability + _safeu192(_baseAmount);
     // now take the vault's total base liability and multiply it by the interest factor
     uint256 _usdaLiability = _truncate(uint256(interest.factor) * _baseLiability);
-    // now get the LTV of the vault, aka their borrowing power, in usda
+    // now get the ltv of the vault, aka their borrowing power, in usda
     uint256 _totalLiquidityValue = _getVaultBorrowingPower(_vault);
-    // the LTV must be above the newly calculated _usdaLiability, else revert
+    // the ltv must be above the newly calculated _usdaLiability, else revert
     if (_totalLiquidityValue < _usdaLiability) revert VaultController_VaultInsolvent();
     // emit the event
     emit BorrowUSDA(_id, address(_vault), _susdAmount);
@@ -407,10 +438,10 @@ contract VaultController is
     address _assetAddress,
     uint256 _tokensToLiquidate
   ) external override paysInterest whenNotPaused returns (uint256 _toLiquidate) {
-    //cannot liquidate 0
+    // cannot liquidate 0
     if (_tokensToLiquidate == 0) revert VaultController_LiquidateZeroTokens();
-    //check for registered asset - audit L3
-    if (tokenAddressTokenId[_assetAddress] == 0) revert VaultController_TokenNotRegistered();
+    // check for registered asset
+    if (tokenAddressCollateralInfo[_assetAddress].tokenId == 0) revert VaultController_TokenNotRegistered();
 
     // calculate the amount to liquidate and the 'bad fill price' using liquidationMath
     // see _liquidationMath for more detailed explaination of the math
@@ -422,17 +453,19 @@ contract VaultController is
     // get the vault that the liquidator wishes to liquidate
     IVault _vault = _getVault(_id);
 
-    //decrease the vault's liability
+    // decrease the vault's liability
     _vault.modifyLiability(false, (_usdaToRepurchase * 1e18) / interest.factor);
 
     // decrease the total base liability
     totalBaseLiability = totalBaseLiability - _safeu192((_usdaToRepurchase * 1e18) / interest.factor);
 
-    //decrease liquidator's USDA balance
+    // decrease liquidator's USDA balance
     usda.vaultControllerBurn(_msgSender(), _usdaToRepurchase);
 
     // finally, deliver tokens to liquidator
     _vault.controllerTransfer(_assetAddress, _msgSender(), _tokensToLiquidate);
+    // and reduces total
+    _modifyTotalDeposited(_tokensToLiquidate, _assetAddress, false);
 
     // this mainly prevents reentrancy
     if (_getVaultBorrowingPower(_vault) > _vaultLiability(_id)) revert VaultController_OverLiquidation();
@@ -475,15 +508,17 @@ contract VaultController is
 
     IVault _vault = _getVault(_id);
 
-    if (address(tokenOracle[_assetAddress]) == address(0)) revert VaultController_OracleNotRegistered();
-    uint256 _price = tokenOracle[_assetAddress].currentValue();
+    CollateralInfo memory _collateral = tokenAddressCollateralInfo[_assetAddress];
+
+    if (address(_collateral.oracle) == address(0)) revert VaultController_OracleNotRegistered();
+    uint256 _price = _collateral.oracle.currentValue();
 
     // get price discounted by liquidation penalty
     // price * (100% - liquidationIncentive)
-    _badFillPrice = _truncate(_price * (1e18 - tokenAddressLiquidationIncentive[_assetAddress]));
+    _badFillPrice = _truncate(_price * (1e18 - _collateral.liquidationIncentive));
 
     // the ltv discount is the amount of collateral value that one token provides
-    uint256 _ltvDiscount = _truncate(_price * tokenIdTokenLTV[tokenAddressTokenId[_assetAddress]]);
+    uint256 _ltvDiscount = _truncate(_price * _collateral.ltv);
     // this number is the denominator when calculating the _maxTokensToLiquidate
     // it is simply the badFillPrice - ltvDiscount
     uint256 _denominator = _badFillPrice - _ltvDiscount;
@@ -560,10 +595,11 @@ contract VaultController is
   /// @return _borrowPower the borrowing power of the vault
   //solhint-disable-next-line code-complexity
   function _getVaultBorrowingPower(IVault _vault) private view returns (uint192 _borrowPower) {
-    // loop over each registed token, adding the indivuduals LTV to the total LTV of the vault
-    for (uint192 _i = 1; _i <= tokensRegistered; ++_i) {
+    // loop over each registed token, adding the indivuduals ltv to the total ltv of the vault
+    for (uint192 _i = 1; _i <= enabledTokens.length; ++_i) {
+      CollateralInfo memory _collateral = tokenAddressCollateralInfo[enabledTokens[_i - 1]];
       // if the ltv is 0, continue
-      if (tokenIdTokenLTV[_i] == 0) continue;
+      if (_collateral.tokenId == 0) continue;
       // get the address of the token through the array of enabled tokens
       // note that index 0 of enabledTokens corresponds to a vaultId of 1, so we must subtract 1 from i to get the correct index
       address _tokenAddress = enabledTokens[_i - 1];
@@ -571,11 +607,11 @@ contract VaultController is
       uint256 _balance = _vault.tokenBalance(_tokenAddress);
       if (_balance == 0) continue;
       // the raw price is simply the oracle price of the token
-      uint192 _rawPrice = _safeu192(tokenOracle[_tokenAddress].currentValue());
+      uint192 _rawPrice = _safeu192(_collateral.oracle.currentValue());
       if (_rawPrice == 0) continue;
       // the token value is equal to the price * balance * tokenLTV
-      uint192 _tokenValue = _safeu192(_truncate(_truncate(_rawPrice * _balance * tokenIdTokenLTV[_i])));
-      // increase the LTV of the vault by the token value
+      uint192 _tokenValue = _safeu192(_truncate(_truncate(_rawPrice * _balance * _collateral.ltv)));
+      // increase the ltv of the vault by the token value
       _borrowPower = _borrowPower + _tokenValue;
     }
   }
@@ -662,5 +698,25 @@ contract VaultController is
         VaultSummary(_i, this.vaultBorrowingPower(_i), this.vaultLiability(_i), enabledTokens, _tokenBalances);
     }
     return _vaultSummaries;
+  }
+
+  function _modifyTotalDeposited(uint256 _amount, address _token, bool _increase) internal {
+    CollateralInfo memory _collateral = tokenAddressCollateralInfo[_token];
+    if (_collateral.tokenId == 0) revert VaultController_TokenNotRegistered();
+    if (_increase && (_collateral.totalDeposited + _amount) > _collateral.cap) revert VaultController_CapReached();
+
+    tokenAddressCollateralInfo[_token].totalDeposited =
+      _increase ? _collateral.totalDeposited + _amount : _collateral.totalDeposited - _amount;
+  }
+
+  /// @notice external function used by vaults to increase or decrease the `totalDeposited`.
+  /// Should only be called by a valid vault
+  /// @param _vaultID The id of vault which is calling (used to verify)
+  /// @param _amount The amount to modify
+  /// @param _token The token address which should modify the total
+  /// @param _increase Boolean that indicates if should increase or decrease (TRUE -> increase, FALSE -> decrease)
+  function modifyTotalDeposited(uint96 _vaultID, uint256 _amount, address _token, bool _increase) external override {
+    if (_msgSender() != vaultIdVaultAddress[_vaultID]) revert VaultController_NotValidVault();
+    _modifyTotalDeposited(_amount, _token, _increase);
   }
 }

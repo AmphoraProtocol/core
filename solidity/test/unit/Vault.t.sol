@@ -55,6 +55,12 @@ contract UnitVaultDepositERC20 is Base {
       abi.encodeWithSelector(IVaultController.tokenId.selector, address(_mockToken)),
       abi.encode(1)
     );
+
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.modifyTotalDeposited.selector, address(_mockToken)),
+      abi.encode(1)
+    );
   }
 
   function testRevertIfNotVaultOwner(address _token, uint256 _amount) public {
@@ -78,6 +84,17 @@ contract UnitVaultDepositERC20 is Base {
     vm.expectRevert(IVault.Vault_AmountZero.selector);
     vm.prank(vaultOwner);
     vault.depositERC20(address(_mockToken), 0);
+  }
+
+  function testModifyTotalDepositedIsCalled(uint256 _amount) public {
+    vm.assume(_amount > 0);
+
+    vm.prank(vaultOwner);
+    vm.expectCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.modifyTotalDeposited.selector, 1, _amount, address(_mockToken), true)
+    );
+    vault.depositERC20(address(_mockToken), _amount);
   }
 
   function testDepositERC20(uint256 _amount) public {
@@ -111,6 +128,12 @@ contract UnitVaultWithdrawERC20 is Base {
     vm.mockCall(
       address(mockVaultController), abi.encodeWithSelector(IVaultController.checkVault.selector, 1), abi.encode(true)
     );
+
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.modifyTotalDeposited.selector, address(_mockToken)),
+      abi.encode(1)
+    );
   }
 
   function testRevertIfNotVaultOwner(address _token, uint256 _amount) public {
@@ -137,6 +160,15 @@ contract UnitVaultWithdrawERC20 is Base {
     vm.expectRevert(IVault.Vault_OverWithdrawal.selector);
     vm.prank(vaultOwner);
     vault.withdrawERC20(address(_mockToken), _amount);
+  }
+
+  function testModifyTotalDepositedIsCalled() public {
+    vm.expectCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.modifyTotalDeposited.selector, 1, 1 ether, address(_mockToken), false)
+    );
+    vm.prank(vaultOwner);
+    vault.withdrawERC20(address(_mockToken), 1 ether);
   }
 
   function testWithdrawERC20() public {

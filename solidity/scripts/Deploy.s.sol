@@ -87,7 +87,9 @@ abstract contract Deploy is Script, TestConstants {
     // Set VaultController address for usda
     usda.addVaultController(address(vaultController));
     // Register WETH as acceptable erc20 to vault controller
-    vaultController.registerErc20(WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE);
+    vaultController.registerErc20(
+      WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE, type(uint256).max
+    );
     // Set curve
     curveMaster.setCurve(address(0), address(threeLines));
     // Set pauser
