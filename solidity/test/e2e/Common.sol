@@ -16,6 +16,7 @@ import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
 import {UniswapV3OracleRelay} from '@contracts/periphery/UniswapV3OracleRelay.sol';
 import {UniswapV3TokenOracleRelay} from '@contracts/periphery/UniswapV3TokenOracleRelay.sol';
 import {ThreeLines0_100} from '@contracts/utils/ThreeLines0_100.sol';
+import {WUSDA} from '@contracts/core/WUSDA.sol';
 
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {IWUSDA} from '@interfaces/core/IWUSDA.sol';
@@ -44,15 +45,18 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   UniswapV3OracleRelay public uniswapRelayUniUsdc;
   UniswapV3OracleRelay public uniswapRelayDydxWeth;
   UniswapV3TokenOracleRelay public uniswapRelayAaveWeth;
+  UniswapV3OracleRelay public uniswapRelayWbtcUsdc;
   // Chainlink oracles
   ChainlinkOracleRelay public chainLinkUni;
   ChainlinkOracleRelay public chainlinkEth;
   ChainlinkOracleRelay public chainlinkAave;
+  ChainlinkOracleRelay public chainlinkBtc;
   // AnchoredView relayers
   AnchoredViewRelay public anchoredViewEth;
   AnchoredViewRelay public anchoredViewUni;
   AnchoredViewRelay public anchoredViewAave;
   AnchoredViewRelay public anchoredViewDydx;
+  AnchoredViewRelay public anchoredViewBtc;
   // Governance
   GovernorCharlieDelegate public governorDelegate;
   GovernorCharlieDelegator public governorDelegator;
@@ -60,6 +64,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   IWUSDA public wusda;
   IERC20 public susd = IERC20(label(SUSD_ADDRESS, 'SUSD'));
   IERC20 public weth = IERC20(label(WETH_ADDRESS, 'WETH'));
+  IERC20 public wbtc = IERC20(label(WBTC_ADDRESS, 'WBTC'));
   IERC20 public uni = IERC20(label(UNI_ADDRESS, 'UNI'));
   IERC20 public aave = IERC20(label(AAVE_ADDRESS, 'AAVE'));
   IERC20 public dydx = IERC20(label(DYDX_ADDRESS, 'DYDX'));
@@ -82,15 +87,16 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   address public hector = label(newAddress(), 'hector');
 
   IVault public bobVault;
-  uint256 public bobVaultId;
+  uint96 public bobVaultId;
 
   IVault public carolVault;
-  uint256 public carolVaultId;
+  uint96 public carolVaultId;
 
   IVault public daveVault;
-  uint256 public daveVaultId;
+  uint96 public daveVaultId;
 
   IVault public gusVault;
+  uint96 public gusVaultId;
 
   uint256 public andySUSDBalance = 100 ether;
   uint256 public bobSUSDBalance = 1000 ether;
@@ -100,6 +106,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   uint256 public daveSUSD = 10_000_000_000 ether;
   uint256 public bobAAVE = 1000 ether;
   uint256 public carolDYDX = 100 ether;
+  uint256 public gusUni = 100 ether;
 
   uint256 public initialAMPH = 100_000_000 ether;
 
@@ -116,6 +123,8 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     deal(address(uni), carol, carolUni);
     deal(address(aave), bob, bobAAVE);
     deal(address(dydx), carol, carolDYDX);
+    deal(address(wbtc), gus, gusWBTC);
+    deal(address(uni), gus, gusUni);
 
     vm.startPrank(frank);
     // Deploy VaultController
@@ -150,12 +159,16 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     uniswapRelayDydxWeth = new UniswapV3OracleRelay(60, DYDX_WETH_POOL_ADDRESS, true, 1_000_000_000_000, 1);
     // Deploy uniswapRelayAaveWeth oracle relay
     uniswapRelayAaveWeth = new UniswapV3TokenOracleRelay(60, AAVE_WETH_POOL_ADDRESS, false, 1, 1);
+    // Deploy uniswapRelayUniUsdc oracle relay
+    uniswapRelayWbtcUsdc = new UniswapV3OracleRelay(60, USDC_WBTC_POOL_ADDRESS, false, 1_000_000_000_000, 1);
     // Deploy chainLinkUni oracle relay
     chainLinkUni = new ChainlinkOracleRelay(CHAINLINK_UNI_FEED_ADDRESS, 10_000_000_000, 1);
     // Deploy chainlinkEth oracle relay
     chainlinkEth = new ChainlinkOracleRelay(CHAINLINK_ETH_FEED_ADDRESS, 10_000_000_000, 1);
     // Deploy chainlinkAave oracle relay
     chainlinkAave = new ChainlinkOracleRelay(CHAINLINK_AAVE_FEED_ADDRESS, 10_000_000_000, 1);
+    // Deploy chainlinkWbtc oracle relay
+    chainlinkBtc = new ChainlinkOracleRelay(CHAINLINK_BTC_FEED_ADDRESS, 100_000_000_000_000_000_000, 1);
     // Deploy anchoredViewEth relay
     anchoredViewEth = new AnchoredViewRelay(address(uniswapRelayEthUsdc), address(chainlinkEth), 10, 100);
     // Deploy anchoredViewUni relay
@@ -165,6 +178,8 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     // Deploy anchoredViewDydx relay
     // We use same oracle because chainlink doesnt support dydx/usd feed
     anchoredViewDydx = new AnchoredViewRelay(address(uniswapRelayDydxWeth), address(uniswapRelayDydxWeth), 10, 100);
+    // Deploy anchoredViewEth relay
+    anchoredViewBtc = new AnchoredViewRelay(address(uniswapRelayWbtcUsdc), address(chainlinkBtc), 30, 100);
 
     // Register WETH as acceptable erc20 to vault controller
     vaultController.registerErc20(
@@ -176,6 +191,10 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     );
     // Register AAVE as acceptable erc20 to vault controller
     vaultController.registerErc20(AAVE_ADDRESS, AAVE_LTV, address(anchoredViewAave), LIQUIDATION_INCENTIVE, AAVE_CAP);
+    // Register wbtc as acceptable erc20 to vault controller
+    vaultController.registerErc20(
+      WBTC_ADDRESS, WBTC_LTV, address(anchoredViewBtc), LIQUIDATION_INCENTIVE, type(uint256).max
+    );
     // Register USDA as acceptable erc20 to vault controller
     vaultController.registerUSDA(address(usdaToken));
 
@@ -198,6 +217,9 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     vaultController.transferOwnership(address(governorDelegator));
     curveMaster.transferOwnership(address(governorDelegator));
 
+    // Deploy wUSDA
+    wusda = new WUSDA(address(usdaToken), 'Wrapped USDA', 'wUSDA');
+
     // TODO: add checks for everything being set
     vm.stopPrank();
   }
@@ -208,15 +230,15 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     deal(SUSD_TOKEN_STATE, _receiver, _amount);
   }
 
-  function _mintVault(address _minter) internal returns (uint256 _id) {
+  function _mintVault(address _minter) internal returns (uint96 _id) {
     vm.prank(_minter);
     vaultController.mintVault();
-    _id = vaultController.vaultsMinted();
+    _id = uint96(vaultController.vaultsMinted());
   }
 
-  function _borrow(address _account, uint256 _vaultId, uint256 _borrowAmount) internal {
+  function _borrow(address _account, uint96 _vaultId, uint256 _borrowAmount) internal {
     vm.prank(_account);
-    vaultController.borrowUSDA(uint96(_vaultId), uint192(_borrowAmount));
+    vaultController.borrowUSDA(_vaultId, uint192(_borrowAmount));
   }
 
   function _depositSUSD(address _account, uint256 _amountToDeposit) internal {

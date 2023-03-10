@@ -56,11 +56,11 @@ contract E2EUSDA is CommonE2EBase {
     /// Someone borrows
     bobVaultId = _mintVault(bob);
     vm.startPrank(bob);
-    bobVault = IVault(vaultController.vaultAddress(uint96(bobVaultId)));
+    bobVault = IVault(vaultController.vaultAddress(bobVaultId));
     weth.approve(address(bobVault), bobWETH);
     IVault(address(bobVault)).depositERC20(address(weth), bobWETH);
-    uint256 _toBorrow = vaultController.vaultBorrowingPower(uint96(bobVaultId));
-    vaultController.borrowUSDA(uint96(bobVaultId), uint192(_toBorrow / 2));
+    uint256 _toBorrow = vaultController.vaultBorrowingPower(bobVaultId);
+    vaultController.borrowUSDA(bobVaultId, uint192(_toBorrow / 2));
     vm.stopPrank();
 
     // some interest has accrued, USDA balance should be slightly higher than existingUSDA balance + sUSD amount deposited
@@ -99,11 +99,11 @@ contract E2EUSDA is CommonE2EBase {
     /// Someone borrows
     bobVaultId = _mintVault(bob);
     vm.startPrank(bob);
-    bobVault = IVault(vaultController.vaultAddress(uint96(bobVaultId)));
+    bobVault = IVault(vaultController.vaultAddress(bobVaultId));
     weth.approve(address(bobVault), bobWETH);
     IVault(address(bobVault)).depositERC20(address(weth), bobWETH);
-    uint256 _toBorrow = vaultController.vaultBorrowingPower(uint96(bobVaultId));
-    vaultController.borrowUSDA(uint96(bobVaultId), uint192(_toBorrow / 2));
+    uint256 _toBorrow = vaultController.vaultBorrowingPower(bobVaultId);
+    vaultController.borrowUSDA(bobVaultId, uint192(_toBorrow / 2));
     vm.stopPrank();
 
     /// Time travel
