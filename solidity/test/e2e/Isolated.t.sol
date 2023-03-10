@@ -387,7 +387,7 @@ contract E2ENoReserve is IsolatedBase {
 
     // try to withdraw from empty reserve
     vm.prank(frank);
-    vm.expectRevert('Reserve is empty');
+    vm.expectRevert(IUSDA.USDA_EmptyReserve.selector);
     usdaToken.withdrawAll();
 
     // test donate reserve
