@@ -179,7 +179,7 @@ contract E2EUSDA is CommonE2EBase {
     vm.expectRevert();
     usdaToken.withdraw(1);
 
-    vm.expectRevert('Reserve is empty');
+    vm.expectRevert(IUSDA.USDA_EmptyReserve.selector);
     usdaToken.withdrawAll();
     vm.stopPrank();
   }

@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.9;
 
 import {ExponentialNoError} from '@contracts/utils/ExponentialNoError.sol';
@@ -510,7 +509,6 @@ contract VaultController is
 
     CollateralInfo memory _collateral = tokenAddressCollateralInfo[_assetAddress];
 
-    if (address(_collateral.oracle) == address(0)) revert VaultController_OracleNotRegistered();
     uint256 _price = _collateral.oracle.currentValue();
 
     // get price discounted by liquidation penalty
@@ -636,15 +634,12 @@ contract VaultController is
     uint256 _ui18 = uint256(usda.reserveRatio());
     // cast the reserve ratio now to an int in order to get a curve value
     int256 _reserveRatio = int256(_ui18);
-
     // calculate the value at the curve. this vault controller is a USDA vault and will reference
     // the vault at address 0
     int256 _intCurveVal = curveMaster.getValueAt(address(0x00), _reserveRatio);
-
     // cast the integer curve value to a u192
     uint192 _curveVal = _safeu192(uint256(_intCurveVal));
     // calculate the amount of total outstanding loans before and after this interest accrual
-
     // first calculate how much the interest factor should increase by
     // this is equal to (timedifference * (curve value) / (seconds in a year)) * (interest factor)
     uint192 _e18FactorIncrease = _safeu192(
@@ -661,7 +656,6 @@ contract VaultController is
     interest = Interest(uint64(block.timestamp), interest.factor + _e18FactorIncrease);
     // using that new value, calculate the new total outstanding value
     uint192 _valueAfter = _safeu192(_truncate(uint256(totalBaseLiability) * uint256(interest.factor)));
-
     // valueAfter - valueBefore is now equal to the true amount of interest accured
     // this mitigates rounding errors
     // the protocol's fee amount is equal to this value multiplied by the protocol fee percentage, 1e18=100%

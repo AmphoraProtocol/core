@@ -39,6 +39,15 @@ interface IUSDA is IERC20Metadata, IRoles {
   /// @notice Thrown when trying to withdraw more than the balance
   error USDA_InsufficientFunds();
 
+  /// @notice Thrown when trying to withdraw all but the reserve amount is 0
+  error USDA_EmptyReserve();
+
+  /// @notice Thrown when _msgSender is not the pauser of the contract
+  error USDA_OnlyPauser();
+
+  /// @notice Thrown when vault controller is trying to burn more than the balance
+  error USDA_NotEnoughBalance();
+
   /*///////////////////////////////////////////////////////////////
                             VARIABLES
     //////////////////////////////////////////////////////////////*/

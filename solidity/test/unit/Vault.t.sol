@@ -103,6 +103,7 @@ contract UnitVaultDepositERC20 is Base {
     emit Deposit(address(_mockToken), _amount);
     vm.prank(vaultOwner);
     vault.depositERC20(address(_mockToken), _amount);
+    assertEq(vault.tokenBalance(address(_mockToken)), _amount);
   }
 }
 
@@ -174,8 +175,10 @@ contract UnitVaultWithdrawERC20 is Base {
   function testWithdrawERC20() public {
     vm.expectEmit(false, false, false, true);
     emit Withdraw(address(_mockToken), 1 ether);
+    assertEq(vault.tokenBalance(address(_mockToken)), 1 ether);
     vm.prank(vaultOwner);
     vault.withdrawERC20(address(_mockToken), 1 ether);
+    assertEq(vault.tokenBalance(address(_mockToken)), 0);
   }
 }
 
@@ -264,10 +267,49 @@ contract UnitVaultControllerTransfer is Base {
     vault.depositERC20(address(_mockToken), _deposit);
   }
 
+  function testRevertsIfCalledByNonVault(uint256 _amount) public {
+    vm.expectRevert(IVault.Vault_NotVaultController.selector);
+    vault.controllerTransfer(address(_mockToken), address(this), _amount);
+  }
+
   function testControllerTransfer(address _to) public {
     assertEq(vault.balances(address(_mockToken)), _deposit);
     vm.prank(address(mockVaultController));
     vault.controllerTransfer(address(_mockToken), _to, _deposit);
     assertEq(vault.balances(address(_mockToken)), 0);
+  }
+}
+
+contract UnitVaultModifyLiability is Base {
+  function setUp() public virtual override {
+    super.setUp();
+
+    // increase liability first
+    vm.prank(address(mockVaultController));
+    vault.modifyLiability(true, 1 ether);
+  }
+
+  function testRevertsIfCalledByNonVault(bool _increase, uint256 _baseAmount) public {
+    vm.expectRevert(IVault.Vault_NotVaultController.selector);
+    vault.modifyLiability(_increase, _baseAmount);
+  }
+
+  function testRevertIfTooMuchRepay() public {
+    vm.expectRevert(IVault.Vault_RepayTooMuch.selector);
+    vm.prank(address(mockVaultController));
+    vault.modifyLiability(false, 10 ether);
+  }
+
+  function testModifyLiabilitIncrease(uint56 _baseAmount) public {
+    uint256 _liabilityBefore = vault.baseLiability();
+    vm.prank(address(mockVaultController));
+    vault.modifyLiability(true, _baseAmount);
+    assertEq(vault.baseLiability(), _liabilityBefore + _baseAmount);
+  }
+
+  function testModifyLiabilitDecrease() public {
+    vm.prank(address(mockVaultController));
+    vault.modifyLiability(false, 1 ether);
+    assertEq(vault.baseLiability(), 0);
   }
 }

@@ -42,7 +42,7 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
 
   /// @notice checks if _msgSender() is pauser
   modifier onlyPauser() {
-    require(_msgSender() == address(pauser), 'only pauser');
+    if (_msgSender() != address(pauser)) revert USDA_OnlyPauser();
     _;
   }
 
@@ -196,7 +196,7 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
   /// @param _target should obtain 1 sUSD for every 1 USDA burned from caller
   /// this function is effectively just withdraw, but we calculate the amount for the _target
   function _withdrawAll(address _target) internal paysInterest whenNotPaused {
-    require(reserveAmount != 0, 'Reserve is empty');
+    if (reserveAmount == 0) revert USDA_EmptyReserve();
     uint256 _susdAmount = this.balanceOf(_msgSender());
     //user's USDA value is more than reserve
     if (_susdAmount > reserveAmount) _susdAmount = reserveAmount;
@@ -273,7 +273,7 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
   /// @param _target whom to burn the USDA from
   /// @param _amount the amount of USDA to burn
   function vaultControllerBurn(address _target, uint256 _amount) external override onlyVaultController {
-    require(_gonBalances[_target] > (_amount * _gonsPerFragment), 'USDA: not enough balance');
+    if (_gonBalances[_target] < (_amount * _gonsPerFragment)) revert USDA_NotEnoughBalance();
     // see comments in the withdraw function for an explaination of this math
     _gonBalances[_target] = _gonBalances[_target] - _amount * _gonsPerFragment;
     _totalSupply = _totalSupply - _amount;
