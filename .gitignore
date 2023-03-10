@@ -19,3 +19,6 @@ broadcast/*/*/*
 # Coverage
 lcov.info
 report
+
+# Typechain files
+typechain-contracts
