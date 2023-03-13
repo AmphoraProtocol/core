@@ -6,6 +6,7 @@ import {CommonE2EBase, IERC20} from '@test/e2e/Common.sol';
 import {VaultController} from '@contracts/core/VaultController.sol';
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
+import {IAnchoredViewRelay} from '@interfaces/periphery/IAnchoredViewRelay.sol';
 
 contract E2EVaultController is CommonE2EBase {
   uint256 public borrowAmount = 500 ether;
@@ -497,5 +498,24 @@ contract E2EVaultController is CommonE2EBase {
     // Carol's vault got some UNI tokens removed
     assertEq(_carolVaultStartUniBalance - _liquidated, carolVault.tokenBalance(UNI_ADDRESS));
     assertGt(carolVault.tokenBalance(UNI_ADDRESS), 0);
+  }
+
+  function testLiquidateVaultWhenCollateralLosesValue() public {
+    uint192 _accountBorrowingPower = vaultController.vaultBorrowingPower(bobsVaultId);
+
+    // Borrow the maximum amount
+    vm.prank(bob);
+    vaultController.borrowUSDA(bobsVaultId, _accountBorrowingPower);
+
+    // Should revert since vault is solvent
+    vm.expectRevert(IVaultController.VaultController_VaultSolvent.selector);
+    uint256 _tokensToLiquidate = vaultController.tokensToLiquidate(bobsVaultId, WETH_ADDRESS);
+
+    // moch the value of the token to make vault insolvent
+    vm.mockCall(
+      address(anchoredViewEth), abi.encodeWithSelector(IAnchoredViewRelay.currentValue.selector), abi.encode(0.5 ether)
+    );
+    _tokensToLiquidate = vaultController.tokensToLiquidate(bobsVaultId, WETH_ADDRESS);
+    assertEq(_tokensToLiquidate, bobWETH);
   }
 }

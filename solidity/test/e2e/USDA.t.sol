@@ -221,4 +221,21 @@ contract E2EUSDA is CommonE2EBase {
     assertGt(_balanceAfter, _balance);
     assertEq(_reserveRatioAfter, _reserveRatio);
   }
+
+  function testRecoverDust() public {
+    // Deposit half balance
+    _depositSUSD(andy, andySUSDBalance / 2);
+    assertEq(usdaToken.balanceOf(andy), andySUSDBalance / 2);
+
+    // Transfer half balance
+    vm.prank(andy);
+    susd.transfer(address(usdaToken), andySUSDBalance / 2);
+    // usda balance should remain same
+    assertEq(usdaToken.balanceOf(andy), andySUSDBalance / 2);
+    assertEq(susd.balanceOf(andy), 0);
+
+    vm.prank(address(governorDelegator));
+    usdaToken.recoverDust(andy);
+    assertEq(susd.balanceOf(andy), andySUSDBalance / 2);
+  }
 }
