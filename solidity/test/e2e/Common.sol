@@ -34,6 +34,8 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   AmphoraProtocolToken public amphToken;
   // USDA token
   USDA public usdaToken;
+  // WUSDA token
+  WUSDA public wusda;
   // VaultControllers
   VaultController public vaultController;
   VaultController public vaultController2;
@@ -61,7 +63,6 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   GovernorCharlieDelegate public governorDelegate;
   GovernorCharlieDelegator public governorDelegator;
 
-  IWUSDA public wusda;
   IERC20 public susd = IERC20(label(SUSD_ADDRESS, 'SUSD'));
   IERC20 public weth = IERC20(label(WETH_ADDRESS, 'WETH'));
   IERC20 public wbtc = IERC20(label(WBTC_ADDRESS, 'WBTC'));
