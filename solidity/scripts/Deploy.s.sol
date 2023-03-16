@@ -90,6 +90,8 @@ abstract contract Deploy is Script, TestConstants {
     vaultController.registerErc20(
       WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE, type(uint256).max, 0
     );
+    // Register USDA
+    vaultController.registerUSDA(address(usda));
     // Set curve
     curveMaster.setCurve(address(0), address(threeLines));
     // Set pauser

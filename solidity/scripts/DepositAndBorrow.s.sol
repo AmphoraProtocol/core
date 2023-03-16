@@ -14,7 +14,7 @@ contract MintVaultAndDeposit is Script, TestConstants {
   address public user = vm.rememberKey(vm.envUint('USER_PRIVATE_KEY'));
   uint256 public depositAmount = 1 ether;
   // TODO: Change to corrrect address
-  IVaultController public vaultController = IVaultController(0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9);
+  IVaultController public vaultController = IVaultController(VAULT_CONTROLLER_ADDRESS);
   /// @notice The user's vault
   IVault public vault;
   IERC20 public weth = IERC20(WETH_ADDRESS);
@@ -35,10 +35,11 @@ contract MintVaultAndDeposit is Script, TestConstants {
 
 contract Borrow is Script, TestConstants {
   // TODO: Change to corrrect address
-  IVaultController public vaultController = IVaultController(0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9);
-  IUSDA public usda = IUSDA(0x0165878A594ca255338adfa4d48449f69242Eb8F);
+  IVaultController public vaultController = IVaultController(VAULT_CONTROLLER_ADDRESS);
+  IUSDA public usda = IUSDA(USDA_ADDRESS);
+  IERC20 public susd = IERC20(SUSD_ADDRESS);
   address public user = vm.rememberKey(vm.envUint('USER_PRIVATE_KEY'));
-  uint192 public borrowAmount = 1 ether;
+  uint192 public borrowAmount = 0.5 ether;
   uint96 public vaultId = 1;
 
   function run() external {
