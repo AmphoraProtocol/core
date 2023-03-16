@@ -9,6 +9,8 @@ import {IUSDA} from '@interfaces/core/IUSDA.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
+import {IBooster} from '@interfaces/utils/IBooster.sol';
+import {IBaseRewardPool} from '@interfaces/utils/IBaseRewardPool.sol';
 
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {OwnableUpgradeable} from '@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol';
@@ -25,6 +27,9 @@ contract VaultController is
   ExponentialNoError,
   OwnableUpgradeable
 {
+  // The convex booster contract
+  IBooster public immutable BOOSTER = IBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
+
   // mapping of vault id to vault address
   mapping(uint96 => address) public vaultIdVaultAddress;
 
@@ -67,7 +72,7 @@ contract VaultController is
   ) external override initializer {
     __Ownable_init();
     __Pausable_init();
-    interest = Interest(uint64(block.timestamp), 1e18);
+    interest = Interest(uint64(block.timestamp), 1 ether);
     protocolFee = 1e14;
 
     vaultsMinted = 0;
@@ -148,6 +153,26 @@ contract VaultController is
   /// @return _totalDeposited The total deposited of a token
   function tokenTotalDeposited(address _tokenAddress) external view override returns (uint256 _totalDeposited) {
     return tokenAddressCollateralInfo[_tokenAddress].totalDeposited;
+  }
+
+  /// @notice Returns the address of the crvRewards contract
+  /// @param _tokenAddress The address of the token
+  /// @return _crvRewardsContract The address of the crvRewards contract
+  function tokenCrvRewardsContract(address _tokenAddress)
+    external
+    view
+    override
+    returns (IBaseRewardPool _crvRewardsContract)
+  {
+    return tokenAddressCollateralInfo[_tokenAddress].crvRewardsContract;
+  }
+
+  /// @notice Returns the pool id of a curve LP type token
+  /// @dev    If the token is not of type CurveLP then it returns 0
+  /// @param _tokenAddress The address of the token
+  /// @return _poolId The pool id of a curve LP type token
+  function tokenPoolId(address _tokenAddress) external view override returns (uint256 _poolId) {
+    return tokenAddressCollateralInfo[_tokenAddress].poolId;
   }
 
   /// @notice Returns the collateral info of a given token address
@@ -239,10 +264,22 @@ contract VaultController is
     uint256 _ltv,
     address _oracleAddress,
     uint256 _liquidationIncentive,
-    uint256 _cap
+    uint256 _cap,
+    uint256 _poolId
   ) external override onlyOwner {
     CollateralInfo memory _collateral = tokenAddressCollateralInfo[_tokenAddress];
     if (_collateral.tokenId != 0) revert VaultController_TokenAlreadyRegistered();
+    if (_poolId != 0) {
+      (address _lpToken,,, address _crvRewards,,) = BOOSTER.poolInfo(_poolId);
+      if (_lpToken != _tokenAddress) revert VaultController_TokenAddressDoesNotMatchLpAddress();
+      _collateral.collateralType = CollateralType.CurveLP;
+      _collateral.crvRewardsContract = IBaseRewardPool(_crvRewards);
+      _collateral.poolId = _poolId;
+    } else {
+      _collateral.collateralType = CollateralType.Single;
+      _collateral.crvRewardsContract = IBaseRewardPool(address(0));
+      _collateral.poolId = 0;
+    }
     //ltv must be compatible with liquidation incentive
     if (_ltv >= (EXP_SCALE - _liquidationIncentive)) revert VaultController_LTVIncompatible();
     // increment the amount of registered token

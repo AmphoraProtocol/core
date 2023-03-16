@@ -223,6 +223,19 @@ contract E2EVaultController is CommonE2EBase {
     vaultController.borrowUSDA(1, uint192(bobWETH * 1 ether * 1_000_000));
   }
 
+  function testRegisterCurveLP() public {
+    address _lpToken = 0x9fC689CCaDa600B6DF723D9E47D84d76664a1F23;
+    address _crvRewardsAddress = 0x8B55351ea358e5Eda371575B031ee24F462d503e;
+
+    vm.prank(address(governorDelegator));
+    /// TODO: change UNI_LTV  & anchoredViewUni
+    vaultController.registerErc20(
+      _lpToken, UNI_LTV, address(anchoredViewUni), LIQUIDATION_INCENTIVE, type(uint256).max, 1
+    );
+
+    assertEq(address(vaultController.tokenCrvRewardsContract(_lpToken)), _crvRewardsAddress);
+  }
+
   function testBorrow() public {
     uint256 _usdaBalance = usdaToken.balanceOf(bob);
     assertEq(0, _usdaBalance);

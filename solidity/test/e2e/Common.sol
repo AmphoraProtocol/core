@@ -184,17 +184,17 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
 
     // Register WETH as acceptable erc20 to vault controller
     vaultController.registerErc20(
-      WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE, type(uint256).max
+      WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE, type(uint256).max, 0
     );
     // Register UNI as acceptable erc20 to vault controller
     vaultController.registerErc20(
-      UNI_ADDRESS, UNI_LTV, address(anchoredViewUni), LIQUIDATION_INCENTIVE, type(uint256).max
+      UNI_ADDRESS, UNI_LTV, address(anchoredViewUni), LIQUIDATION_INCENTIVE, type(uint256).max, 0
     );
     // Register AAVE as acceptable erc20 to vault controller
-    vaultController.registerErc20(AAVE_ADDRESS, AAVE_LTV, address(anchoredViewAave), LIQUIDATION_INCENTIVE, AAVE_CAP);
+    vaultController.registerErc20(AAVE_ADDRESS, AAVE_LTV, address(anchoredViewAave), LIQUIDATION_INCENTIVE, AAVE_CAP, 0);
     // Register wbtc as acceptable erc20 to vault controller
     vaultController.registerErc20(
-      WBTC_ADDRESS, WBTC_LTV, address(anchoredViewBtc), LIQUIDATION_INCENTIVE, type(uint256).max
+      WBTC_ADDRESS, WBTC_LTV, address(anchoredViewBtc), LIQUIDATION_INCENTIVE, type(uint256).max, 0
     );
     // Register USDA as acceptable erc20 to vault controller
     vaultController.registerUSDA(address(usdaToken));

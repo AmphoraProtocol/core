@@ -17,6 +17,7 @@ import {IVault} from '@interfaces/core/IVault.sol';
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {IUSDA} from '@interfaces/core/IUSDA.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
+import {IBooster} from '@interfaces/utils/IBooster.sol';
 
 import {IERC20} from 'isolmate/interfaces/tokens/IERC20.sol';
 import {DSTestPlus} from 'solidity-utils/test/DSTestPlus.sol';
@@ -101,7 +102,7 @@ abstract contract VaultBase is Base {
 
     vm.prank(governance);
     vaultController.registerErc20(
-      WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE, type(uint256).max
+      WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE, type(uint256).max, 0
     );
 
     vm.startPrank(vaultOwner);
@@ -149,7 +150,7 @@ contract UnitVaultControllerMigrateCollateralsFrom is Base {
     vm.startPrank(governance);
     // Add erc20 collateral in first vault controller
     vaultController.registerErc20(
-      WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE, type(uint256).max
+      WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE, type(uint256).max, 0
     );
     // Deploy the new vault controller
     mockVaultController = new VaultControllerForTest();
@@ -250,6 +251,8 @@ contract UnitVaultControllerRegisterCurveMaster is Base {
 }
 
 contract UnitVaultControllerRegisterERC20 is Base {
+  IBooster public booster = IBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
+
   event RegisteredErc20(
     address _tokenAddress, uint256 _ltv, address _oracleAddress, uint256 _liquidationIncentive, uint256 _cap
   );
@@ -263,18 +266,18 @@ contract UnitVaultControllerRegisterERC20 is Base {
   ) public {
     vm.expectRevert('Ownable: caller is not the owner');
     vm.prank(alice);
-    vaultController.registerErc20(address(_token), _ltv, _oracle, _liquidationIncentive, _cap);
+    vaultController.registerErc20(address(_token), _ltv, _oracle, _liquidationIncentive, _cap, 0);
   }
 
   function testRevertIfTokenAlreadyRegistered(IERC20 _token, address _oracle, uint64 _ltv, uint256 _cap) public {
     vm.assume(_ltv < 0.95 ether);
     // Register WETH as acceptable erc20 collateral to vault controller and set oracle
     vm.prank(governance);
-    vaultController.registerErc20(address(_token), _ltv, _oracle, LIQUIDATION_INCENTIVE, _cap);
+    vaultController.registerErc20(address(_token), _ltv, _oracle, LIQUIDATION_INCENTIVE, _cap, 0);
     vm.expectRevert(IVaultController.VaultController_TokenAlreadyRegistered.selector);
     // Try to register the same again
     vm.prank(governance);
-    vaultController.registerErc20(address(_token), _ltv, _oracle, LIQUIDATION_INCENTIVE, _cap);
+    vaultController.registerErc20(address(_token), _ltv, _oracle, LIQUIDATION_INCENTIVE, _cap, 0);
   }
 
   function testRevertIfIncompatibleLTV(
@@ -286,7 +289,25 @@ contract UnitVaultControllerRegisterERC20 is Base {
     vm.assume(_liquidationIncentive < 1 ether && _liquidationIncentive > 0.2 ether);
     vm.expectRevert(IVaultController.VaultController_LTVIncompatible.selector);
     vm.prank(governance);
-    vaultController.registerErc20(address(_token), WETH_LTV, _oracle, _liquidationIncentive, _cap);
+    vaultController.registerErc20(address(_token), WETH_LTV, _oracle, _liquidationIncentive, _cap, 0);
+  }
+
+  function testRevertIfTokenAddressDoesNotMatchLPTokenAddress(
+    IERC20 _token,
+    address _oracle,
+    uint64 _ltv,
+    uint256 _cap
+  ) public {
+    vm.assume(_ltv < 0.95 ether);
+    vm.assume(address(_token) != address(0));
+    vm.mockCall(
+      address(booster),
+      abi.encodeWithSelector(IBooster.poolInfo.selector, 136),
+      abi.encode(address(0), address(0), address(0), address(0), address(0), false)
+    );
+    vm.expectRevert(IVaultController.VaultController_TokenAddressDoesNotMatchLpAddress.selector);
+    vm.prank(governance);
+    vaultController.registerErc20(address(_token), WETH_LTV, _oracle, LIQUIDATION_INCENTIVE, _cap, 136);
   }
 
   function testRegisterERC20(IERC20 _token, address _oracle) public {
@@ -294,7 +315,7 @@ contract UnitVaultControllerRegisterERC20 is Base {
     emit RegisteredErc20(address(_token), WETH_LTV, _oracle, LIQUIDATION_INCENTIVE, type(uint256).max);
 
     vm.prank(governance);
-    vaultController.registerErc20(address(_token), WETH_LTV, _oracle, LIQUIDATION_INCENTIVE, type(uint256).max);
+    vaultController.registerErc20(address(_token), WETH_LTV, _oracle, LIQUIDATION_INCENTIVE, type(uint256).max, 0);
     assertEq(address(vaultController.tokensOracle(address(_token))), _oracle);
     assertEq(vaultController.tokensRegistered(), 1);
     assertEq(vaultController.tokenId(address(_token)), 1);
@@ -313,7 +334,7 @@ contract UnitVaultControllerUpdateRegisteredERC20 is Base {
     super.setUp();
     vm.prank(governance);
     vaultController.registerErc20(
-      WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE, type(uint256).max
+      WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE, type(uint256).max, 0
     );
   }
 
@@ -609,7 +630,7 @@ contract UnitVaultControllerCapReached is Base {
 
     // register token
     vm.prank(governance);
-    vaultController.registerErc20(WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE, cap);
+    vaultController.registerErc20(WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE, cap, 0);
 
     // mint vault
     vm.prank(alice);
@@ -797,7 +818,7 @@ contract UnitVaultControllerVaultBorrowingPower is VaultBase {
   function testVaultBorrowingPowerMultipleCollateral() public {
     vm.prank(governance);
     vaultController.registerErc20(
-      UNI_ADDRESS, UNI_LTV, address(anchoredViewUni), LIQUIDATION_INCENTIVE, type(uint256).max
+      UNI_ADDRESS, UNI_LTV, address(anchoredViewUni), LIQUIDATION_INCENTIVE, type(uint256).max, 0
     );
 
     vm.startPrank(vaultOwner);

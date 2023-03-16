@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 
 import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
+import {IBaseRewardPool} from '@interfaces/utils/IBaseRewardPool.sol';
 
 /// @title VaultController Interface
 interface IVaultController {
@@ -137,6 +138,18 @@ interface IVaultController {
   /// @notice Thrown when a deposit surpass the cap
   error VaultController_CapReached();
 
+  /// @notice Thrown when registering a crv lp token with wrong address
+  error VaultController_TokenAddressDoesNotMatchLpAddress();
+
+  /*///////////////////////////////////////////////////////////////
+                            ENUMS
+  //////////////////////////////////////////////////////////////*/
+
+  enum CollateralType {
+    Single,
+    CurveLP
+  }
+
   /*///////////////////////////////////////////////////////////////
                             STRUCTS
     //////////////////////////////////////////////////////////////*/
@@ -161,6 +174,9 @@ interface IVaultController {
     uint256 totalDeposited;
     uint256 liquidationIncentive;
     IOracleRelay oracle;
+    CollateralType collateralType;
+    IBaseRewardPool crvRewardsContract;
+    uint256 poolId;
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -196,6 +212,10 @@ interface IVaultController {
   function tokenCap(address _tokenAddress) external view returns (uint256 _cap);
 
   function tokenTotalDeposited(address _tokenAddress) external view returns (uint256 _totalDeposited);
+
+  function tokenCrvRewardsContract(address _tokenAddress) external view returns (IBaseRewardPool _crvRewardsContract);
+
+  function tokenPoolId(address _tokenAddress) external view returns (uint256 _poolId);
 
   function tokenCollateralInfo(address _tokenAddress) external view returns (CollateralInfo memory _collateralInfo);
 
@@ -255,7 +275,8 @@ interface IVaultController {
     uint256 _ltv,
     address _oracleAddress,
     uint256 _liquidationIncentive,
-    uint256 _cap
+    uint256 _cap,
+    uint256 _poolId
   ) external;
 
   function registerUSDA(address _usdaAddress) external;
