@@ -4,6 +4,7 @@ pragma solidity ^0.8.9;
 import {IUSDA} from '@interfaces/core/IUSDA.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
+import {IBooster} from '@interfaces/utils/IBooster.sol';
 
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {Context} from '@openzeppelin/contracts/utils/Context.sol';
@@ -73,6 +74,8 @@ contract Vault is IVault, Context {
 
   /**
    * @notice Used to deposit a token to the vault
+   * @dev    Deposits and stakes on convex if token is of type CurveLP
+   *
    * @param _token The address of the token to deposit
    * @param _amount The amount of the token to deposit
    */
@@ -80,18 +83,31 @@ contract Vault is IVault, Context {
     if (CONTROLLER.tokenId(_token) == 0) revert Vault_TokenNotRegistered();
     if (_amount == 0) revert Vault_AmountZero();
     SafeERC20Upgradeable.safeTransferFrom(IERC20Upgradeable(_token), _msgSender(), address(this), _amount);
+    if (CONTROLLER.tokenCollateralType(_token) == IVaultController.CollateralType.CurveLP) {
+      uint256 _poolId = CONTROLLER.tokenPoolId(_token);
+      IBooster _booster = CONTROLLER.booster();
+      IERC20(_token).approve(address(_booster), _amount);
+      if (!_booster.deposit(_poolId, _amount, true)) revert Vault_DepositAndStakeOnConvexFailed();
+    }
     balances[_token] += _amount;
     CONTROLLER.modifyTotalDeposited(vaultInfo.id, _amount, _token, true);
     emit Deposit(_token, _amount);
   }
 
-  /// @notice withdraw an erc20 token from the vault
-  /// this can only be called by the minter
-  /// the withdraw will be denied if ones vault would become insolvent
-  /// @param _tokenAddress address of erc20 token
-  /// @param _amount amount of erc20 token to withdraw
+  /// @notice Withdraws an erc20 token from the vault
+  /// @dev    This can only be called by the minter
+  /// @dev    The withdraw will be denied if ones vault would become insolvent
+  /// @dev    If the withdraw token is of CurveLP then unstake and withdraw directly to user
+  ///
+  /// @param _tokenAddress The address of erc20 token
+  /// @param _amount The amount of erc20 token to withdraw
   function withdrawERC20(address _tokenAddress, uint256 _amount) external override onlyMinter {
     if (CONTROLLER.tokenId(_tokenAddress) == 0) revert Vault_TokenNotRegistered();
+    if (CONTROLLER.tokenCollateralType(_tokenAddress) == IVaultController.CollateralType.CurveLP) {
+      if (!CONTROLLER.tokenCrvRewardsContract(_tokenAddress).withdrawAndUnwrap(_amount, false)) {
+        revert Vault_WithdrawAndUnstakeOnConvexFailed();
+      }
+    }
     // transfer the token to the owner
     SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(_tokenAddress), _msgSender(), _amount);
     //  check if the account is solvent

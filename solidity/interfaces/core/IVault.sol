@@ -53,6 +53,12 @@ interface IVault {
   /// @notice Thrown when _msgSender is not the controller of the vault
   error Vault_NotVaultController();
 
+  /// @notice Thrown when depositing and staking on convex fails
+  error Vault_DepositAndStakeOnConvexFailed();
+
+  /// @notice Thrown when trying to withdraw and unstake from convex
+  error Vault_WithdrawAndUnstakeOnConvexFailed();
+
   /*///////////////////////////////////////////////////////////////
                               STRUCTS
     //////////////////////////////////////////////////////////////*/

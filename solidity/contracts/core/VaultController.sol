@@ -155,6 +155,13 @@ contract VaultController is
     return tokenAddressCollateralInfo[_tokenAddress].totalDeposited;
   }
 
+  /// @notice Returns the collateral type of a token
+  /// @param _tokenAddress The address of the token
+  /// @return _type The collateral type of a token
+  function tokenCollateralType(address _tokenAddress) external view override returns (CollateralType _type) {
+    return tokenAddressCollateralInfo[_tokenAddress].collateralType;
+  }
+
   /// @notice Returns the address of the crvRewards contract
   /// @param _tokenAddress The address of the token
   /// @return _crvRewardsContract The address of the crvRewards contract
@@ -178,8 +185,19 @@ contract VaultController is
   /// @notice Returns the collateral info of a given token address
   /// @param _tokenAddress The address of the token
   /// @return _collateralInfo The complete collateral info of the token
-  function tokenCollateralInfo(address _tokenAddress) external view returns (CollateralInfo memory _collateralInfo) {
+  function tokenCollateralInfo(address _tokenAddress)
+    external
+    view
+    override
+    returns (CollateralInfo memory _collateralInfo)
+  {
     return tokenAddressCollateralInfo[_tokenAddress];
+  }
+
+  /// @notice Returns the booster contract from convex
+  /// @return _booster The booster contract from convex
+  function booster() external view returns (IBooster _booster) {
+    return BOOSTER;
   }
 
   /// @notice Migrates all collateral information from previous vault controller

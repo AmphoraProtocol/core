@@ -12,4 +12,6 @@ interface IBooster {
     returns (address _lptoken, address _token, address _gauge, address _crvRewards, address _stash, bool _shutdown);
   function earmarkRewards(uint256 _pid) external returns (bool _claimed);
   function earmarkFees() external returns (bool _claimed);
+  function deposit(uint256 _pid, uint256 _amount, bool _stake) external returns (bool _success);
+  function withdraw(uint256 _pid, uint256 _amount) external returns (bool _success);
 }

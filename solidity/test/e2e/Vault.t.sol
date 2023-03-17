@@ -62,4 +62,25 @@ contract E2EVault is CommonE2EBase {
     assertEq(weth.balanceOf(address(bobVault)), bobDeposit);
     assertEq(weth.balanceOf(bob), _bobBalance + 1 ether);
   }
+
+  function testStakeAndWithdrawCurveLP() public {
+    uint256 _depositAmount = 10 ether;
+    uint256 _stakedBalance = usdtStableLP.balanceOf(USDT_LP_STAKED_CONTRACT);
+
+    vm.startPrank(bob);
+    usdtStableLP.approve(address(bobVault), _depositAmount);
+    bobVault.depositERC20(address(usdtStableLP), _depositAmount);
+    vm.stopPrank();
+
+    uint256 _balanceAfterDeposit = usdtStableLP.balanceOf(bob);
+    assertEq(bobVault.tokenBalance(address(usdtStableLP)), _depositAmount);
+    assertEq(_balanceAfterDeposit, bobWETH - _depositAmount);
+    assertEq(usdtStableLP.balanceOf(USDT_LP_STAKED_CONTRACT), _stakedBalance + _depositAmount);
+
+    vm.prank(bob);
+    bobVault.withdrawERC20(address(usdtStableLP), _depositAmount);
+    assertEq(bobVault.tokenBalance(address(usdtStableLP)), 0);
+    assertEq(_balanceAfterDeposit + _depositAmount, bobWETH);
+    assertEq(usdtStableLP.balanceOf(USDT_LP_STAKED_CONTRACT), _stakedBalance);
+  }
 }

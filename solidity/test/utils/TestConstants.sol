@@ -9,6 +9,7 @@ contract TestConstants {
   address public constant AAVE_ADDRESS = 0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9;
   address public constant DYDX_ADDRESS = 0x92D6C1e31e14520e676a687F0a93788B716BEff5;
   address public constant WBTC_ADDRESS = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
+  address public constant USDT_LP_ADDRESS = 0x9fC689CCaDa600B6DF723D9E47D84d76664a1F23;
 
   // Pool addresses
   address public constant USDC_WETH_POOL_ADDRESS = 0x8ad599c3A0ff1De082011EFDDc58f1908eb6e6D8;
@@ -22,6 +23,15 @@ contract TestConstants {
   address public constant CHAINLINK_UNI_FEED_ADDRESS = 0x553303d460EE0afB37EdFf9bE42922D8FF63220e;
   address public constant CHAINLINK_AAVE_FEED_ADDRESS = 0x547a514d5e3769680Ce22B2361c10Ea13619e8a9;
   address public constant CHAINLINK_BTC_FEED_ADDRESS = 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c;
+
+  // Curve rewards contract addresses
+  address public constant USDT_LP_REWARDS_ADDRESS = 0x8B55351ea358e5Eda371575B031ee24F462d503e;
+
+  // CONVEX BOOSTER
+  address public constant BOOSTER = 0xF403C135812408BFbE8713b5A23a04b3D48AAE31;
+
+  // STAKED CONTRACT
+  address public constant USDT_LP_STAKED_CONTRACT = 0xBC89cd85491d81C6AD2954E6d0362Ee29fCa8F53;
 
   // LTV
   uint256 public constant WETH_LTV = 0.85 ether;

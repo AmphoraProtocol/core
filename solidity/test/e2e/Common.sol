@@ -72,6 +72,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   IERC20 public uni = IERC20(label(UNI_ADDRESS, 'UNI'));
   IERC20 public aave = IERC20(label(AAVE_ADDRESS, 'AAVE'));
   IERC20 public dydx = IERC20(label(DYDX_ADDRESS, 'DYDX'));
+  IERC20 public usdtStableLP = IERC20(label(USDT_LP_ADDRESS, 'USDT_LP'));
 
   // frank is the Frank and master of USDA, and symbolizes the power of governance
   address public frank = label(newAddress(), 'frank');
@@ -104,6 +105,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
 
   uint256 public andySUSDBalance = 100 ether;
   uint256 public bobSUSDBalance = 1000 ether;
+  uint256 public bobCurveLPBalance = 10 ether;
   uint256 public bobWETH = 10 ether;
   uint256 public carolUni = 100 ether;
   uint256 public gusWBTC = 1_000_000_000;
@@ -129,6 +131,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     deal(address(dydx), carol, carolDYDX);
     deal(address(wbtc), gus, gusWBTC);
     deal(address(uni), gus, gusUni);
+    deal(address(usdtStableLP), bob, bobCurveLPBalance);
 
     vm.startPrank(frank);
     // Deploy VaultController
@@ -201,6 +204,12 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     vaultController.registerErc20(
       WBTC_ADDRESS, WBTC_LTV, address(anchoredViewBtc), LIQUIDATION_INCENTIVE, type(uint256).max, 0
     );
+
+    /// TODO: change UNI_LTV  & anchoredViewUni
+    vaultController.registerErc20(
+      USDT_LP_ADDRESS, UNI_LTV, address(anchoredViewUni), LIQUIDATION_INCENTIVE, type(uint256).max, 1
+    );
+
     // Register USDA as acceptable erc20 to vault controller
     vaultController.registerUSDA(address(usdaToken));
 

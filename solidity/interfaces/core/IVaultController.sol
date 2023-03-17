@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 
 import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
+import {IBooster} from '@interfaces/utils/IBooster.sol';
 import {IBaseRewardPool} from '@interfaces/utils/IBaseRewardPool.sol';
 
 /// @title VaultController Interface
@@ -213,12 +214,15 @@ interface IVaultController {
 
   function tokenTotalDeposited(address _tokenAddress) external view returns (uint256 _totalDeposited);
 
+  function tokenCollateralType(address _tokenAddress) external view returns (CollateralType _type);
+
   function tokenCrvRewardsContract(address _tokenAddress) external view returns (IBaseRewardPool _crvRewardsContract);
 
   function tokenPoolId(address _tokenAddress) external view returns (uint256 _poolId);
 
   function tokenCollateralInfo(address _tokenAddress) external view returns (CollateralInfo memory _collateralInfo);
 
+  function booster() external view returns (IBooster _booster);
   /*///////////////////////////////////////////////////////////////
                             LOGIC
     //////////////////////////////////////////////////////////////*/

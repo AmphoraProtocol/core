@@ -7,10 +7,13 @@ import {IERC20Upgradeable} from '@openzeppelin/contracts-upgradeable/token/ERC20
 import {Vault} from '@contracts/core/Vault.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
+import {IBooster} from '@interfaces/utils/IBooster.sol';
+import {IBaseRewardPool} from '@interfaces/utils/IBaseRewardPool.sol';
 
 import {DSTestPlus} from 'solidity-utils/test/DSTestPlus.sol';
+import {TestConstants} from '@test/utils/TestConstants.sol';
 
-abstract contract Base is DSTestPlus {
+abstract contract Base is DSTestPlus, TestConstants {
   IERC20 internal _mockToken = IERC20(mockContract(newAddress(), 'mockToken'));
   IVaultController public mockVaultController = IVaultController(mockContract(newAddress(), 'mockVaultController'));
 
@@ -38,6 +41,12 @@ contract UnitVaultGetters is Base {
       abi.encodeWithSelector(IVaultController.tokenId.selector, address(_mockToken)),
       abi.encode(1)
     );
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenCollateralType.selector),
+      abi.encode(IVaultController.CollateralType.Single)
+    );
+
     vm.prank(vaultOwner);
     vault.depositERC20(address(_mockToken), _amount);
 
@@ -60,6 +69,12 @@ contract UnitVaultDepositERC20 is Base {
       address(mockVaultController),
       abi.encodeWithSelector(IVaultController.modifyTotalDeposited.selector, address(_mockToken)),
       abi.encode(1)
+    );
+
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenCollateralType.selector),
+      abi.encode(IVaultController.CollateralType.Single)
     );
   }
 
@@ -84,6 +99,54 @@ contract UnitVaultDepositERC20 is Base {
     vm.expectRevert(IVault.Vault_AmountZero.selector);
     vm.prank(vaultOwner);
     vault.depositERC20(address(_mockToken), 0);
+  }
+
+  function testRevertIfStakeOnConvexFails(uint256 _amount) public {
+    vm.assume(_amount > 0);
+
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenCollateralType.selector),
+      abi.encode(IVaultController.CollateralType.CurveLP)
+    );
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenPoolId.selector, address(_mockToken)),
+      abi.encode(1)
+    );
+    vm.mockCall(
+      address(mockVaultController), abi.encodeWithSelector(IVaultController.booster.selector), abi.encode(BOOSTER)
+    );
+    vm.mockCall(address(_mockToken), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
+    vm.mockCall(BOOSTER, abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(false));
+    vm.expectRevert(IVault.Vault_DepositAndStakeOnConvexFailed.selector);
+
+    vm.prank(vaultOwner);
+    vault.depositERC20(address(_mockToken), _amount);
+  }
+
+  function testExpectCallDepositOnConvex(uint256 _amount) public {
+    vm.assume(_amount > 0);
+
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenCollateralType.selector),
+      abi.encode(IVaultController.CollateralType.CurveLP)
+    );
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenPoolId.selector, address(_mockToken)),
+      abi.encode(1)
+    );
+    vm.mockCall(
+      address(mockVaultController), abi.encodeWithSelector(IVaultController.booster.selector), abi.encode(BOOSTER)
+    );
+    vm.mockCall(address(_mockToken), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
+    vm.mockCall(BOOSTER, abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(true));
+
+    vm.expectCall(BOOSTER, abi.encodeWithSelector(IBooster.deposit.selector, 1, _amount, true));
+    vm.prank(vaultOwner);
+    vault.depositERC20(address(_mockToken), _amount);
   }
 
   function testModifyTotalDepositedIsCalled(uint256 _amount) public {
@@ -116,6 +179,12 @@ contract UnitVaultWithdrawERC20 is Base {
       address(mockVaultController),
       abi.encodeWithSelector(IVaultController.tokenId.selector, address(_mockToken)),
       abi.encode(1)
+    );
+
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenCollateralType.selector),
+      abi.encode(IVaultController.CollateralType.Single)
     );
 
     vm.prank(vaultOwner);
@@ -163,6 +232,52 @@ contract UnitVaultWithdrawERC20 is Base {
     vault.withdrawERC20(address(_mockToken), _amount);
   }
 
+  function testRevertIfUnstakeOnConvexFails(uint256 _amount) public {
+    vm.assume(_amount > 0);
+
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenCollateralType.selector),
+      abi.encode(IVaultController.CollateralType.CurveLP)
+    );
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenCrvRewardsContract.selector),
+      abi.encode(USDT_LP_REWARDS_ADDRESS)
+    );
+    vm.mockCall(
+      USDT_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.withdrawAndUnwrap.selector), abi.encode(false)
+    );
+    vm.expectRevert(IVault.Vault_WithdrawAndUnstakeOnConvexFailed.selector);
+
+    vm.prank(vaultOwner);
+    vault.withdrawERC20(address(_mockToken), _amount);
+  }
+
+  function testExpectCallWithdrawOnConvex(uint256 _amount) public {
+    vm.assume(_amount > 0);
+
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenCollateralType.selector),
+      abi.encode(IVaultController.CollateralType.CurveLP)
+    );
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenCrvRewardsContract.selector),
+      abi.encode(USDT_LP_REWARDS_ADDRESS)
+    );
+    vm.mockCall(
+      USDT_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.withdrawAndUnwrap.selector), abi.encode(true)
+    );
+
+    vm.expectCall(
+      USDT_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.withdrawAndUnwrap.selector, 1 ether, false)
+    );
+    vm.prank(vaultOwner);
+    vault.withdrawERC20(address(_mockToken), 1 ether);
+  }
+
   function testModifyTotalDepositedIsCalled() public {
     vm.expectCall(
       address(mockVaultController),
@@ -194,6 +309,12 @@ contract UnitVaultRecoverDust is Base {
       address(mockVaultController),
       abi.encodeWithSelector(IVaultController.tokenId.selector, address(_mockToken)),
       abi.encode(1)
+    );
+
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenCollateralType.selector),
+      abi.encode(IVaultController.CollateralType.Single)
     );
 
     vm.prank(vaultOwner);
@@ -261,6 +382,12 @@ contract UnitVaultControllerTransfer is Base {
       address(mockVaultController),
       abi.encodeWithSelector(IVaultController.tokenId.selector, address(_mockToken)),
       abi.encode(1)
+    );
+
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenCollateralType.selector),
+      abi.encode(IVaultController.CollateralType.Single)
     );
 
     vm.prank(vaultOwner);
