@@ -141,7 +141,7 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
       _newProposal.startBlock,
       _newProposal.endBlock,
       _description
-      );
+    );
     return _newProposal.id;
   }
 
