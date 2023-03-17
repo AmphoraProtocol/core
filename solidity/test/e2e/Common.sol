@@ -15,6 +15,7 @@ import {AnchoredViewRelay} from '@contracts/periphery/AnchoredViewRelay.sol';
 import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
 import {UniswapV3OracleRelay} from '@contracts/periphery/UniswapV3OracleRelay.sol';
 import {UniswapV3TokenOracleRelay} from '@contracts/periphery/UniswapV3TokenOracleRelay.sol';
+import {ThreeCrvOracle} from '@contracts/periphery/ThreeCrvOracle.sol';
 import {ThreeLines0_100} from '@contracts/utils/ThreeLines0_100.sol';
 import {WUSDA} from '@contracts/core/WUSDA.sol';
 
@@ -59,6 +60,8 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   AnchoredViewRelay public anchoredViewAave;
   AnchoredViewRelay public anchoredViewDydx;
   AnchoredViewRelay public anchoredViewBtc;
+  // Curve oracles
+  ThreeCrvOracle public threeCrvOracle;
   // Governance
   GovernorCharlieDelegate public governorDelegate;
   GovernorCharlieDelegator public governorDelegator;
@@ -181,6 +184,8 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     anchoredViewDydx = new AnchoredViewRelay(address(uniswapRelayDydxWeth), address(uniswapRelayDydxWeth), 10, 100);
     // Deploy anchoredViewEth relay
     anchoredViewBtc = new AnchoredViewRelay(address(uniswapRelayWbtcUsdc), address(chainlinkBtc), 30, 100);
+    // Deploy the ThreeCrvOracle
+    threeCrvOracle = new ThreeCrvOracle();
 
     // Register WETH as acceptable erc20 to vault controller
     vaultController.registerErc20(
