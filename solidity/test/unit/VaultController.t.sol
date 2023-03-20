@@ -18,6 +18,7 @@ import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {IUSDA} from '@interfaces/core/IUSDA.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
 import {IBooster} from '@interfaces/utils/IBooster.sol';
+import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
 
 import {IERC20} from 'isolmate/interfaces/tokens/IERC20.sol';
 import {DSTestPlus} from 'solidity-utils/test/DSTestPlus.sol';
@@ -58,7 +59,7 @@ abstract contract Base is DSTestPlus, TestConstants {
     address[] memory _tokens = new address[](1);
     vm.startPrank(governance);
     vaultController = new VaultController();
-    vaultController.initialize(IVaultController(address(0)), _tokens);
+    vaultController.initialize(IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), 0.01e18); // TODO: change this after finishing claim contract task
 
     curveMaster = new CurveMaster();
     threeLines = new ThreeLines0_100(2 ether, 0.05 ether, 0.045 ether, 0.5 ether, 0.55 ether);
@@ -126,9 +127,11 @@ contract UnitVaultControllerInitialize is Base {
     assertEq(vaultController.lastInterestTime(), block.timestamp);
     assertEq(vaultController.interestFactor(), 1 ether);
     assertEq(vaultController.protocolFee(), 100_000_000_000_000);
+    assertEq(vaultController.curveLpRewardsFee(), 10_000_000_000_000_000);
     assertEq(vaultController.vaultsMinted(), 0);
     assertEq(vaultController.tokensRegistered(), 0);
     assertEq(vaultController.totalBaseLiability(), 0);
+    assertEq(address(vaultController.claimerContract()), address(0));
   }
 }
 
@@ -375,6 +378,52 @@ contract UnitVaultControllerUpdateRegisteredERC20 is Base {
     assertEq(vaultController.tokenLTV(WETH_ADDRESS), _ltv);
     assertEq(vaultController.tokenLiquidationIncentive(WETH_ADDRESS), LIQUIDATION_INCENTIVE);
     assertEq(vaultController.tokenCap(WETH_ADDRESS), _cap);
+  }
+}
+
+contract UnitVaultControllerChangeCurveLpFee is Base {
+  event ChangedCurveLpFee(uint256 _oldFee, uint256 _newFee);
+
+  function testRevertIfChangeFromNonOwner(uint192 _newFee) public {
+    vm.expectRevert('Ownable: caller is not the owner');
+    vm.prank(alice);
+    vaultController.changeCurveLpFee(_newFee);
+  }
+
+  function testRevertIfFeeIsTooHigh(uint192 _newFee) public {
+    vm.assume(_newFee > 1 ether);
+    vm.expectRevert(IVaultController.VaultController_FeeTooLarge.selector);
+    vm.prank(governance);
+    vaultController.changeCurveLpFee(_newFee);
+  }
+
+  function testChangeCurveLpFee(uint192 _newFee) public {
+    vm.assume(_newFee < 1 ether);
+    vm.expectEmit(false, false, false, true);
+    emit ChangedCurveLpFee(vaultController.curveLpRewardsFee(), _newFee);
+
+    vm.prank(governance);
+    vaultController.changeCurveLpFee(_newFee);
+    assertEq(vaultController.curveLpRewardsFee(), _newFee);
+  }
+}
+
+contract UnitVaultControllerChangeClaimerContract is Base {
+  event ChangedClaimerContract(IAMPHClaimer _oldClaimerContract, IAMPHClaimer _newClaimerContract);
+
+  function testRevertIfChangeFromNonOwner(IAMPHClaimer _claimerContract) public {
+    vm.expectRevert('Ownable: caller is not the owner');
+    vm.prank(alice);
+    vaultController.changeClaimerContract(_claimerContract);
+  }
+
+  function testChangeClaimerContract(IAMPHClaimer _claimerContract) public {
+    vm.expectEmit(false, false, false, true);
+    emit ChangedClaimerContract(vaultController.claimerContract(), _claimerContract);
+
+    vm.prank(governance);
+    vaultController.changeClaimerContract(_claimerContract);
+    assertEq(address(vaultController.claimerContract()), address(_claimerContract));
   }
 }
 

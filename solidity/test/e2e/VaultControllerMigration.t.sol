@@ -7,6 +7,7 @@ import {VaultController} from '@contracts/core/VaultController.sol';
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
 import {IRoles} from '@interfaces/utils/IRoles.sol';
+import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
 
 contract E2EVaultControllerMigration is CommonE2EBase {
   VaultController public newVaultController;
@@ -31,7 +32,7 @@ contract E2EVaultControllerMigration is CommonE2EBase {
     _tokens[0] = WETH_ADDRESS;
     _tokens[1] = UNI_ADDRESS;
     _tokens[2] = AAVE_ADDRESS;
-    newVaultController.initialize(vaultController, _tokens);
+    newVaultController.initialize(vaultController, _tokens, IAMPHClaimer(address(0)), 0.01e18); // TODO: change this after finishing claim contract task
 
     newVaultController.transferOwnership(address(governorDelegator));
     vm.stopPrank();

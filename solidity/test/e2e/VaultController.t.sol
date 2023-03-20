@@ -7,6 +7,7 @@ import {VaultController} from '@contracts/core/VaultController.sol';
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
 import {IAnchoredViewRelay} from '@interfaces/periphery/IAnchoredViewRelay.sol';
+import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
 
 contract E2EVaultController is CommonE2EBase {
   uint256 public borrowAmount = 500 ether;
@@ -172,7 +173,7 @@ contract E2EVaultController is CommonE2EBase {
     vm.startPrank(frank);
     // Deploy the new vault controller
     vaultController2 = new VaultController();
-    vaultController2.initialize(IVaultController(address(vaultController)), _tokens);
+    vaultController2.initialize(IVaultController(address(vaultController)), _tokens, IAMPHClaimer(address(0)), 0.01e18); // TODO: change this after finishing claim contract task
     vm.stopPrank();
 
     assertEq(address(vaultController2.tokensOracle(WETH_ADDRESS)), address(anchoredViewEth));

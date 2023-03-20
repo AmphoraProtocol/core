@@ -5,6 +5,7 @@ import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
 import {IBooster} from '@interfaces/utils/IBooster.sol';
 import {IBaseRewardPool} from '@interfaces/utils/IBaseRewardPool.sol';
+import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
 
 /// @title VaultController Interface
 interface IVaultController {
@@ -86,6 +87,20 @@ interface IVaultController {
    * @param _tokensToLiquidate The number of tokens that were liquidated
    */
   event Liquidate(uint256 _vaultId, address _assetAddress, uint256 _usdaToRepurchase, uint256 _tokensToLiquidate);
+
+  /**
+   * @notice Emited when governance changes the curve lp fee
+   *  @param _oldFee The old curve lp fee
+   *  @param _newFee The new curve lp fee
+   */
+  event ChangedCurveLpFee(uint256 _oldFee, uint256 _newFee);
+
+  /**
+   * @notice Emited when governance changes the claimer contract
+   *  @param _oldClaimerContract The old claimer contract
+   *  @param _newClaimerContract The new claimer contract
+   */
+  event ChangedClaimerContract(IAMPHClaimer _oldClaimerContract, IAMPHClaimer _newClaimerContract);
 
   /*///////////////////////////////////////////////////////////////
                             ERRORS
@@ -223,11 +238,21 @@ interface IVaultController {
   function tokenCollateralInfo(address _tokenAddress) external view returns (CollateralInfo memory _collateralInfo);
 
   function booster() external view returns (IBooster _booster);
+
+  function curveLpRewardsFee() external view returns (uint256 _fee);
+
+  function claimerContract() external view returns (IAMPHClaimer _claimerContract);
+
   /*///////////////////////////////////////////////////////////////
                             LOGIC
     //////////////////////////////////////////////////////////////*/
 
-  function initialize(IVaultController _oldVaultController, address[] memory _tokenAddresses) external;
+  function initialize(
+    IVaultController _oldVaultController,
+    address[] memory _tokenAddresses,
+    IAMPHClaimer _claimerContract,
+    uint256 _curveLpRewardsFee
+  ) external;
 
   function amountToSolvency(uint96 _id) external view returns (uint256 _amountToSolvency);
 
@@ -292,4 +317,8 @@ interface IVaultController {
     uint256 _liquidationIncentive,
     uint256 _cap
   ) external;
+
+  function changeCurveLpFee(uint256 _newFee) external;
+
+  function changeClaimerContract(IAMPHClaimer _newClaimerContract) external;
 }

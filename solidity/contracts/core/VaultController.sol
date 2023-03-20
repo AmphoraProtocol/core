@@ -11,6 +11,7 @@ import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
 import {IBooster} from '@interfaces/utils/IBooster.sol';
 import {IBaseRewardPool} from '@interfaces/utils/IBaseRewardPool.sol';
+import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
 
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {OwnableUpgradeable} from '@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol';
@@ -45,11 +46,13 @@ contract VaultController is
   Interest public interest;
 
   IUSDA public usda;
+  IAMPHClaimer public claimerContract;
 
   uint96 public vaultsMinted;
   uint256 public tokensRegistered;
   uint192 public totalBaseLiability;
   uint192 public protocolFee;
+  uint256 public curveLpRewardsFee;
 
   /// @notice any function with this modifier will call the _payInterest() function before
   modifier paysInterest() {
@@ -66,14 +69,20 @@ contract VaultController is
   /// @notice Can initialize collaterals from an older vault controller
   /// @param _oldVaultController The old vault controller
   /// @param _tokenAddresses The addresses of the collateral we want to take information for
+  /// @param _claimerContract The claimer contract
   function initialize(
     IVaultController _oldVaultController,
-    address[] memory _tokenAddresses
+    address[] memory _tokenAddresses,
+    IAMPHClaimer _claimerContract,
+    uint256 _curveLpRewardsFee
   ) external override initializer {
     __Ownable_init();
     __Pausable_init();
     interest = Interest(uint64(block.timestamp), 1 ether);
     protocolFee = 1e14;
+    curveLpRewardsFee = _curveLpRewardsFee;
+
+    claimerContract = _claimerContract;
 
     vaultsMinted = 0;
     tokensRegistered = 0;
@@ -348,6 +357,25 @@ contract VaultController is
     tokenAddressCollateralInfo[_tokenAddress] = _collateral;
 
     emit UpdateRegisteredErc20(_tokenAddress, _ltv, _oracleAddress, _liquidationIncentive, _cap);
+  }
+
+  /// @notice Change the fee taken when claiming curve LP rewards, that amount will be exchanged for AMPH in the AMPH claimer contract
+  /// @param _newFee the new fee in terms of 1e18=100%
+  function changeCurveLpFee(uint256 _newFee) external override onlyOwner {
+    if (_newFee >= 1e18) revert VaultController_FeeTooLarge();
+    uint256 _oldFee = curveLpRewardsFee;
+    curveLpRewardsFee = _newFee;
+
+    emit ChangedCurveLpFee(_oldFee, _newFee);
+  }
+
+  /// @notice Change the claimer contract, used to exchange a fee from curve lp rewards for AMPH tokens
+  /// @param _newClaimerContract the new claimer contract
+  function changeClaimerContract(IAMPHClaimer _newClaimerContract) external override onlyOwner {
+    IAMPHClaimer _oldClaimerContract = claimerContract;
+    claimerContract = _newClaimerContract;
+
+    emit ChangedClaimerContract(_oldClaimerContract, _newClaimerContract);
   }
 
   /// @notice Check a vault for over-collateralization

@@ -18,6 +18,7 @@ import {UniswapV3TokenOracleRelay} from '@contracts/periphery/UniswapV3TokenOrac
 import {ThreeCrvOracle} from '@contracts/periphery/ThreeCrvOracle.sol';
 import {ThreeLines0_100} from '@contracts/utils/ThreeLines0_100.sol';
 import {WUSDA} from '@contracts/core/WUSDA.sol';
+import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
 import {AMPHClaimer} from '@contracts/core/AMPHClaimer.sol';
 
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
@@ -142,7 +143,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     // Deploy VaultController
     vaultController = new VaultController();
     label(address(vaultController), 'VaultController');
-    vaultController.initialize(IVaultController(address(0)), _tokens);
+    vaultController.initialize(IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), 0.01e18); // TODO: change this after finishing claim contract task
 
     // Deploy and initialize USDA
     usdaToken = new USDA();

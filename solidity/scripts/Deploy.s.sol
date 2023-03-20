@@ -14,6 +14,7 @@ import {AnchoredViewRelay} from '@contracts/periphery/AnchoredViewRelay.sol';
 import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
 import {UniswapV3OracleRelay} from '@contracts/periphery/UniswapV3OracleRelay.sol';
 import {ThreeLines0_100} from '@contracts/utils/ThreeLines0_100.sol';
+import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
 
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {TestConstants} from '@test/utils/TestConstants.sol';
@@ -55,7 +56,7 @@ abstract contract Deploy is Script, TestConstants {
     // Deploy and initialize VaultController
     vaultController = new VaultController();
     console.log('VAULT_CONTROLLER: ', address(vaultController));
-    vaultController.initialize(IVaultController(address(0)), _tokens);
+    vaultController.initialize(IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), 0.01e18); // TODO: change this after finishing claim contract task
 
     // Deploy and initialize USDA
     usda = new USDA();
