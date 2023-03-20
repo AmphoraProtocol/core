@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.5.0 <0.9.0;
 
-import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
+import {IOracleRelay, OracleRelay} from '@contracts/periphery/OracleRelay.sol';
 import {IUniswapV3PoolDerivedState} from '@uniswap/v3-core/contracts/interfaces/pool/IUniswapV3PoolDerivedState.sol';
 import {TickMath} from '@uniswap/v3-core/contracts/libraries/TickMath.sol';
 
@@ -9,7 +9,7 @@ import {TickMath} from '@uniswap/v3-core/contracts/libraries/TickMath.sol';
 /// @notice This oracle is for tokens that do not have a stable Uniswap V3 pair against sUSD
 /// if QUOTE_TOKEN_IS_TOKEN0 == true, then the reciprocal is returned
 /// quote_token refers to the token we are comparing to, so for an Aave price in ETH, Aave is the target and Eth is the quote
-contract UniswapV3TokenOracleRelay is IOracleRelay {
+contract UniswapV3TokenOracleRelay is OracleRelay {
   /// @notice Thrown when the tick time diff fails
   error UniswapV3OracleRelay_TickTimeDiffTooLarge();
 
@@ -29,7 +29,13 @@ contract UniswapV3TokenOracleRelay is IOracleRelay {
   /// @param _quoteTokenIsToken0 true if eth is token 0, or false if eth is token 1
   /// @param _mul numerator of scalar
   /// @param _div denominator of scalar
-  constructor(uint32 _lookback, address _poolAddress, bool _quoteTokenIsToken0, uint256 _mul, uint256 _div) {
+  constructor(
+    uint32 _lookback,
+    address _poolAddress,
+    bool _quoteTokenIsToken0,
+    uint256 _mul,
+    uint256 _div
+  ) OracleRelay(OracleType.Uniswap) {
     LOOKBACK = _lookback;
     MUL = _mul;
     DIV = _div;

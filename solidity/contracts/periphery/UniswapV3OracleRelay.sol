@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.5.0 <0.9.0;
 
-import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
+import {IOracleRelay, OracleRelay} from '@contracts/periphery/OracleRelay.sol';
 import {IUniswapV3PoolDerivedState} from '@uniswap/v3-core/contracts/interfaces/pool/IUniswapV3PoolDerivedState.sol';
 import {TickMath} from '@uniswap/v3-core/contracts/libraries/TickMath.sol';
 
 /// @title Oracle that wraps a univ3 pool
 /// @notice The oracle returns (univ3) * mul / div
 /// if QUOTE_TOKEN_IS_TOKEN0 == true, then the reciprocal is returned
-contract UniswapV3OracleRelay is IOracleRelay {
+contract UniswapV3OracleRelay is OracleRelay {
   /// @notice Thrown when the tick time diff fails
   error UniswapV3OracleRelay_TickTimeDiffTooLarge();
 
@@ -25,7 +25,13 @@ contract UniswapV3OracleRelay is IOracleRelay {
   /// @param _quoteTokenIsToken0 marker for which token to use as quote/base in calculation
   /// @param _mul numerator of scalar
   /// @param _div denominator of scalar
-  constructor(uint32 _lookback, address _poolAddress, bool _quoteTokenIsToken0, uint256 _mul, uint256 _div) {
+  constructor(
+    uint32 _lookback,
+    address _poolAddress,
+    bool _quoteTokenIsToken0,
+    uint256 _mul,
+    uint256 _div
+  ) OracleRelay(OracleType.Uniswap) {
     LOOKBACK = _lookback;
     MUL = _mul;
     DIV = _div;

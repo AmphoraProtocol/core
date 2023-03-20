@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
+import {IOracleRelay, OracleRelay} from '@contracts/periphery/OracleRelay.sol';
 import {AggregatorInterface} from '@chainlink/interfaces/AggregatorInterface.sol';
 
 /// @title Oracle that wraps a chainlink oracle
 /// @notice The oracle returns (chainlinkPrice) * mul / div
-contract ChainlinkOracleRelay is IOracleRelay {
+contract ChainlinkOracleRelay is OracleRelay {
   /// @notice emitted when the oracle price is less than zero
   error ChainlinkOracle_PriceLessThanZero();
 
@@ -19,7 +19,7 @@ contract ChainlinkOracleRelay is IOracleRelay {
   /// @param  _feedAddress address of chainlink feed
   /// @param _mul numerator of scalar
   /// @param _div denominator of scalar
-  constructor(address _feedAddress, uint256 _mul, uint256 _div) {
+  constructor(address _feedAddress, uint256 _mul, uint256 _div) OracleRelay(OracleType.Chainlink) {
     _AGGREGATOR = AggregatorInterface(_feedAddress);
     MULTIPLY = _mul;
     DIVIDE = _div;

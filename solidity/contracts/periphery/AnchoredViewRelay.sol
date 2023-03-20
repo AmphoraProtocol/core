@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
+import {IOracleRelay, OracleRelay} from '@contracts/periphery/OracleRelay.sol';
 
 /// @title implementation of compounds' AnchoredView
 /// @notice using a main relay and an anchor relay, the AnchoredView
 /// ensures that the main relay's price is within some amount of the anchor relay price
 /// if not, the call reverts, effectively disabling the oracle & any actions which require it
-contract AnchoredViewRelay is IOracleRelay {
+contract AnchoredViewRelay is OracleRelay {
   address public anchorAddress;
   IOracleRelay public anchorRelay;
 
@@ -22,7 +22,12 @@ contract AnchoredViewRelay is IOracleRelay {
   /// @param _mainAddress address of OracleRelay to use as main
   /// @param _widthNumerator numerator of the allowable deviation width
   /// @param _widthDenominator denominator of the allowable deviation width
-  constructor(address _anchorAddress, address _mainAddress, uint256 _widthNumerator, uint256 _widthDenominator) {
+  constructor(
+    address _anchorAddress,
+    address _mainAddress,
+    uint256 _widthNumerator,
+    uint256 _widthDenominator
+  ) OracleRelay(IOracleRelay(_mainAddress).oracleType()) {
     anchorAddress = _anchorAddress;
     anchorRelay = IOracleRelay(_anchorAddress);
 
