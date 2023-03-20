@@ -10,6 +10,8 @@ contract TestConstants {
   address public constant DYDX_ADDRESS = 0x92D6C1e31e14520e676a687F0a93788B716BEff5;
   address public constant WBTC_ADDRESS = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
   address public constant USDT_LP_ADDRESS = 0x9fC689CCaDa600B6DF723D9E47D84d76664a1F23;
+  address public constant CVX_ADDRESS = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
+  address public constant CRV_ADDRESS = 0xD533a949740bb3306d119CC777fa900bA034cd52;
 
   // Pool addresses
   address public constant USDC_WETH_POOL_ADDRESS = 0x8ad599c3A0ff1De082011EFDDc58f1908eb6e6D8;

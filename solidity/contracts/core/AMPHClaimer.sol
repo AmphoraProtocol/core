@@ -16,10 +16,10 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
   IERC20 public immutable CRV;
   IERC20 public immutable AMPH;
 
-  /// @dev how much AMPH you will receive per 1 CVX (1e6)
+  /// @dev how much AMPH you will receive per 1 CVX (1e18)
   uint256 public amphPerCvx;
 
-  /// @dev how much AMPH you will receive per 1 CRV (1e6)
+  /// @dev how much AMPH you will receive per 1 CRV (1e18)
   uint256 public amphPerCrv;
 
   IVaultController public vaultController;

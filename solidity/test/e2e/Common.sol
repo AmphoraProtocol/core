@@ -18,6 +18,7 @@ import {UniswapV3TokenOracleRelay} from '@contracts/periphery/UniswapV3TokenOrac
 import {ThreeCrvOracle} from '@contracts/periphery/ThreeCrvOracle.sol';
 import {ThreeLines0_100} from '@contracts/utils/ThreeLines0_100.sol';
 import {WUSDA} from '@contracts/core/WUSDA.sol';
+import {AMPHClaimer} from '@contracts/core/AMPHClaimer.sol';
 
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {IWUSDA} from '@interfaces/core/IWUSDA.sol';
@@ -33,6 +34,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
 
   // AMPH token
   AmphoraProtocolToken public amphToken;
+  AMPHClaimer public amphClaimer;
   // USDA token
   USDA public usdaToken;
   // WUSDA token
@@ -115,6 +117,9 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   uint256 public gusUni = 100 ether;
 
   uint256 public initialAMPH = 100_000_000 ether;
+
+  uint256 public cvxRate = 10e18; // 10 AMPH per 1 CVX
+  uint256 public crvRate = 0.5e18; // 0.5 AMPH per 1 CVX
 
   function setUp() public virtual {
     vm.createSelectFork(vm.rpcUrl('mainnet'), FORK_BLOCK);
@@ -223,6 +228,10 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     amphToken = new AmphoraProtocolToken();
     amphToken.initialize(frank, initialAMPH);
 
+    // deploy claimer
+    amphClaimer =
+      new AMPHClaimer(address(vaultController), address(amphToken), CVX_ADDRESS, CRV_ADDRESS, cvxRate, crvRate);
+
     governorDelegate = new GovernorCharlieDelegate();
     governorDelegator = new GovernorCharlieDelegator(address(amphToken), address(governorDelegate));
 
@@ -231,6 +240,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     usdaToken.transferOwnership(address(governorDelegator));
     vaultController.transferOwnership(address(governorDelegator));
     curveMaster.transferOwnership(address(governorDelegator));
+    amphClaimer.transferOwnership(address(governorDelegator));
 
     // Deploy wUSDA
     wusda = new WUSDA(address(usdaToken), 'Wrapped USDA', 'wUSDA');
