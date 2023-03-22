@@ -318,13 +318,13 @@ contract E2EVaultController is CommonE2EBase {
     uint256 _liability = bobVault.baseLiability();
     uint256 _partialLiability = _liability / 2; // half
 
-    vm.prank(address(governorDelegator));
+    vm.prank(address(governor));
     vaultController.pause();
     vm.warp(block.timestamp + 1);
     vm.expectRevert('Pausable: paused');
     vm.prank(bob);
     vaultController.repayUSDA(1, uint192(_liability / 2));
-    vm.prank(address(governorDelegator));
+    vm.prank(address(governor));
     vaultController.unpause();
     vm.warp(block.timestamp + 1);
 
@@ -404,12 +404,12 @@ contract E2EVaultController is CommonE2EBase {
     assertEq(vaultController.interestFactor(), _tenYearInterestFactor);
 
     // Vault shouldnt be liquidated if protocol is paused
-    vm.prank(address(governorDelegator));
+    vm.prank(address(governor));
     vaultController.pause();
     vm.expectRevert('Pausable: paused');
     vm.prank(dave);
     vaultController.liquidateVault(bobsVaultId, WETH_ADDRESS, 1 ether);
-    vm.prank(address(governorDelegator));
+    vm.prank(address(governor));
     vaultController.unpause();
 
     uint256 _expectedUSDAToRepurchase =

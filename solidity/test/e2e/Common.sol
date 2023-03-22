@@ -8,8 +8,7 @@ import {DSTestPlus} from 'solidity-utils/test/DSTestPlus.sol';
 import {VaultController} from '@contracts/core/VaultController.sol';
 import {USDA} from '@contracts/core/USDA.sol';
 import {AmphoraProtocolToken} from '@contracts/governance/AmphoraProtocolToken.sol';
-import {GovernorCharlieDelegate} from '@contracts/governance/GovernorDelegate.sol';
-import {GovernorCharlieDelegator} from '@contracts/governance/GovernorDelegator.sol';
+import {GovernorCharlie} from '@contracts/governance/GovernorCharlie.sol';
 import {ChainlinkOracleRelay} from '@contracts/periphery/ChainlinkOracleRelay.sol';
 import {AnchoredViewRelay} from '@contracts/periphery/AnchoredViewRelay.sol';
 import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
@@ -66,8 +65,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   // Curve oracles
   ThreeCrvOracle public threeCrvOracle;
   // Governance
-  GovernorCharlieDelegate public governorDelegate;
-  GovernorCharlieDelegator public governorDelegator;
+  GovernorCharlie public governor;
 
   IERC20 public susd = IERC20(label(SUSD_ADDRESS, 'SUSD'));
   IERC20 public weth = IERC20(label(WETH_ADDRESS, 'WETH'));
@@ -233,15 +231,14 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     amphClaimer =
       new AMPHClaimer(address(vaultController), address(amphToken), CVX_ADDRESS, CRV_ADDRESS, cvxRate, crvRate);
 
-    governorDelegate = new GovernorCharlieDelegate();
-    governorDelegator = new GovernorCharlieDelegator(address(amphToken), address(governorDelegate));
+    governor = new GovernorCharlie(address(amphToken));
 
-    usdaToken.setPauser(address(governorDelegator));
+    usdaToken.setPauser(address(governor));
 
-    usdaToken.transferOwnership(address(governorDelegator));
-    vaultController.transferOwnership(address(governorDelegator));
-    curveMaster.transferOwnership(address(governorDelegator));
-    amphClaimer.transferOwnership(address(governorDelegator));
+    usdaToken.transferOwnership(address(governor));
+    vaultController.transferOwnership(address(governor));
+    curveMaster.transferOwnership(address(governor));
+    amphClaimer.transferOwnership(address(governor));
 
     // Deploy wUSDA
     wusda = new WUSDA(address(usdaToken), 'Wrapped USDA', 'wUSDA');

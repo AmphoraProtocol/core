@@ -6,8 +6,7 @@ import {console} from 'forge-std/console.sol';
 
 import {VaultController} from '@contracts/core/VaultController.sol';
 import {USDA} from '@contracts/core/USDA.sol';
-import {GovernorCharlieDelegate} from '@contracts/governance/GovernorDelegate.sol';
-import {GovernorCharlieDelegator} from '@contracts/governance/GovernorDelegator.sol';
+import {GovernorCharlie} from '@contracts/governance/GovernorCharlie.sol';
 import {AmphoraProtocolToken} from '@contracts/governance/AmphoraProtocolToken.sol';
 import {ChainlinkOracleRelay} from '@contracts/periphery/ChainlinkOracleRelay.sol';
 import {AnchoredViewRelay} from '@contracts/periphery/AnchoredViewRelay.sol';
@@ -27,8 +26,7 @@ abstract contract Deploy is Script, TestConstants {
   ThreeLines0_100 public threeLines;
 
   AmphoraProtocolToken public amphToken;
-  GovernorCharlieDelegator public governorBase;
-  GovernorCharlieDelegate public governorImplementation;
+  GovernorCharlie public governor;
 
   // uniswapv3 oracles
   UniswapV3OracleRelay public uniswapRelayEthUsdc;
@@ -49,9 +47,8 @@ abstract contract Deploy is Script, TestConstants {
     amphToken = new AmphoraProtocolToken();
     console.log('AMPHORA_TOKEN: ', address(amphToken));
     amphToken.initialize(_deployer, initialAmphSupply);
-    governorImplementation = new GovernorCharlieDelegate();
-    governorBase = new GovernorCharlieDelegator(address(amphToken), address(governorImplementation));
-    console.log('GOVERNOR_DELEGATOR: ', address(governorBase));
+    governor = new GovernorCharlie(address(amphToken));
+    console.log('GOVERNOR: ', address(governor));
 
     // Deploy and initialize VaultController
     vaultController = new VaultController();

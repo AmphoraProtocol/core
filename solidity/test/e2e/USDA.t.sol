@@ -34,14 +34,14 @@ contract E2EUSDA is CommonE2EBase {
     uint256 _daveUSDABalance = usdaToken.balanceOf(dave);
 
     /// Test pause/unpause
-    vm.prank(address(governorDelegator));
+    vm.prank(address(governor));
     usdaToken.pause();
 
     vm.expectRevert('Pausable: paused');
     vm.prank(dave);
     usdaToken.deposit(susdAmount);
 
-    vm.prank(address(governorDelegator));
+    vm.prank(address(governor));
     usdaToken.unpause();
 
     /// Test deposit
@@ -110,14 +110,14 @@ contract E2EUSDA is CommonE2EBase {
     vm.warp(block.timestamp + 1 days);
 
     /// Test pause/unpause
-    vm.prank(address(governorDelegator));
+    vm.prank(address(governor));
     usdaToken.pause();
 
     vm.expectRevert('Pausable: paused');
     vm.prank(dave);
     usdaToken.withdraw(susdAmount);
 
-    vm.prank(address(governorDelegator));
+    vm.prank(address(governor));
     usdaToken.unpause();
 
     /// SUSD balance before
@@ -234,7 +234,7 @@ contract E2EUSDA is CommonE2EBase {
     assertEq(usdaToken.balanceOf(andy), andySUSDBalance / 2);
     assertEq(susd.balanceOf(andy), 0);
 
-    vm.prank(address(governorDelegator));
+    vm.prank(address(governor));
     usdaToken.recoverDust(andy);
     assertEq(susd.balanceOf(andy), andySUSDBalance / 2);
   }

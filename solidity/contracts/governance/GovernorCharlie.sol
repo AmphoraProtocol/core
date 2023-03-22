@@ -2,13 +2,12 @@
 pragma solidity ^0.8.9;
 pragma experimental ABIEncoderV2;
 
-import {GovernorCharlieDelegateStorage} from '@contracts/governance/GovernorStorage.sol';
+import {IAMPH} from '@interfaces/governance/IAMPH.sol';
+import {IGovernorCharlie} from '@interfaces/governance/IGovernorCharlie.sol';
+
 import {Receipt, ProposalState, Proposal} from '@contracts/utils/GovernanceStructs.sol';
 
-import {IAMPH} from '@interfaces/governance/IAMPH.sol';
-import {IGovernorCharlieDelegate} from '@interfaces/governance/IGovernorCharlieDelegate.sol';
-
-contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCharlieDelegate {
+contract GovernorCharlie is IGovernorCharlie {
   /// @notice The name of this contract
   string public constant NAME = 'Amphora Protocol Governor';
 
@@ -25,12 +24,67 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
   /// @notice The time for a proposal to be executed after passing
   uint256 public constant GRACE_PERIOD = 14 days;
 
-  /**
-   * @notice Used to initialize the contract during delegator contructor
-   * @param _amph The address of the AMPH token
-   */
-  function initialize(address _amph) external override {
-    if (initialized) revert GovernorCharlie_AlreadyInitialized();
+  /// @notice The number of votes in support of a proposal required in order for a quorum to be reached and for a vote to succeed
+  uint256 public quorumVotes;
+
+  /// @notice The number of votes in support of a proposal required in order for an emergency quorum to be reached and for a vote to succeed
+  uint256 public emergencyQuorumVotes;
+
+  /// @notice The delay before voting on a proposal may take place, once proposed, in blocks
+  uint256 public votingDelay;
+
+  /// @notice The duration of voting on a proposal, in blocks
+  uint256 public votingPeriod;
+
+  /// @notice The number of votes required in order for a voter to become a proposer
+  uint256 public proposalThreshold;
+
+  /// @notice Initial proposal id set at become
+  uint256 public initialProposalId;
+
+  /// @notice The total number of proposals
+  uint256 public proposalCount;
+
+  /// @notice The address of the Amphora Protocol governance token
+  IAMPH public amph;
+
+  /// @notice The official record of all proposals ever proposed
+  mapping(uint256 => Proposal) public proposals;
+
+  /// @notice The latest proposal for each proposer
+  mapping(address => uint256) public latestProposalIds;
+
+  /// @notice The mapping that saves queued transactions
+  mapping(bytes32 => bool) public queuedTransactions;
+
+  /// @notice The proposal holding period
+  uint256 public proposalTimelockDelay;
+
+  /// @notice Stores the expiration of account whitelist status as a timestamp
+  mapping(address => uint256) public whitelistAccountExpirations;
+
+  /// @notice Address which manages whitelisted proposals and whitelist accounts
+  address public whitelistGuardian;
+
+  /// @notice The duration of the voting on a emergency proposal, in blocks
+  uint256 public emergencyVotingPeriod;
+
+  /// @notice The emergency proposal holding period
+  uint256 public emergencyTimelockDelay;
+
+  /// all receipts for proposal
+  mapping(uint256 => mapping(address => Receipt)) public proposalReceipts;
+
+  /// @notice The number of votes to reject an optimistic proposal
+  uint256 public optimisticQuorumVotes;
+
+  /// @notice The delay period before voting begins
+  uint256 public optimisticVotingDelay;
+
+  /// @notice The maximum number of seconds an address can be whitelisted for
+  uint256 public maxWhitelistPeriod;
+
+  constructor(address _amph) {
     amph = IAMPH(_amph);
     votingPeriod = 40_320;
     votingDelay = 13_140;
@@ -45,13 +99,11 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
     optimisticQuorumVotes = 2_000_000_000_000_000_000_000_000;
     optimisticVotingDelay = 25_600;
     maxWhitelistPeriod = 31_536_000;
-
-    initialized = true;
   }
 
   /// @notice any function with this modifier can only be called by governance
   modifier onlyGov() {
-    if (_msgSender() != address(this)) revert GovernorCharlie_NotGovernor();
+    if (msg.sender != address(this)) revert GovernorCharlie_NotGovernorCharlie();
     _;
   }
 
@@ -73,10 +125,10 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
     string memory _description,
     bool _emergency
   ) public override returns (uint256 _proposalId) {
-    // Reject proposals before initiating as Governor
+    // Reject proposals before initiating as GovernorCharlie
     if (quorumVotes == 0) revert GovernorCharlie_NotActive();
     // Allow addresses above proposal threshold and whitelisted addresses to propose
-    if (amph.getPriorVotes(_msgSender(), (block.number - 1)) < proposalThreshold && !isWhitelisted(_msgSender())) {
+    if (amph.getPriorVotes(msg.sender, (block.number - 1)) < proposalThreshold && !isWhitelisted(msg.sender)) {
       revert GovernorCharlie_VotesBelowThreshold();
     }
     if (
@@ -85,7 +137,7 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
     if (_targets.length == 0) revert GovernorCharlie_NoActions();
     if (_targets.length > PROPOSAL_MAX_OPERATIONS) revert GovernorCharlie_TooManyActions();
 
-    uint256 _latestProposalId = latestProposalIds[_msgSender()];
+    uint256 _latestProposalId = latestProposalIds[msg.sender];
     if (_latestProposalId != 0) {
       ProposalState _proposersLatestProposalState = state(_latestProposalId);
       if (_proposersLatestProposalState == ProposalState.Active) revert GovernorCharlie_MultipleActiveProposals();
@@ -95,7 +147,7 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
     proposalCount++;
     Proposal memory _newProposal = Proposal({
       id: proposalCount,
-      proposer: _msgSender(),
+      proposer: msg.sender,
       eta: 0,
       targets: _targets,
       values: _values,
@@ -114,7 +166,7 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
     });
 
     //whitelist can't make emergency
-    if (_emergency && !isWhitelisted(_msgSender())) {
+    if (_emergency && !isWhitelisted(msg.sender)) {
       _newProposal.startBlock = block.number;
       _newProposal.endBlock = block.number + emergencyVotingPeriod;
       _newProposal.quorumVotes = emergencyQuorumVotes;
@@ -122,7 +174,7 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
     }
 
     //whitelist can only make optimistic proposals
-    if (isWhitelisted(_msgSender())) {
+    if (isWhitelisted(msg.sender)) {
       _newProposal.quorumVotes = optimisticQuorumVotes;
       _newProposal.startBlock = block.number + optimisticVotingDelay;
       _newProposal.endBlock = block.number + optimisticVotingDelay + votingPeriod;
@@ -133,7 +185,7 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
 
     emit ProposalCreated(
       _newProposal.id,
-      _msgSender(),
+      msg.sender,
       _targets,
       _values,
       _signatures,
@@ -227,7 +279,7 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
     bytes memory _data,
     uint256 _eta
   ) external payable override {
-    if (msg.sender != address(this)) revert GovernorCharlie_NotGovernor();
+    if (msg.sender != address(this)) revert GovernorCharlie_NotGovernorCharlie();
 
     bytes32 _txHash = keccak256(abi.encode(_target, _value, _signature, _data, _eta));
     if (!queuedTransactions[_txHash]) revert GovernorCharlie_ProposalNotQueued();
@@ -259,12 +311,12 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
     Proposal storage _proposal = proposals[_proposalId];
 
     // Proposer can cancel
-    if (_msgSender() != _proposal.proposer) {
+    if (msg.sender != _proposal.proposer) {
       // Whitelisted proposers can't be canceled for falling below proposal threshold
       if (isWhitelisted(_proposal.proposer)) {
         if (
           (amph.getPriorVotes(_proposal.proposer, (block.number - 1)) >= proposalThreshold)
-            || _msgSender() != whitelistGuardian
+            || msg.sender != whitelistGuardian
         ) revert GovernorCharlie_WhitelistedProposer();
       } else {
         if ((amph.getPriorVotes(_proposal.proposer, (block.number - 1)) >= proposalThreshold)) {
@@ -377,7 +429,7 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
    * @param _support The support value for the vote. 0=against, 1=for, 2=abstain
    */
   function castVote(uint256 _proposalId, uint8 _support) external override {
-    emit VoteCast(_msgSender(), _proposalId, _support, _castVoteInternal(_msgSender(), _proposalId, _support), '');
+    emit VoteCast(msg.sender, _proposalId, _support, _castVoteInternal(msg.sender, _proposalId, _support), '');
   }
 
   /**
@@ -387,7 +439,7 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
    * @param _reason The reason given for the vote by the voter
    */
   function castVoteWithReason(uint256 _proposalId, uint8 _support, string calldata _reason) external override {
-    emit VoteCast(_msgSender(), _proposalId, _support, _castVoteInternal(_msgSender(), _proposalId, _support), _reason);
+    emit VoteCast(msg.sender, _proposalId, _support, _castVoteInternal(msg.sender, _proposalId, _support), _reason);
   }
 
   /**
@@ -609,11 +661,5 @@ contract GovernorCharlieDelegate is GovernorCharlieDelegateStorage, IGovernorCha
   function _getBlockTimestamp() internal view returns (uint256 _timestamp) {
     // solium-disable-next-line security/no-block-members
     return block.timestamp;
-  }
-
-  /// @notice Returns the msg sender
-  /// @return _msgSender The msg sender
-  function _msgSender() internal view virtual returns (address _msgSender) {
-    return msg.sender;
   }
 }

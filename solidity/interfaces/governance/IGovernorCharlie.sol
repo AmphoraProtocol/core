@@ -2,18 +2,17 @@
 pragma solidity ^0.8.9;
 
 import {IGovernorCharlieEvents} from '@interfaces/governance/IGovernorCharlieEvents.sol';
+import {IAMPH} from '@interfaces/governance/IAMPH.sol';
+
 import {Receipt, ProposalState, Proposal} from '@contracts/utils/GovernanceStructs.sol';
 
-interface IGovernorCharlieDelegate is IGovernorCharlieEvents {
+interface IGovernorCharlie is IGovernorCharlieEvents {
   /*///////////////////////////////////////////////////////////////
                               ERRORS
     //////////////////////////////////////////////////////////////*/
 
-  /// @notice Thrown when the contract is already initialized
-  error GovernorCharlie_AlreadyInitialized();
-
   /// @notice Thrown when called by non governor
-  error GovernorCharlie_NotGovernor();
+  error GovernorCharlie_NotGovernorCharlie();
 
   /// @notice Thrown when charlie is not active
   error GovernorCharlie_NotActive();
@@ -85,10 +84,48 @@ interface IGovernorCharlieDelegate is IGovernorCharlieEvents {
   error GovernorCharlie_ExpirationExceedsMax();
 
   /*///////////////////////////////////////////////////////////////
-                              LOGIC
+                            VARIABLES
     //////////////////////////////////////////////////////////////*/
 
-  function initialize(address _amph) external;
+  function quorumVotes() external view returns (uint256 _quorumVotes);
+
+  function emergencyQuorumVotes() external view returns (uint256 _emergencyQuorumVotes);
+
+  function votingDelay() external view returns (uint256 _votingDelay);
+
+  function votingPeriod() external view returns (uint256 _votingPeriod);
+
+  function proposalThreshold() external view returns (uint256 _proposalThreshold);
+
+  function initialProposalId() external view returns (uint256 _initialProposalId);
+
+  function proposalCount() external view returns (uint256 _proposalCount);
+
+  function amph() external view returns (IAMPH _amph);
+
+  function latestProposalIds(address _proposer) external returns (uint256 _proposerId);
+
+  function queuedTransactions(bytes32 _transaction) external returns (bool _isQueued);
+
+  function proposalTimelockDelay() external view returns (uint256 _proposalTimelockDelay);
+
+  function whitelistAccountExpirations(address _account) external returns (uint256 _expiration);
+
+  function whitelistGuardian() external view returns (address _guardian);
+
+  function emergencyVotingPeriod() external view returns (uint256 _emergencyVotingPeriod);
+
+  function emergencyTimelockDelay() external view returns (uint256 _emergencyTimelockDelay);
+
+  function optimisticQuorumVotes() external view returns (uint256 _optimisticQuorumVotes);
+
+  function optimisticVotingDelay() external view returns (uint256 _optimisticVotingDelay);
+
+  function maxWhitelistPeriod() external view returns (uint256 _maxWhitelistPeriod);
+
+  /*///////////////////////////////////////////////////////////////
+                              LOGIC
+    //////////////////////////////////////////////////////////////*/
 
   function propose(
     address[] memory _targets,
@@ -123,11 +160,6 @@ interface IGovernorCharlieDelegate is IGovernorCharlieEvents {
       bytes[] memory _calldatas
     );
 
-  /**
-   * @notice Returns the proposal
-   * @param _proposalId the id of proposal
-   * @return _proposal The proposal
-   */
   function getProposal(uint256 _proposalId) external view returns (Proposal memory _proposal);
 
   function getReceipt(uint256 _proposalId, address _voter) external view returns (Receipt memory _receipt);
@@ -142,7 +174,7 @@ interface IGovernorCharlieDelegate is IGovernorCharlieEvents {
 
   function isWhitelisted(address _account) external view returns (bool _isWhitelisted);
 
-  function setDelay(uint256 _proposalTimelockDelay) external;
+  function setDelay(uint256 _delay) external;
 
   function setEmergencyDelay(uint256 _emergencyTimelockDelay) external;
 

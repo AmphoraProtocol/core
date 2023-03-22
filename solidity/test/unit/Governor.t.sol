@@ -1,24 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.4 <0.9.0;
 
-import {GovernorCharlieDelegate} from '@contracts/governance/GovernorDelegate.sol';
-import {IGovernorCharlieDelegate} from '@interfaces/governance/IGovernorCharlieDelegate.sol';
+import {IGovernorCharlie, GovernorCharlie} from '@contracts/governance/GovernorCharlie.sol';
 import {IAMPH} from '@interfaces/governance/IAMPH.sol';
 import {Proposal} from '@contracts/utils/GovernanceStructs.sol';
 
 import {DSTestPlus} from 'solidity-utils/test/DSTestPlus.sol';
 
 abstract contract Base is DSTestPlus {
-  GovernorCharlieDelegate public governor;
-  address public implementation = label(newAddress(), 'implementation');
-  address public otherImplementation = label(newAddress(), 'otherImplementation');
+  GovernorCharlie public governor;
   address public amph = label(newAddress(), 'amph');
 
   event Deposit(address indexed _from, uint256 _value);
   event Withdraw(address indexed _from, uint256 _value);
 
   function setUp() public virtual {
-    governor = new GovernorCharlieDelegate();
+    governor = new GovernorCharlie(amph);
     vm.mockCall(amph, abi.encodeWithSelector(IAMPH.getPriorVotes.selector), abi.encode(1_000_000 ether));
   }
 
@@ -46,82 +43,60 @@ abstract contract Base is DSTestPlus {
   }
 }
 
-contract UnitGovernorDelegateInitialize is Base {
-  function testRevertsWhenTryingToInitializeAgain() public {
-    governor.initialize(amph);
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_AlreadyInitialized.selector);
-    governor.initialize(newAddress());
-  }
-}
-
-contract UnitGovernorDelegatePropose is Base {
-  function testRevertsWhenProposingWhenNotInitialized() public {
-    (address[] memory _targets, uint256[] memory _values, string[] memory _signatures, bytes[] memory _calldatas) =
-      _getProposalData(2);
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_NotActive.selector);
-    governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
-  }
-
+contract UnitGovernorCharliePropose is Base {
   function testRevertsWhenVotesBelowThreshold() public {
     vm.mockCall(amph, abi.encodeWithSelector(IAMPH.getPriorVotes.selector), abi.encode(1000 ether));
-    governor.initialize(amph);
     (address[] memory _targets, uint256[] memory _values, string[] memory _signatures, bytes[] memory _calldatas) =
       _getProposalData(2);
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_VotesBelowThreshold.selector);
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_VotesBelowThreshold.selector);
     governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
   }
 
   function testRevertsWhenWrongArity() public {
-    governor.initialize(amph);
     address[] memory _targets = new address[](3);
     _targets[0] = address(0);
     _targets[1] = address(1);
     _targets[2] = address(2);
     (, uint256[] memory _values, string[] memory _signatures, bytes[] memory _calldatas) = _getProposalData(2);
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_ArityMismatch.selector);
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_ArityMismatch.selector);
     governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
   }
 
   function testRevertsWhenNoActions() public {
-    governor.initialize(amph);
     address[] memory _targets;
     uint256[] memory _values;
     string[] memory _signatures;
     bytes[] memory _calldatas;
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_NoActions.selector);
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_NoActions.selector);
     governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
   }
 
   function testRevertsWhenTooManyActions() public {
-    governor.initialize(amph);
     (address[] memory _targets, uint256[] memory _values, string[] memory _signatures, bytes[] memory _calldatas) =
       _getProposalData(11);
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_TooManyActions.selector);
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_TooManyActions.selector);
     governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
   }
 
   function testRevertsMultiplePendingProposals() public {
-    governor.initialize(amph);
     (address[] memory _targets, uint256[] memory _values, string[] memory _signatures, bytes[] memory _calldatas) =
       _getProposalData(2);
     governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_MultiplePendingProposals.selector);
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_MultiplePendingProposals.selector);
     governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
   }
 
   function testRevertsMultipleActiveProposals() public {
-    governor.initialize(amph);
     (address[] memory _targets, uint256[] memory _values, string[] memory _signatures, bytes[] memory _calldatas) =
       _getProposalData(2);
     governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
 
     vm.roll(block.number + 13_141);
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_MultipleActiveProposals.selector);
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_MultipleActiveProposals.selector);
     governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
   }
 
   function testCreateProposal() public {
-    governor.initialize(amph);
     (address[] memory _targets, uint256[] memory _values, string[] memory _signatures, bytes[] memory _calldatas) =
       _getProposalData(2);
     governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
@@ -140,10 +115,10 @@ contract UnitGovernorDelegatePropose is Base {
   }
 }
 
-contract UnitGovernorDelegateCancel is Base {
+contract UnitGovernorCharlieCancel is Base {
   function setUp() public virtual override {
     super.setUp();
-    governor.initialize(amph);
+
     (address[] memory _targets, uint256[] memory _values, string[] memory _signatures, bytes[] memory _calldatas) =
       _getProposalData(2);
     governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
@@ -151,7 +126,7 @@ contract UnitGovernorDelegateCancel is Base {
 
   function testRevertsIfProposalIsAboveThreshold() public {
     vm.mockCall(amph, abi.encodeWithSelector(IAMPH.getPriorVotes.selector), abi.encode(100_000_000 ether));
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_ProposalAboveThreshold.selector);
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_ProposalAboveThreshold.selector);
     vm.prank(newAddress());
     governor.cancel(1);
   }
@@ -167,7 +142,7 @@ contract UnitGovernorDelegateCancel is Base {
     governor.queue(1);
     vm.warp(block.timestamp + governor.proposalTimelockDelay() + 1);
     governor.execute(1);
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_ProposalAlreadyExecuted.selector);
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_ProposalAlreadyExecuted.selector);
     governor.cancel(1);
   }
 
@@ -178,10 +153,10 @@ contract UnitGovernorDelegateCancel is Base {
   }
 }
 
-contract UnitGovernorDelegateQueue is Base {
+contract UnitGovernorCharlieQueue is Base {
   function setUp() public virtual override {
     super.setUp();
-    governor.initialize(amph);
+
     (address[] memory _targets, uint256[] memory _values, string[] memory _signatures, bytes[] memory _calldatas) =
       _getProposalData(2);
     governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
@@ -190,7 +165,7 @@ contract UnitGovernorDelegateQueue is Base {
   }
 
   function testRevertsIfProposalNotSucceded() public {
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_ProposalNotSucceeded.selector);
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_ProposalNotSucceeded.selector);
     vm.prank(newAddress());
     governor.queue(1);
   }
@@ -206,7 +181,7 @@ contract UnitGovernorDelegateQueue is Base {
     governor.castVote(2, 1);
     vm.roll(block.number + governor.votingPeriod() + 1);
     governor.queue(1);
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_ProposalAlreadyQueued.selector);
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_ProposalAlreadyQueued.selector);
     governor.queue(2);
   }
 
@@ -236,10 +211,10 @@ contract UnitGovernorDelegateQueue is Base {
   }
 }
 
-contract UnitGovernorDelegateExecute is Base {
+contract UnitGovernorCharlieExecute is Base {
   function setUp() public virtual override {
     super.setUp();
-    governor.initialize(amph);
+
     vm.mockCall(amph, abi.encodeWithSelector(IAMPH.getPriorVotes.selector), abi.encode(100_000_000 ether));
 
     (address[] memory _targets, uint256[] memory _values, string[] memory _signatures, bytes[] memory _calldatas) =
@@ -254,7 +229,7 @@ contract UnitGovernorDelegateExecute is Base {
   }
 
   function testRevertsIfProposalNotQueued() public {
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_ProposalNotQueued.selector);
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_ProposalNotQueued.selector);
     governor.execute(1);
   }
 
@@ -275,9 +250,9 @@ contract UnitGovernorDelegateExecute is Base {
   }
 }
 
-contract UnitGovernorDelegateSetters is Base {
-  function testRevertsWhenSetNotTokenNotGovernor() public {
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_NotGovernor.selector);
+contract UnitGovernorCharlieSetters is Base {
+  function testRevertsWhenSetNotTokenNotGovernorCharlie() public {
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_NotGovernorCharlie.selector);
     governor.setNewToken(newAddress());
   }
 
@@ -288,8 +263,8 @@ contract UnitGovernorDelegateSetters is Base {
     assertEq(address(governor.amph()), _newToken);
   }
 
-  function testRevertsWhenSetMaxWhitelistPeriodNotGovernor() public {
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_NotGovernor.selector);
+  function testRevertsWhenSetMaxWhitelistPeriodNotGovernorCharlie() public {
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_NotGovernorCharlie.selector);
     governor.setMaxWhitelistPeriod(1);
   }
 
@@ -299,8 +274,8 @@ contract UnitGovernorDelegateSetters is Base {
     assertEq(governor.maxWhitelistPeriod(), 1);
   }
 
-  function testRevertsWhenSetDelayNotGovernor() public {
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_NotGovernor.selector);
+  function testRevertsWhenSetDelayNotGovernorCharlie() public {
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_NotGovernorCharlie.selector);
     governor.setDelay(1);
   }
 
@@ -310,8 +285,8 @@ contract UnitGovernorDelegateSetters is Base {
     assertEq(governor.proposalTimelockDelay(), 1);
   }
 
-  function testRevertsWhenSetEmergencyDelayNotGovernor() public {
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_NotGovernor.selector);
+  function testRevertsWhenSetEmergencyDelayNotGovernorCharlie() public {
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_NotGovernorCharlie.selector);
     governor.setEmergencyDelay(1);
   }
 
@@ -321,8 +296,8 @@ contract UnitGovernorDelegateSetters is Base {
     assertEq(governor.emergencyTimelockDelay(), 1);
   }
 
-  function testRevertsWhenSetVotingPeriodNotGovernor() public {
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_NotGovernor.selector);
+  function testRevertsWhenSetVotingPeriodNotGovernorCharlie() public {
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_NotGovernorCharlie.selector);
     governor.setVotingPeriod(1);
   }
 
@@ -332,8 +307,8 @@ contract UnitGovernorDelegateSetters is Base {
     assertEq(governor.votingPeriod(), 1);
   }
 
-  function testRevertsWhenSetVotingDelayNotGovernor() public {
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_NotGovernor.selector);
+  function testRevertsWhenSetVotingDelayNotGovernorCharlie() public {
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_NotGovernorCharlie.selector);
     governor.setVotingDelay(1);
   }
 
@@ -343,8 +318,8 @@ contract UnitGovernorDelegateSetters is Base {
     assertEq(governor.votingDelay(), 1);
   }
 
-  function testRevertsWhenSetEmergencyVotingPeriodNotGovernor() public {
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_NotGovernor.selector);
+  function testRevertsWhenSetEmergencyVotingPeriodNotGovernorCharlie() public {
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_NotGovernorCharlie.selector);
     governor.setEmergencyVotingPeriod(1);
   }
 
@@ -354,8 +329,8 @@ contract UnitGovernorDelegateSetters is Base {
     assertEq(governor.emergencyVotingPeriod(), 1);
   }
 
-  function testRevertsWhenSetProposalThresholdNotGovernor() public {
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_NotGovernor.selector);
+  function testRevertsWhenSetProposalThresholdNotGovernorCharlie() public {
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_NotGovernorCharlie.selector);
     governor.setProposalThreshold(1);
   }
 
@@ -365,8 +340,8 @@ contract UnitGovernorDelegateSetters is Base {
     assertEq(governor.proposalThreshold(), 1);
   }
 
-  function testRevertsWhenSetQuorumVotesNotGovernor() public {
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_NotGovernor.selector);
+  function testRevertsWhenSetQuorumVotesNotGovernorCharlie() public {
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_NotGovernorCharlie.selector);
     governor.setQuorumVotes(1);
   }
 
@@ -376,8 +351,8 @@ contract UnitGovernorDelegateSetters is Base {
     assertEq(governor.quorumVotes(), 1);
   }
 
-  function testRevertsWhenSetEmergencyQuorumVotesNotGovernor() public {
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_NotGovernor.selector);
+  function testRevertsWhenSetEmergencyQuorumVotesNotGovernorCharlie() public {
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_NotGovernorCharlie.selector);
     governor.setEmergencyQuorumVotes(1);
   }
 
@@ -387,8 +362,8 @@ contract UnitGovernorDelegateSetters is Base {
     assertEq(governor.emergencyQuorumVotes(), 1);
   }
 
-  function testRevertsWhenSetWhitelistAccountExpirationNotGovernor() public {
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_NotGovernor.selector);
+  function testRevertsWhenSetWhitelistAccountExpirationNotGovernorCharlie() public {
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_NotGovernorCharlie.selector);
     governor.setWhitelistAccountExpiration(newAddress(), 1);
   }
 
@@ -396,7 +371,7 @@ contract UnitGovernorDelegateSetters is Base {
     address _account = newAddress();
     vm.startPrank(address(governor));
     uint256 _expiration = block.timestamp + governor.maxWhitelistPeriod() + 1;
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_ExpirationExceedsMax.selector);
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_ExpirationExceedsMax.selector);
     governor.setWhitelistAccountExpiration(_account, _expiration);
   }
 
@@ -407,8 +382,8 @@ contract UnitGovernorDelegateSetters is Base {
     assertEq(governor.whitelistAccountExpirations(_account), 0);
   }
 
-  function testRevertsWhenSetWhitelistGuardianNotGovernor() public {
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_NotGovernor.selector);
+  function testRevertsWhenSetWhitelistGuardianNotGovernorCharlie() public {
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_NotGovernorCharlie.selector);
     governor.setWhitelistGuardian(newAddress());
   }
 
@@ -419,8 +394,8 @@ contract UnitGovernorDelegateSetters is Base {
     assertEq(governor.whitelistGuardian(), _guardian);
   }
 
-  function testRevertsWhenSetOptimisticDelayNotGovernor() public {
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_NotGovernor.selector);
+  function testRevertsWhenSetOptimisticDelayNotGovernorCharlie() public {
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_NotGovernorCharlie.selector);
     governor.setOptimisticDelay(1);
   }
 
@@ -430,8 +405,8 @@ contract UnitGovernorDelegateSetters is Base {
     assertEq(governor.optimisticVotingDelay(), 1);
   }
 
-  function testRevertsWhenSetOptimisticQuorumVotesNotGovernor() public {
-    vm.expectRevert(IGovernorCharlieDelegate.GovernorCharlie_NotGovernor.selector);
+  function testRevertsWhenSetOptimisticQuorumVotesNotGovernorCharlie() public {
+    vm.expectRevert(IGovernorCharlie.GovernorCharlie_NotGovernorCharlie.selector);
     governor.setOptimisticQuorumVotes(1);
   }
 

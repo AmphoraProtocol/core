@@ -41,17 +41,8 @@ interface IGovernorCharlieEvents {
   /// @notice An event emitted when the emergency voting period is set
   event EmergencyVotingPeriodSet(uint256 _oldEmergencyVotingPeriod, uint256 _emergencyVotingPeriod);
 
-  /// @notice Emitted when implementation is changed
-  event NewImplementation(address _oldImplementation, address _newImplementation);
-
   /// @notice Emitted when proposal threshold is set
   event ProposalThresholdSet(uint256 _oldProposalThreshold, uint256 _newProposalThreshold);
-
-  /// @notice Emitted when pendingAdmin is changed
-  event NewPendingAdmin(address _oldPendingAdmin, address _newPendingAdmin);
-
-  /// @notice Emitted when pendingAdmin is accepted, which means admin is updated
-  event NewAdmin(address _oldAdmin, address _newAdmin);
 
   /// @notice Emitted when whitelist account expiration is set
   event WhitelistAccountExpirationSet(address _account, uint256 _expiration);

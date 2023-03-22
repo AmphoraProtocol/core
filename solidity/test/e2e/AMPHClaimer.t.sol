@@ -25,7 +25,7 @@ contract E2EAMPHClaimer is CommonE2EBase {
 
   function testAMPHClaimer() public {
     // change rates
-    vm.startPrank(address(governorDelegator));
+    vm.startPrank(address(governor));
     amphClaimer.changeCvxRate(1);
     amphClaimer.changeCrvRate(1);
     assert(amphClaimer.amphPerCvx() == 1);
@@ -35,7 +35,7 @@ contract E2EAMPHClaimer is CommonE2EBase {
     vm.stopPrank();
 
     // change vault controller
-    vm.startPrank(address(governorDelegator));
+    vm.startPrank(address(governor));
     amphClaimer.changeVaultController(address(2));
     assert(address(amphClaimer.vaultController()) == address(2));
     amphClaimer.changeVaultController(address(vaultController));
@@ -68,7 +68,7 @@ contract E2EAMPHClaimer is CommonE2EBase {
 
     // recover dust (empty the pool)
     uint256 _poolAmphBalance = amphToken.balanceOf(address(amphClaimer));
-    vm.prank(address(governorDelegator));
+    vm.prank(address(governor));
     amphClaimer.recoverDust(address(amphToken), _poolAmphBalance);
     assert(amphToken.balanceOf(address(amphClaimer)) == 0);
 

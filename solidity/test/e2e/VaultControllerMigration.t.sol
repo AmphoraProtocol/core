@@ -34,11 +34,11 @@ contract E2EVaultControllerMigration is CommonE2EBase {
     _tokens[2] = AAVE_ADDRESS;
     newVaultController.initialize(vaultController, _tokens, IAMPHClaimer(address(0)), 0.01e18); // TODO: change this after finishing claim contract task
 
-    newVaultController.transferOwnership(address(governorDelegator));
+    newVaultController.transferOwnership(address(governor));
     vm.stopPrank();
 
     // register USDA and curve master
-    vm.startPrank(address(governorDelegator));
+    vm.startPrank(address(governor));
     newVaultController.registerUSDA(address(usdaToken));
     newVaultController.registerCurveMaster(address(curveMaster));
     vm.stopPrank();
@@ -61,7 +61,7 @@ contract E2EVaultControllerMigration is CommonE2EBase {
     vm.stopPrank();
 
     // add the new vault manager as USDA minter
-    vm.startPrank(address(governorDelegator));
+    vm.startPrank(address(governor));
     usdaToken.addVaultController(address(newVaultController));
     vm.stopPrank();
 
@@ -114,7 +114,7 @@ contract E2EVaultControllerMigration is CommonE2EBase {
     assert(_newControllerInterestBefore < _newControllerInterestAfter);
 
     // if we remove the old vault controller calling removeVaultControllerFromList(), everything should still work but not accumulate interest
-    vm.startPrank(address(governorDelegator));
+    vm.startPrank(address(governor));
     usdaToken.removeVaultControllerFromList(address(vaultController));
     vm.stopPrank();
 
@@ -136,7 +136,7 @@ contract E2EVaultControllerMigration is CommonE2EBase {
     assert(_newControllerInterestBefore < _newControllerInterestAfter);
 
     // if we call removeVaultController() on old vault controller users shouldn't be able to borrow() / repay()
-    vm.startPrank(address(governorDelegator));
+    vm.startPrank(address(governor));
     usdaToken.removeVaultController(address(vaultController));
     vm.stopPrank();
 

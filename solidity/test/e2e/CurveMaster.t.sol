@@ -9,7 +9,7 @@ contract E2ECurveMaster is CommonE2EBase {
   }
 
   function testSetCurve() public {
-    vm.prank(address(governorDelegator));
+    vm.prank(address(governor));
     curveMaster.setCurve(address(0), address(threeLines));
   }
 

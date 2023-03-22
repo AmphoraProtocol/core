@@ -366,7 +366,7 @@ contract E2ENoReserve is IsolatedBase {
 
     // check
     uint256 _initLiability = vaultController.vaultLiability(carolVaultId);
-    uint256 _startBalance = usdaToken.balanceOf(address(governorDelegator));
+    uint256 _startBalance = usdaToken.balanceOf(address(governor));
     uint256 _initBaseLiability = vaultController.totalBaseLiability();
     uint256 _initInterestFactor = vaultController.interestFactor();
 
@@ -376,7 +376,7 @@ contract E2ENoReserve is IsolatedBase {
     uint256 _accountLiability = vaultController.vaultLiability(carolVaultId);
     assert(_accountLiability > _initLiability);
 
-    uint256 _balance = usdaToken.balanceOf(address(governorDelegator));
+    uint256 _balance = usdaToken.balanceOf(address(governor));
     assert(_balance > _startBalance);
 
     uint256 _totalBaseLiability = vaultController.totalBaseLiability();

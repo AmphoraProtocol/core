@@ -1,26 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.4 <0.9.0;
 
-import {CommonE2EBase, IVault, console, GovernorCharlieDelegate} from '@test/e2e/Common.sol';
+import {CommonE2EBase, IVault, console, GovernorCharlie} from '@test/e2e/Common.sol';
 import {IUSDA} from '@interfaces/core/IUSDA.sol';
 import {Proposal} from '@contracts/utils/GovernanceStructs.sol';
 
 contract GovernanceImplementationForTest {}
 
 contract E2EGovernance is CommonE2EBase {
-  GovernorCharlieDelegate public gov;
+  GovernorCharlie public gov;
 
   function setUp() public override {
     super.setUp();
-    gov = GovernorCharlieDelegate(address(governorDelegator));
+    gov = GovernorCharlie(address(governor));
   }
 
   function testVaultControllerOwner() public {
-    assertEq(vaultController.owner(), address(governorDelegator));
+    assertEq(vaultController.owner(), address(governor));
   }
 
   function testUSDAOwner() public {
-    assertEq(usdaToken.owner(), address(governorDelegator));
+    assertEq(usdaToken.owner(), address(governor));
   }
 
   function testCanDelegateVotes() public {
@@ -51,7 +51,7 @@ contract E2EGovernance is CommonE2EBase {
     string[] memory _signatures = new string[](1);
     bytes[] memory _calldatas = new bytes[](1);
 
-    _targets[0] = address(governorDelegator);
+    _targets[0] = address(governor);
     _values[0] = 0;
     _signatures[0] = 'setWhitelistAccountExpiration(address,uint256)';
     _calldatas[0] = abi.encode(bob, block.timestamp + gov.maxWhitelistPeriod());
@@ -79,7 +79,7 @@ contract E2EGovernance is CommonE2EBase {
 
     // Create an optimistic proposal
 
-    _targets[0] = address(governorDelegator);
+    _targets[0] = address(governor);
     _values[0] = 0;
     _signatures[0] = 'setWhitelistAccountExpiration(address,uint256)';
     _calldatas[0] = abi.encode(eric, block.timestamp + gov.maxWhitelistPeriod());
