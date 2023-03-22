@@ -4,7 +4,10 @@ pragma solidity ^0.8.9;
 import {IUSDA} from '@interfaces/core/IUSDA.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
+import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
 import {IBooster} from '@interfaces/utils/IBooster.sol';
+import {IBaseRewardPool} from '@interfaces/utils/IBaseRewardPool.sol';
+import {IVirtualBalanceRewardPool} from '@interfaces/utils/IVirtualBalanceRewardPool.sol';
 
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {Context} from '@openzeppelin/contracts/utils/Context.sol';
@@ -19,10 +22,12 @@ import {IERC20Upgradeable} from '@openzeppelin/contracts-upgradeable/token/ERC20
 contract Vault is IVault, Context {
   using SafeERC20Upgradeable for IERC20;
 
-  /// @notice Metadata of vault, aka the id & the minter's address
+  IERC20 public constant CVX = IERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
+  IERC20 public constant CRV = IERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
 
   IVaultController public immutable CONTROLLER;
 
+  /// @notice Metadata of vault, aka the id & the minter's address
   VaultInfo public vaultInfo;
 
   /// @notice this is the unscaled liability of the vault.
@@ -115,6 +120,91 @@ contract Vault is IVault, Context {
     balances[_tokenAddress] -= _amount;
     CONTROLLER.modifyTotalDeposited(vaultInfo.id, _amount, _tokenAddress, false);
     emit Withdraw(_tokenAddress, _amount);
+  }
+
+  /// @notice Claims avaiable rewards from convex
+  /// @dev    Transfers a percentage of the crv and cvx rewards to claim AMPH tokens
+  /// @param _tokenAddress The address of erc20 token
+  function claimRewards(address _tokenAddress) external override onlyMinter {
+    if (CONTROLLER.tokenId(_tokenAddress) == 0) revert Vault_TokenNotRegistered();
+    if (CONTROLLER.tokenCollateralType(_tokenAddress) != IVaultController.CollateralType.CurveLP) {
+      revert Vault_TokenNotCurveLP();
+    }
+
+    IBaseRewardPool _rewardsContract = CONTROLLER.tokenCrvRewardsContract(_tokenAddress);
+    uint256 _crvReward = _rewardsContract.earned(address(this));
+
+    if (_crvReward != 0) {
+      // Claim the CRV reward
+      _rewardsContract.getReward(address(this), false);
+      CRV.transfer(msg.sender, _crvReward);
+    }
+
+    // All other rewards
+    uint256 _rewardsAmount = _rewardsContract.extraRewardsLength();
+
+    uint256 _cvxReward;
+
+    // Loop and claim all virtual rewards
+    for (uint256 _i; _i < _rewardsAmount; _i++) {
+      IVirtualBalanceRewardPool _virtualReward = _rewardsContract.extraRewards(_i);
+      IERC20 _rewardToken = _virtualReward.rewardToken();
+      uint256 _earnedReward = _virtualReward.earned(address(this));
+      if (_earnedReward != 0) {
+        _virtualReward.getReward();
+        if (address(_rewardToken) == address(CVX)) {
+          // Save the cvx reward in a variable
+          _cvxReward = _earnedReward;
+        } else {
+          // If it's any other token, transfer to the owner of the vault
+          if (_earnedReward > 0) {
+            _rewardToken.transfer(msg.sender, _earnedReward);
+            emit ClaimedReward(address(_rewardToken), _earnedReward);
+          }
+        }
+      }
+    }
+
+    // if(_crvReward > 0 || _cvxReward > 0) {
+    //   // Approve amounts for it to be taken
+    //   (uint256 _takenCVX, uint256 _takenCRV, ) = _amphClaimer.claimable(_cvxReward, _crvReward);
+    //   _crv.approve(address(_amphClaimer), _takenCRV);
+    //   _cvx.approve(address(_amphClaimer), _takenCVX);
+
+    //   // Claim AMPH tokens depending on how much CRV and CVX was claimed
+    //   _amphClaimer.claimAmph(this.id(), _cvxReward, _crvReward, msg.sender);
+
+    //   // Send the remaining CRV and CVX
+    //   _crv.transfer(msg.sender, _crvReward - _takenCRV);
+    //   _cvx.transfer(msg.sender, _cvxReward - _takenCVX);
+
+    //   emit ClaimedReward(address(_crv), _crvReward - _takenCRV);
+    //   emit ClaimedReward(address(_cvx), _cvxReward - _takenCVX);
+    // }
+  }
+
+  function claimableRewards(address _tokenAddress) external view override returns (Reward[] memory _rewards) {
+    if (CONTROLLER.tokenId(_tokenAddress) == 0) revert Vault_TokenNotRegistered();
+    if (CONTROLLER.tokenCollateralType(_tokenAddress) != IVaultController.CollateralType.CurveLP) {
+      revert Vault_TokenNotCurveLP();
+    }
+
+    IBaseRewardPool _rewardsContract = CONTROLLER.tokenCrvRewardsContract(_tokenAddress);
+
+    uint256 _rewardsAmount = _rewardsContract.extraRewardsLength();
+
+    uint256 _crvReward = _rewardsContract.earned(address(this));
+
+    _rewards = new Reward[](_rewardsAmount+1);
+    _rewards[0] = Reward(CRV, _crvReward);
+
+    // TODO: we need to account for the amount the protocol keeps
+    for (uint256 _i = 0; _i < _rewardsAmount; _i++) {
+      IVirtualBalanceRewardPool _virtualReward = _rewardsContract.extraRewards(_i);
+      IERC20 _rewardToken = _virtualReward.rewardToken();
+      uint256 _earnedReward = _virtualReward.earned(address(this));
+      _rewards[_i + 1] = Reward(_rewardToken, _earnedReward);
+    }
   }
 
   /// @notice Recovers dust from vault

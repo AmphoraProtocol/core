@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+
 /// @title Vault Interface
 interface IVault {
   /*///////////////////////////////////////////////////////////////
@@ -27,6 +29,13 @@ interface IVault {
    * @param _amount The amount to recover
    */
   event Recover(address _token, uint256 _amount);
+
+  /**
+   * @notice Emited when claiming a reward
+   * @param _token The address of the token that was claimed
+   * @param _amount The amount that was claimed
+   */
+  event ClaimedReward(address _token, uint256 _amount);
 
   /*///////////////////////////////////////////////////////////////
                               ERRORS
@@ -59,6 +68,9 @@ interface IVault {
   /// @notice Thrown when trying to withdraw and unstake from convex
   error Vault_WithdrawAndUnstakeOnConvexFailed();
 
+  /// @notice Thrown when trying to claim rewards with a non CurveLP token
+  error Vault_TokenNotCurveLP();
+
   /*///////////////////////////////////////////////////////////////
                               STRUCTS
     //////////////////////////////////////////////////////////////*/
@@ -69,6 +81,11 @@ interface IVault {
   struct VaultInfo {
     uint96 id;
     address minter;
+  }
+
+  struct Reward {
+    IERC20 token;
+    uint256 amount;
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -116,6 +133,16 @@ interface IVault {
    * @param _amount The amount of the token to withdraw
    */
   function withdrawERC20(address _token, uint256 _amount) external;
+
+  /// @notice Claims avaiable rewards from convex
+  /// @dev    Transfers a percentage of the crv and cvx rewards to claim AMPH tokens
+  /// @param _tokenAddress The address of erc20 token
+  function claimRewards(address _tokenAddress) external;
+
+  /// @notice Returns an array of tokens and amounts available for claim
+  /// @param _tokenAddress The address of erc20 token
+  /// @return _rewards The array of tokens and amount available for claim
+  function claimableRewards(address _tokenAddress) external view returns (Reward[] memory _rewards);
 
   /// @notice Recovers dust from vault
   /// this can only be called by the minter

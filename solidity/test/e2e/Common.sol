@@ -74,7 +74,8 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   IERC20 public aave = IERC20(label(AAVE_ADDRESS, 'AAVE'));
   IERC20 public dydx = IERC20(label(DYDX_ADDRESS, 'DYDX'));
   IERC20 public usdtStableLP = IERC20(label(USDT_LP_ADDRESS, 'USDT_LP'));
-
+  /// boringDaoLP is a curveLP token that provides extra rewards compared to usdtLP
+  IERC20 public boringDaoLP = IERC20(label(BORING_DAO_LP_ADDRESS, 'BORING_DAO_LP'));
   // frank is the Frank and master of USDA, and symbolizes the power of governance
   address public frank = label(newAddress(), 'frank');
   // andy is a susd holder. He wishes to deposit his sUSD to hold USDA
@@ -136,6 +137,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     deal(address(wbtc), gus, gusWBTC);
     deal(address(uni), gus, gusUni);
     deal(address(usdtStableLP), bob, bobCurveLPBalance);
+    deal(address(boringDaoLP), bob, bobCurveLPBalance);
 
     vm.startPrank(frank);
     // Deploy VaultController
@@ -211,7 +213,11 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
 
     /// TODO: change UNI_LTV  & anchoredViewUni
     vaultController.registerErc20(
-      USDT_LP_ADDRESS, UNI_LTV, address(anchoredViewUni), LIQUIDATION_INCENTIVE, type(uint256).max, 1
+      USDT_LP_ADDRESS, OTHER_LTV, address(anchoredViewUni), LIQUIDATION_INCENTIVE, type(uint256).max, 1
+    );
+    /// TODO: change UNI_LTV  & anchoredViewUni
+    vaultController.registerErc20(
+      BORING_DAO_LP_ADDRESS, OTHER_LTV, address(anchoredViewUni), LIQUIDATION_INCENTIVE, type(uint256).max, 20
     );
 
     // Register USDA as acceptable erc20 to vault controller

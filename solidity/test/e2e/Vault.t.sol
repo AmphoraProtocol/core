@@ -3,8 +3,11 @@ pragma solidity >=0.8.4 <0.9.0;
 
 import {CommonE2EBase} from '@test/e2e/Common.sol';
 
+import {IERC20} from 'isolmate/interfaces/tokens/IERC20.sol';
 import {VaultController} from '@contracts/core/VaultController.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
+import {IBaseRewardPool} from '@interfaces/utils/IBaseRewardPool.sol';
+import {IVirtualBalanceRewardPool} from '@interfaces/utils/IVirtualBalanceRewardPool.sol';
 
 contract E2EVault is CommonE2EBase {
   uint96 public bobsVaultId = 1;
@@ -82,5 +85,63 @@ contract E2EVault is CommonE2EBase {
     assertEq(bobVault.tokenBalance(address(usdtStableLP)), 0);
     assertEq(_balanceAfterDeposit + _depositAmount, bobWETH);
     assertEq(usdtStableLP.balanceOf(USDT_LP_STAKED_CONTRACT), _stakedBalance);
+  }
+
+  function testClaimCurveLPRewards() public {
+    uint256 _depositAmount = 10 ether;
+
+    vm.startPrank(bob);
+    usdtStableLP.approve(address(bobVault), _depositAmount);
+    bobVault.depositERC20(address(usdtStableLP), _depositAmount);
+    vm.stopPrank();
+
+    vm.prank(BOOSTER);
+    IBaseRewardPool(USDT_LP_REWARDS_ADDRESS).queueNewRewards(_depositAmount);
+
+    uint256 _balanceBefore = IERC20(CRV_ADDRESS).balanceOf(bob);
+
+    vm.warp(block.timestamp + 5 days);
+    uint256 _crvEarned = IBaseRewardPool(USDT_LP_REWARDS_ADDRESS).earned(address(bobVault));
+    assertTrue(_crvEarned != 0);
+
+    vm.prank(bob);
+    bobVault.claimRewards(address(usdtStableLP));
+
+    assertEq(IERC20(CRV_ADDRESS).balanceOf(bob), _balanceBefore + _crvEarned);
+  }
+
+  function testClaimCurveLPWithExtraRewards() public {
+    uint256 _depositAmount = 0.1 ether;
+
+    // deposit and stake
+    vm.startPrank(bob);
+    boringDaoLP.approve(address(bobVault), _depositAmount);
+    bobVault.depositERC20(address(boringDaoLP), _depositAmount);
+    vm.stopPrank();
+
+    uint256 _balanceBefore = IERC20(CRV_ADDRESS).balanceOf(bob);
+    uint256 _balanceVirtualBefore = IERC20(BORING_DAO_ADDRESS).balanceOf(bob);
+
+    vm.prank(BOOSTER);
+    IBaseRewardPool(BORING_DAO_LP_REWARDS_ADDRESS).queueNewRewards(_depositAmount);
+
+    vm.prank(BORING_DAO_VIRTUAL_REWARDS_OPERATOR_CONTRACT);
+    IVirtualBalanceRewardPool(BORING_DAO_LP_VIRTUAL_REWARDS_CONTRACT).queueNewRewards(_depositAmount);
+
+    // pass time
+    vm.warp(block.timestamp + 5 days);
+
+    uint256 _crvEarnner = IBaseRewardPool(BORING_DAO_LP_REWARDS_ADDRESS).earned(address(bobVault));
+    uint256 _virtualEarner = IVirtualBalanceRewardPool(BORING_DAO_LP_VIRTUAL_REWARDS_CONTRACT).earned(address(bobVault));
+
+    assertTrue(_crvEarnner != 0);
+    assertTrue(_virtualEarner != 0);
+
+    // claim
+    vm.prank(bob);
+    bobVault.claimRewards(address(boringDaoLP));
+
+    assertEq(IERC20(CRV_ADDRESS).balanceOf(bob), _balanceBefore + _crvEarnner);
+    assertEq(IERC20(BORING_DAO_ADDRESS).balanceOf(bob), _balanceVirtualBefore + _virtualEarner);
   }
 }
