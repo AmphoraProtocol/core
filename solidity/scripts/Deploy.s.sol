@@ -5,6 +5,7 @@ import {Script} from 'forge-std/Script.sol';
 import {console} from 'forge-std/console.sol';
 
 import {VaultController} from '@contracts/core/VaultController.sol';
+import {VaultDeployer} from '@contracts/core/VaultDeployer.sol';
 import {USDA} from '@contracts/core/USDA.sol';
 import {GovernorCharlie} from '@contracts/governance/GovernorCharlie.sol';
 import {AmphoraProtocolToken} from '@contracts/governance/AmphoraProtocolToken.sol';
@@ -16,10 +17,12 @@ import {ThreeLines0_100} from '@contracts/utils/ThreeLines0_100.sol';
 import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
 
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
+import {IVaultDeployer} from '@interfaces/core/IVaultDeployer.sol';
 import {TestConstants} from '@test/utils/TestConstants.sol';
 
 abstract contract Deploy is Script, TestConstants {
   VaultController public vaultController;
+  VaultDeployer public vaultDeployer;
   USDA public usda;
 
   CurveMaster public curveMaster;
@@ -50,10 +53,15 @@ abstract contract Deploy is Script, TestConstants {
     governor = new GovernorCharlie(address(amphToken));
     console.log('GOVERNOR: ', address(governor));
 
-    // Deploy and initialize VaultController
+    // Deploy VaultController & VaultDeployer
     vaultController = new VaultController();
     console.log('VAULT_CONTROLLER: ', address(vaultController));
-    vaultController.initialize(IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), 0.01e18); // TODO: change this after finishing claim contract task
+    vaultDeployer = new VaultDeployer(IVaultController(address(vaultController)));
+    console.log('VAULT_DEPLOYER: ', address(vaultDeployer));
+    // Initialize vault controller
+    vaultController.initialize(
+      IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), 0.01e18, IVaultDeployer(address(vaultDeployer))
+    ); // TODO: change this after finishing claim contract task
 
     // Deploy and initialize USDA
     usda = new USDA();

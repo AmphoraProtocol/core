@@ -4,13 +4,17 @@ pragma solidity >=0.8.4 <0.9.0;
 import {CommonE2EBase, IERC20} from '@test/e2e/Common.sol';
 
 import {VaultController} from '@contracts/core/VaultController.sol';
+import {VaultDeployer} from '@contracts/core/VaultDeployer.sol';
+import {IVaultDeployer} from '@interfaces/core/IVaultDeployer.sol';
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
 import {IRoles} from '@interfaces/utils/IRoles.sol';
 import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
+import {IVaultDeployer} from '@interfaces/core/IVaultDeployer.sol';
 
 contract E2EVaultControllerMigration is CommonE2EBase {
   VaultController public newVaultController;
+  VaultDeployer public newVaultDeployer;
 
   function setUp() public override {
     super.setUp();
@@ -28,11 +32,15 @@ contract E2EVaultControllerMigration is CommonE2EBase {
     newVaultController = new VaultController();
     label(address(newVaultController), 'newVaultController');
 
+    newVaultDeployer = new VaultDeployer(IVaultController(address(newVaultController)));
+
     address[] memory _tokens = new address[](3);
     _tokens[0] = WETH_ADDRESS;
     _tokens[1] = UNI_ADDRESS;
     _tokens[2] = AAVE_ADDRESS;
-    newVaultController.initialize(vaultController, _tokens, IAMPHClaimer(address(0)), 0.01e18); // TODO: change this after finishing claim contract task
+    newVaultController.initialize(
+      vaultController, _tokens, IAMPHClaimer(address(0)), 0.01e18, IVaultDeployer(address(newVaultDeployer))
+    ); // TODO: change this after finishing claim contract task
 
     newVaultController.transferOwnership(address(governor));
     vm.stopPrank();

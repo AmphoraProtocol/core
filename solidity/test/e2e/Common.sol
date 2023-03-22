@@ -6,6 +6,7 @@ import {IERC20} from 'isolmate/interfaces/tokens/IERC20.sol';
 import {DSTestPlus} from 'solidity-utils/test/DSTestPlus.sol';
 
 import {VaultController} from '@contracts/core/VaultController.sol';
+import {VaultDeployer} from '@contracts/core/VaultDeployer.sol';
 import {USDA} from '@contracts/core/USDA.sol';
 import {AmphoraProtocolToken} from '@contracts/governance/AmphoraProtocolToken.sol';
 import {GovernorCharlie} from '@contracts/governance/GovernorCharlie.sol';
@@ -21,6 +22,7 @@ import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
 import {AMPHClaimer} from '@contracts/core/AMPHClaimer.sol';
 
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
+import {IVaultDeployer} from '@interfaces/core/IVaultDeployer.sol';
 import {IWUSDA} from '@interfaces/core/IWUSDA.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
@@ -30,6 +32,7 @@ import {TestConstants} from '@test/utils/TestConstants.sol';
 // solhint-disable-next-line max-states-count
 contract CommonE2EBase is DSTestPlus, TestConstants {
   uint256 public constant FORK_BLOCK = 15_452_788;
+  /// 16442788;///;
   uint256 public constant DELTA = 100;
 
   // AMPH token
@@ -42,6 +45,8 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   // VaultControllers
   VaultController public vaultController;
   VaultController public vaultController2;
+  // VaultDeployer
+  VaultDeployer public vaultDeployer;
   // Curve Master and ThreeLines0_100 curve
   CurveMaster public curveMaster;
   ThreeLines0_100 public threeLines;
@@ -143,7 +148,15 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     // Deploy VaultController
     vaultController = new VaultController();
     label(address(vaultController), 'VaultController');
-    vaultController.initialize(IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), 0.01e18); // TODO: change this after finishing claim contract task
+
+    // Deploy VaultDeployer
+    vaultDeployer = new VaultDeployer(IVaultController(address(vaultController)));
+    label(address(vaultDeployer), 'VaultDeployer');
+
+    // Initialize VaultController
+    vaultController.initialize(
+      IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), 0.01e18, IVaultDeployer(address(vaultDeployer))
+    ); // TODO: change this after finishing claim contract task
 
     // Deploy and initialize USDA
     usdaToken = new USDA();
@@ -215,6 +228,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     vaultController.registerErc20(
       USDT_LP_ADDRESS, OTHER_LTV, address(anchoredViewUni), LIQUIDATION_INCENTIVE, type(uint256).max, 1
     );
+
     /// TODO: change UNI_LTV  & anchoredViewUni
     vaultController.registerErc20(
       BORING_DAO_LP_ADDRESS, OTHER_LTV, address(anchoredViewUni), LIQUIDATION_INCENTIVE, type(uint256).max, 20

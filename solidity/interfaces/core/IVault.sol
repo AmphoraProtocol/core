@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 /// @title Vault Interface
@@ -108,6 +109,12 @@ interface IVault {
    * @return _id The id of the vault
    */
   function id() external view returns (uint96 _id);
+
+  /**
+   * @notice Returns the vault controller
+   * @return _vaultController The vault controller
+   */
+  function CONTROLLER() external view returns (IVaultController _vaultController);
 
   /*///////////////////////////////////////////////////////////////
                               LOGIC

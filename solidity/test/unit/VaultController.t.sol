@@ -2,6 +2,7 @@
 pragma solidity >=0.8.4 <0.9.0;
 
 import {VaultController} from '@contracts/core/VaultController.sol';
+import {VaultDeployer} from '@contracts/core/VaultDeployer.sol';
 import {Vault} from '@contracts/core/Vault.sol';
 import {UniswapV3OracleRelay} from '@contracts/periphery/UniswapV3OracleRelay.sol';
 import {ChainlinkOracleRelay} from '@contracts/periphery/ChainlinkOracleRelay.sol';
@@ -19,6 +20,7 @@ import {IUSDA} from '@interfaces/core/IUSDA.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
 import {IBooster} from '@interfaces/utils/IBooster.sol';
 import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
+import {IVaultDeployer} from '@interfaces/core/IVaultDeployer.sol';
 
 import {IERC20} from 'isolmate/interfaces/tokens/IERC20.sol';
 import {DSTestPlus} from 'solidity-utils/test/DSTestPlus.sol';
@@ -42,6 +44,7 @@ abstract contract Base is DSTestPlus, TestConstants {
   IERC20 public mockToken = IERC20(mockContract(newAddress(), 'mockToken'));
   VaultController public vaultController;
   VaultControllerForTest public mockVaultController;
+  VaultDeployer public vaultDeployer;
   USDA public usdaToken;
   CurveMaster public curveMaster;
   ThreeLines0_100 public threeLines;
@@ -59,7 +62,10 @@ abstract contract Base is DSTestPlus, TestConstants {
     address[] memory _tokens = new address[](1);
     vm.startPrank(governance);
     vaultController = new VaultController();
-    vaultController.initialize(IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), 0.01e18); // TODO: change this after finishing claim contract task
+    vaultDeployer = new VaultDeployer(IVaultController(address(vaultController)));
+    vaultController.initialize(
+      IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), 0.01e18, IVaultDeployer(address(vaultDeployer))
+    ); // TODO: change this after finishing claim contract task
 
     curveMaster = new CurveMaster();
     threeLines = new ThreeLines0_100(2 ether, 0.05 ether, 0.045 ether, 0.5 ether, 0.55 ether);
@@ -813,10 +819,20 @@ contract UnitVaultControllerTokensToLiquidate is VaultBase {
 
 contract UnitVaultControllerGetVault is VaultBase {
   IVault internal _mockVault;
+  VaultDeployer internal _mockVaultDeployer;
 
   function setUp() public virtual override {
     super.setUp();
+    address[] memory _tokens = new address[](1);
     mockVaultController = new VaultControllerForTest();
+    _mockVaultDeployer = new VaultDeployer(IVaultController(address(mockVaultController)));
+    mockVaultController.initialize(
+      IVaultController(address(0)),
+      _tokens,
+      IAMPHClaimer(address(0)),
+      0.01e18,
+      IVaultDeployer(address(_mockVaultDeployer))
+    );
   }
 
   function testRevertIfVaultDoesNotExist(uint96 _id) public {

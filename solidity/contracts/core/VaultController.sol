@@ -2,7 +2,6 @@
 pragma solidity ^0.8.9;
 
 import {ExponentialNoError} from '@contracts/utils/ExponentialNoError.sol';
-import {Vault} from '@contracts/core/Vault.sol';
 import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
 
 import {IUSDA} from '@interfaces/core/IUSDA.sol';
@@ -12,6 +11,7 @@ import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
 import {IBooster} from '@interfaces/utils/IBooster.sol';
 import {IBaseRewardPool} from '@interfaces/utils/IBaseRewardPool.sol';
 import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
+import {IVaultDeployer} from '@interfaces/core/IVaultDeployer.sol';
 
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {OwnableUpgradeable} from '@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol';
@@ -30,6 +30,8 @@ contract VaultController is
 {
   // The convex booster contract
   IBooster public immutable BOOSTER = IBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
+  // TODO: Change to immutable, can't initialize it in initializer
+  IVaultDeployer public VAULT_DEPLOYER;
 
   // mapping of vault id to vault address
   mapping(uint96 => address) public vaultIdVaultAddress;
@@ -74,10 +76,12 @@ contract VaultController is
     IVaultController _oldVaultController,
     address[] memory _tokenAddresses,
     IAMPHClaimer _claimerContract,
-    uint256 _curveLpRewardsFee
+    uint256 _curveLpRewardsFee,
+    IVaultDeployer _vaultDeployer
   ) external override initializer {
     __Ownable_init();
     __Pausable_init();
+    VAULT_DEPLOYER = _vaultDeployer;
     interest = Interest(uint64(block.timestamp), 1 ether);
     protocolFee = 1e14;
     curveLpRewardsFee = _curveLpRewardsFee;
@@ -236,7 +240,7 @@ contract VaultController is
     // increment  minted vaults
     vaultsMinted = vaultsMinted + 1;
     // mint the vault itself, deploying the contract
-    _vaultAddress = address(new Vault(vaultsMinted, _msgSender(), address(this)));
+    _vaultAddress = _createVault(vaultsMinted, _msgSender());
     // add the vault to our system
     vaultIdVaultAddress[vaultsMinted] = _vaultAddress;
 
@@ -752,6 +756,16 @@ contract VaultController is
     emit InterestEvent(uint64(block.timestamp), _e18FactorIncrease, _curveVal);
     // return the interest factor increase
     return _e18FactorIncrease;
+  }
+
+  /**
+   * @notice Deploys a new Vault
+   * @param _id The id of the vault
+   * @param _minter The address of the minter of the vault
+   * @return _vault The vault that was created
+   */
+  function _createVault(uint96 _id, address _minter) internal virtual returns (address _vault) {
+    _vault = address(VAULT_DEPLOYER.deployVault(_id, _minter));
   }
 
   /// special view only function to help liquidators

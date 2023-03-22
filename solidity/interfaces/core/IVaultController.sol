@@ -5,6 +5,7 @@ import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
 import {IBooster} from '@interfaces/utils/IBooster.sol';
 import {IBaseRewardPool} from '@interfaces/utils/IBaseRewardPool.sol';
+import {IVaultDeployer} from '@interfaces/core/IVaultDeployer.sol';
 import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
 
 /// @title VaultController Interface
@@ -243,6 +244,8 @@ interface IVaultController {
 
   function claimerContract() external view returns (IAMPHClaimer _claimerContract);
 
+  function VAULT_DEPLOYER() external view returns (IVaultDeployer _vaultDeployer);
+
   /*///////////////////////////////////////////////////////////////
                             LOGIC
     //////////////////////////////////////////////////////////////*/
@@ -251,7 +254,8 @@ interface IVaultController {
     IVaultController _oldVaultController,
     address[] memory _tokenAddresses,
     IAMPHClaimer _claimerContract,
-    uint256 _curveLpRewardsFee
+    uint256 _curveLpRewardsFee,
+    IVaultDeployer _vaultDeployer
   ) external;
 
   function amountToSolvency(uint96 _id) external view returns (uint256 _amountToSolvency);
