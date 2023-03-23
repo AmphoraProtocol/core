@@ -60,7 +60,7 @@ abstract contract Deploy is Script, TestConstants {
     console.log('VAULT_DEPLOYER: ', address(vaultDeployer));
     // Initialize vault controller
     vaultController.initialize(
-      IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), 0.01e18, IVaultDeployer(address(vaultDeployer))
+      IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), IVaultDeployer(address(vaultDeployer))
     ); // TODO: change this after finishing claim contract task
 
     // Deploy and initialize USDA

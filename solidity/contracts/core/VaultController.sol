@@ -54,7 +54,6 @@ contract VaultController is
   uint256 public tokensRegistered;
   uint192 public totalBaseLiability;
   uint192 public protocolFee;
-  uint256 public curveLpRewardsFee;
 
   /// @notice any function with this modifier will call the _payInterest() function before
   modifier paysInterest() {
@@ -76,7 +75,6 @@ contract VaultController is
     IVaultController _oldVaultController,
     address[] memory _tokenAddresses,
     IAMPHClaimer _claimerContract,
-    uint256 _curveLpRewardsFee,
     IVaultDeployer _vaultDeployer
   ) external override initializer {
     __Ownable_init();
@@ -84,7 +82,6 @@ contract VaultController is
     VAULT_DEPLOYER = _vaultDeployer;
     interest = Interest(uint64(block.timestamp), 1 ether);
     protocolFee = 1e14;
-    curveLpRewardsFee = _curveLpRewardsFee;
 
     claimerContract = _claimerContract;
 
@@ -361,16 +358,6 @@ contract VaultController is
     tokenAddressCollateralInfo[_tokenAddress] = _collateral;
 
     emit UpdateRegisteredErc20(_tokenAddress, _ltv, _oracleAddress, _liquidationIncentive, _cap);
-  }
-
-  /// @notice Change the fee taken when claiming curve LP rewards, that amount will be exchanged for AMPH in the AMPH claimer contract
-  /// @param _newFee the new fee in terms of 1e18=100%
-  function changeCurveLpFee(uint256 _newFee) external override onlyOwner {
-    if (_newFee >= 1e18) revert VaultController_FeeTooLarge();
-    uint256 _oldFee = curveLpRewardsFee;
-    curveLpRewardsFee = _newFee;
-
-    emit ChangedCurveLpFee(_oldFee, _newFee);
   }
 
   /// @notice Change the claimer contract, used to exchange a fee from curve lp rewards for AMPH tokens

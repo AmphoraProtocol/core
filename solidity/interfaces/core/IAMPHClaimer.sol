@@ -13,11 +13,11 @@ interface IAMPHClaimer {
   /**
    * @notice Emited when a vault claims AMPH
    * @param _vaultClaimer The address of the vault that claimed
-   * @param _cvxAmount The amount of CVX sent in exchange of AMPH
-   * @param _crvAmount The amount of CRV sent in exchange of AMPH
+   * @param _cvxTotalRewards The amount of CVX sent in exchange of AMPH
+   * @param _crvTotalRewards The amount of CRV sent in exchange of AMPH
    * @param _amphAmount The amount of AMPH received
    */
-  event ClaimedAmph(address _vaultClaimer, uint256 _cvxAmount, uint256 _crvAmount, uint256 _amphAmount);
+  event ClaimedAmph(address _vaultClaimer, uint256 _cvxTotalRewards, uint256 _crvTotalRewards, uint256 _amphAmount);
 
   /**
    * @notice Emited when governance changes the vault controller
@@ -45,6 +45,18 @@ interface IAMPHClaimer {
    */
   event RecoveredDust(address _token, address _receiver, uint256 _amount);
 
+  /**
+   * @notice Emited when governance changes the CVX reward fee
+   * @param _newCvxReward the new fee
+   */
+  event ChangedCvxRewardFee(uint256 _newCvxReward);
+
+  /**
+   * @notice Emited when governance changes the CRV reward fee
+   * @param _newCrvReward the new fee
+   */
+  event ChangedCrvRewardFee(uint256 _newCrvReward);
+
   /*///////////////////////////////////////////////////////////////
                             VARIABLES
     //////////////////////////////////////////////////////////////*/
@@ -61,20 +73,24 @@ interface IAMPHClaimer {
 
   function amphPerCrv() external view returns (uint256 _amphPerCrv);
 
+  function cvxRewardFee() external view returns (uint256 _cvxRewardFee);
+
+  function crvRewardFee() external view returns (uint256 _crvRewardFee);
+
   /*///////////////////////////////////////////////////////////////
                             LOGIC
     //////////////////////////////////////////////////////////////*/
 
   function claimAmph(
     uint96 _vaultId,
-    uint256 _cvxAmount,
-    uint256 _crvAmount,
+    uint256 _cvxTotalRewards,
+    uint256 _crvTotalRewards,
     address _receiver
   ) external returns (uint256 _cvxAmountToSend, uint256 _crvAmountToSend, uint256 _claimedAmph);
 
   function claimable(
-    uint256 _cvxAmount,
-    uint256 _crvAmount
+    uint256 _cvxTotalRewards,
+    uint256 _crvTotalRewards
   ) external view returns (uint256 _cvxAmountToSend, uint256 _crvAmountToSend, uint256 _claimableAmph);
 
   function changeVaultController(address _newVaultController) external;
@@ -84,4 +100,8 @@ interface IAMPHClaimer {
   function changeCrvRate(uint256 _newRate) external;
 
   function recoverDust(address _token, uint256 _amount) external;
+
+  function changeCvxRewardFee(uint256 _newFee) external;
+
+  function changeCrvRewardFee(uint256 _newFee) external;
 }

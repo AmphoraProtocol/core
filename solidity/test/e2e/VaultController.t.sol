@@ -178,7 +178,6 @@ contract E2EVaultController is CommonE2EBase {
       IVaultController(address(vaultController)),
       _tokens,
       IAMPHClaimer(address(0)),
-      0.01e18,
       IVaultDeployer(address(vaultDeployer))
     ); // TODO: change this after finishing claim contract task
     vm.stopPrank();

@@ -126,6 +126,9 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   uint256 public cvxRate = 10e18; // 10 AMPH per 1 CVX
   uint256 public crvRate = 0.5e18; // 0.5 AMPH per 1 CVX
 
+  uint256 public cvxRewardFee = 0.02e18;
+  uint256 public crvRewardFee = 0.01e18;
+
   function setUp() public virtual {
     vm.createSelectFork(vm.rpcUrl('mainnet'), FORK_BLOCK);
 
@@ -155,7 +158,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
 
     // Initialize VaultController
     vaultController.initialize(
-      IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), 0.01e18, IVaultDeployer(address(vaultDeployer))
+      IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), IVaultDeployer(address(vaultDeployer))
     ); // TODO: change this after finishing claim contract task
 
     // Deploy and initialize USDA
@@ -249,7 +252,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
 
     // deploy claimer
     amphClaimer =
-      new AMPHClaimer(address(vaultController), address(amphToken), CVX_ADDRESS, CRV_ADDRESS, cvxRate, crvRate);
+    new AMPHClaimer(address(vaultController), address(amphToken), CVX_ADDRESS, CRV_ADDRESS, cvxRate, crvRate, cvxRewardFee, crvRewardFee);
 
     governor = new GovernorCharlie(address(amphToken));
 

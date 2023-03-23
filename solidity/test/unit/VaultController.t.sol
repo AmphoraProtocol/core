@@ -64,7 +64,7 @@ abstract contract Base is DSTestPlus, TestConstants {
     vaultController = new VaultController();
     vaultDeployer = new VaultDeployer(IVaultController(address(vaultController)));
     vaultController.initialize(
-      IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), 0.01e18, IVaultDeployer(address(vaultDeployer))
+      IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), IVaultDeployer(address(vaultDeployer))
     ); // TODO: change this after finishing claim contract task
 
     curveMaster = new CurveMaster();
@@ -133,7 +133,6 @@ contract UnitVaultControllerInitialize is Base {
     assertEq(vaultController.lastInterestTime(), block.timestamp);
     assertEq(vaultController.interestFactor(), 1 ether);
     assertEq(vaultController.protocolFee(), 100_000_000_000_000);
-    assertEq(vaultController.curveLpRewardsFee(), 10_000_000_000_000_000);
     assertEq(vaultController.vaultsMinted(), 0);
     assertEq(vaultController.tokensRegistered(), 0);
     assertEq(vaultController.totalBaseLiability(), 0);
@@ -384,33 +383,6 @@ contract UnitVaultControllerUpdateRegisteredERC20 is Base {
     assertEq(vaultController.tokenLTV(WETH_ADDRESS), _ltv);
     assertEq(vaultController.tokenLiquidationIncentive(WETH_ADDRESS), LIQUIDATION_INCENTIVE);
     assertEq(vaultController.tokenCap(WETH_ADDRESS), _cap);
-  }
-}
-
-contract UnitVaultControllerChangeCurveLpFee is Base {
-  event ChangedCurveLpFee(uint256 _oldFee, uint256 _newFee);
-
-  function testRevertIfChangeFromNonOwner(uint192 _newFee) public {
-    vm.expectRevert('Ownable: caller is not the owner');
-    vm.prank(alice);
-    vaultController.changeCurveLpFee(_newFee);
-  }
-
-  function testRevertIfFeeIsTooHigh(uint192 _newFee) public {
-    vm.assume(_newFee > 1 ether);
-    vm.expectRevert(IVaultController.VaultController_FeeTooLarge.selector);
-    vm.prank(governance);
-    vaultController.changeCurveLpFee(_newFee);
-  }
-
-  function testChangeCurveLpFee(uint192 _newFee) public {
-    vm.assume(_newFee < 1 ether);
-    vm.expectEmit(false, false, false, true);
-    emit ChangedCurveLpFee(vaultController.curveLpRewardsFee(), _newFee);
-
-    vm.prank(governance);
-    vaultController.changeCurveLpFee(_newFee);
-    assertEq(vaultController.curveLpRewardsFee(), _newFee);
   }
 }
 
@@ -827,11 +799,7 @@ contract UnitVaultControllerGetVault is VaultBase {
     mockVaultController = new VaultControllerForTest();
     _mockVaultDeployer = new VaultDeployer(IVaultController(address(mockVaultController)));
     mockVaultController.initialize(
-      IVaultController(address(0)),
-      _tokens,
-      IAMPHClaimer(address(0)),
-      0.01e18,
-      IVaultDeployer(address(_mockVaultDeployer))
+      IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), IVaultDeployer(address(_mockVaultDeployer))
     );
   }
 
