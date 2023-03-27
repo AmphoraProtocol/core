@@ -114,7 +114,6 @@ contract GovernorCharlie is IGovernorCharlie {
    * @param _signatures Function signatures for proposal calls
    * @param _calldatas Calldatas for proposal calls
    * @param _description String description of the proposal
-   * @param _emergency Bool to determine if proposal an emergency proposal
    * @return _proposalId Proposal id of new proposal
    */
   function propose(
@@ -122,10 +121,49 @@ contract GovernorCharlie is IGovernorCharlie {
     uint256[] memory _values,
     string[] memory _signatures,
     bytes[] memory _calldatas,
+    string memory _description
+  ) public override returns (uint256 _proposalId) {
+    _proposalId = _propose(_targets, _values, _signatures, _calldatas, _description, false);
+  }
+
+  /**
+   * @notice Function used to propose a new emergency proposal. Sender must have delegates above the proposal threshold
+   * @param _targets Target addresses for proposal calls
+   * @param _values Eth values for proposal calls
+   * @param _signatures Function signatures for proposal calls
+   * @param _calldatas Calldatas for proposal calls
+   * @param _description String description of the proposal
+   * @return _proposalId Proposal id of new proposal
+   */
+  function proposeEmergency(
+    address[] memory _targets,
+    uint256[] memory _values,
+    string[] memory _signatures,
+    bytes[] memory _calldatas,
+    string memory _description
+  ) public override returns (uint256 _proposalId) {
+    _proposalId = _propose(_targets, _values, _signatures, _calldatas, _description, true);
+  }
+
+  /**
+   * @notice Function used to propose a new proposal. Sender must have delegates above the proposal threshold
+   * @param _targets Target addresses for proposal calls
+   * @param _values Eth values for proposal calls
+   * @param _signatures Function signatures for proposal calls
+   * @param _calldatas Calldatas for proposal calls
+   * @param _description String description of the proposal
+   * @param _emergency Bool to determine if proposal an emergency proposal
+   * @return _proposalId Proposal id of new proposal
+   */
+  function _propose(
+    address[] memory _targets,
+    uint256[] memory _values,
+    string[] memory _signatures,
+    bytes[] memory _calldatas,
     string memory _description,
     bool _emergency
-  ) public override returns (uint256 _proposalId) {
-    // Reject proposals before initiating as GovernorCharlie
+  ) internal returns (uint256 _proposalId) {
+    // Reject proposals before initiating as Governor
     if (quorumVotes == 0) revert GovernorCharlie_NotActive();
     // Allow addresses above proposal threshold and whitelisted addresses to propose
     if (amph.getPriorVotes(msg.sender, (block.number - 1)) < proposalThreshold && !isWhitelisted(msg.sender)) {
@@ -183,6 +221,18 @@ contract GovernorCharlie is IGovernorCharlie {
     proposals[_newProposal.id] = _newProposal;
     latestProposalIds[_newProposal.proposer] = _newProposal.id;
 
+    emit ProposalCreatedIndexed(
+      _newProposal.id,
+      msg.sender,
+      _targets,
+      _values,
+      _signatures,
+      _calldatas,
+      _newProposal.startBlock,
+      _newProposal.endBlock,
+      _description
+      );
+
     emit ProposalCreated(
       _newProposal.id,
       msg.sender,
@@ -193,7 +243,7 @@ contract GovernorCharlie is IGovernorCharlie {
       _newProposal.startBlock,
       _newProposal.endBlock,
       _description
-    );
+      );
     return _newProposal.id;
   }
 
@@ -223,6 +273,7 @@ contract GovernorCharlie is IGovernorCharlie {
       );
     }
     _proposal.eta = _eta;
+    emit ProposalQueuedIndexed(_proposalId, _eta);
     emit ProposalQueued(_proposalId, _eta);
   }
 
@@ -263,6 +314,7 @@ contract GovernorCharlie is IGovernorCharlie {
         _proposal.targets[_i], _proposal.values[_i], _proposal.signatures[_i], _proposal.calldatas[_i], _proposal.eta
       );
     }
+    emit ProposalExecutedIndexed(_proposalId);
     emit ProposalExecuted(_proposalId);
   }
 
@@ -332,6 +384,7 @@ contract GovernorCharlie is IGovernorCharlie {
       );
     }
 
+    emit ProposalCanceledIndexed(_proposalId);
     emit ProposalCanceled(_proposalId);
   }
 
@@ -429,7 +482,9 @@ contract GovernorCharlie is IGovernorCharlie {
    * @param _support The support value for the vote. 0=against, 1=for, 2=abstain
    */
   function castVote(uint256 _proposalId, uint8 _support) external override {
-    emit VoteCast(msg.sender, _proposalId, _support, _castVoteInternal(msg.sender, _proposalId, _support), '');
+    uint96 _numberOfVotes = _castVoteInternal(msg.sender, _proposalId, _support);
+    emit VoteCastIndexed(msg.sender, _proposalId, _support, _numberOfVotes, '');
+    emit VoteCast(msg.sender, _proposalId, _support, _numberOfVotes, '');
   }
 
   /**
@@ -439,7 +494,9 @@ contract GovernorCharlie is IGovernorCharlie {
    * @param _reason The reason given for the vote by the voter
    */
   function castVoteWithReason(uint256 _proposalId, uint8 _support, string calldata _reason) external override {
-    emit VoteCast(msg.sender, _proposalId, _support, _castVoteInternal(msg.sender, _proposalId, _support), _reason);
+    uint96 _numberOfVotes = _castVoteInternal(msg.sender, _proposalId, _support);
+    emit VoteCastIndexed(msg.sender, _proposalId, _support, _numberOfVotes, _reason);
+    emit VoteCast(msg.sender, _proposalId, _support, _numberOfVotes, _reason);
   }
 
   /**
@@ -458,7 +515,9 @@ contract GovernorCharlie is IGovernorCharlie {
     }
     address _signatory = ecrecover(_digest, _v, _r, _s);
     if (_signatory == address(0)) revert GovernorCharlie_InvalidSignature();
-    emit VoteCast(_signatory, _proposalId, _support, _castVoteInternal(_signatory, _proposalId, _support), '');
+    uint96 _numberOfVotes = _castVoteInternal(_signatory, _proposalId, _support);
+    emit VoteCastIndexed(_signatory, _proposalId, _support, _numberOfVotes, '');
+    emit VoteCast(_signatory, _proposalId, _support, _numberOfVotes, '');
   }
 
   /**
@@ -648,6 +707,14 @@ contract GovernorCharlie is IGovernorCharlie {
     optimisticQuorumVotes = _newOptimisticQuorumVotes;
 
     emit OptimisticQuorumVotesSet(_oldOptimisticQuorumVotes, optimisticQuorumVotes);
+  }
+
+  function timelock() external view override returns (address _timelock) {
+    _timelock = address(this);
+  }
+
+  function delay() external view override returns (uint256 _delay) {
+    _delay = proposalTimelockDelay;
   }
 
   /// @notice Returns the chaid id of the blockchain

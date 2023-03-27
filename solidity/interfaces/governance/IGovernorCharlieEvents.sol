@@ -2,8 +2,12 @@
 pragma solidity ^0.8.9;
 
 interface IGovernorCharlieEvents {
+  /*///////////////////////////////////////////////////////////////
+                              EVENTS
+    //////////////////////////////////////////////////////////////*/
+
   /// @notice An event emitted when a new proposal is created
-  event ProposalCreated(
+  event ProposalCreatedIndexed(
     uint256 indexed _id,
     address indexed _proposer,
     address[] _targets,
@@ -21,16 +25,18 @@ interface IGovernorCharlieEvents {
   /// @param _support Support value for the vote. 0=against, 1=for, 2=abstain
   /// @param _votes Number of votes which were cast by the voter
   /// @param _reason The reason given for the vote by the voter
-  event VoteCast(address indexed _voter, uint256 indexed _proposalId, uint8 _support, uint256 _votes, string _reason);
+  event VoteCastIndexed(
+    address indexed _voter, uint256 indexed _proposalId, uint8 _support, uint256 _votes, string _reason
+  );
 
   /// @notice An event emitted when a proposal has been canceled
-  event ProposalCanceled(uint256 indexed _id);
+  event ProposalCanceledIndexed(uint256 indexed _id);
 
   /// @notice An event emitted when a proposal has been queued in the Timelock
-  event ProposalQueued(uint256 indexed _id, uint256 _eta);
+  event ProposalQueuedIndexed(uint256 indexed _id, uint256 _eta);
 
   /// @notice An event emitted when a proposal has been executed in the Timelock
-  event ProposalExecuted(uint256 indexed _id);
+  event ProposalExecutedIndexed(uint256 indexed _id);
 
   /// @notice An event emitted when the voting delay is set
   event VotingDelaySet(uint256 _oldVotingDelay, uint256 _newVotingDelay);
@@ -82,4 +88,27 @@ interface IGovernorCharlieEvents {
   event QueueTransaction(
     bytes32 indexed _txHash, address indexed _target, uint256 _value, string _signature, bytes _data, uint256 _eta
   );
+
+  /*///////////////////////////////////////////////////////////////
+                              TALLY EVENTS
+  //////////////////////////////////////////////////////////////*/
+
+  // This events are needed so that tally can index the votes and actions
+  event ProposalCreated(
+    uint256 id,
+    address proposer,
+    address[] targets,
+    uint256[] values,
+    string[] signatures,
+    bytes[] calldatas,
+    uint256 startBlock,
+    uint256 endBlock,
+    string description
+  );
+
+  event VoteCast(address indexed voter, uint256 proposalId, uint8 support, uint256 votes, string reason);
+
+  event ProposalCanceled(uint256 id);
+  event ProposalQueued(uint256 id, uint256 eta);
+  event ProposalExecuted(uint256 id);
 }

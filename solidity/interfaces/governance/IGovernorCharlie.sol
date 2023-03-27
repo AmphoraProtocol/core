@@ -123,6 +123,10 @@ interface IGovernorCharlie is IGovernorCharlieEvents {
 
   function maxWhitelistPeriod() external view returns (uint256 _maxWhitelistPeriod);
 
+  function timelock() external view returns (address _timelock);
+
+  function delay() external view returns (uint256 _delay);
+
   /*///////////////////////////////////////////////////////////////
                               LOGIC
     //////////////////////////////////////////////////////////////*/
@@ -132,8 +136,15 @@ interface IGovernorCharlie is IGovernorCharlieEvents {
     uint256[] memory _values,
     string[] memory _signatures,
     bytes[] memory _calldatas,
-    string memory _description,
-    bool _emergency
+    string memory _description
+  ) external returns (uint256 _proposalId);
+
+  function proposeEmergency(
+    address[] memory _targets,
+    uint256[] memory _values,
+    string[] memory _signatures,
+    bytes[] memory _calldatas,
+    string memory _description
   ) external returns (uint256 _proposalId);
 
   function queue(uint256 _proposalId) external;

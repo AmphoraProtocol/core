@@ -56,7 +56,7 @@ contract E2EGovernance is CommonE2EBase {
     _signatures[0] = 'setWhitelistAccountExpiration(address,uint256)';
     _calldatas[0] = abi.encode(bob, block.timestamp + gov.maxWhitelistPeriod());
     vm.prank(frank);
-    uint256 _proposalId = gov.propose(_targets, _values, _signatures, _calldatas, 'test proposal', false);
+    uint256 _proposalId = gov.propose(_targets, _values, _signatures, _calldatas, 'test proposal');
     assertEq(_proposalId, 1);
 
     vm.roll(block.number + gov.votingDelay() + 1);
@@ -85,7 +85,7 @@ contract E2EGovernance is CommonE2EBase {
     _calldatas[0] = abi.encode(eric, block.timestamp + gov.maxWhitelistPeriod());
 
     vm.prank(bob);
-    _proposalId = gov.propose(_targets, _values, _signatures, _calldatas, 'whitelist eric', true);
+    _proposalId = gov.proposeEmergency(_targets, _values, _signatures, _calldatas, 'whitelist eric');
 
     Proposal memory _proposal = gov.getProposal(_proposalId);
 

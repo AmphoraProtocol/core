@@ -49,7 +49,7 @@ contract UnitGovernorCharliePropose is Base {
     (address[] memory _targets, uint256[] memory _values, string[] memory _signatures, bytes[] memory _calldatas) =
       _getProposalData(2);
     vm.expectRevert(IGovernorCharlie.GovernorCharlie_VotesBelowThreshold.selector);
-    governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
+    governor.propose(_targets, _values, _signatures, _calldatas, 'description');
   }
 
   function testRevertsWhenWrongArity() public {
@@ -59,7 +59,7 @@ contract UnitGovernorCharliePropose is Base {
     _targets[2] = address(2);
     (, uint256[] memory _values, string[] memory _signatures, bytes[] memory _calldatas) = _getProposalData(2);
     vm.expectRevert(IGovernorCharlie.GovernorCharlie_ArityMismatch.selector);
-    governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
+    governor.propose(_targets, _values, _signatures, _calldatas, 'description');
   }
 
   function testRevertsWhenNoActions() public {
@@ -68,38 +68,38 @@ contract UnitGovernorCharliePropose is Base {
     string[] memory _signatures;
     bytes[] memory _calldatas;
     vm.expectRevert(IGovernorCharlie.GovernorCharlie_NoActions.selector);
-    governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
+    governor.propose(_targets, _values, _signatures, _calldatas, 'description');
   }
 
   function testRevertsWhenTooManyActions() public {
     (address[] memory _targets, uint256[] memory _values, string[] memory _signatures, bytes[] memory _calldatas) =
       _getProposalData(11);
     vm.expectRevert(IGovernorCharlie.GovernorCharlie_TooManyActions.selector);
-    governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
+    governor.propose(_targets, _values, _signatures, _calldatas, 'description');
   }
 
   function testRevertsMultiplePendingProposals() public {
     (address[] memory _targets, uint256[] memory _values, string[] memory _signatures, bytes[] memory _calldatas) =
       _getProposalData(2);
-    governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
+    governor.propose(_targets, _values, _signatures, _calldatas, 'description');
     vm.expectRevert(IGovernorCharlie.GovernorCharlie_MultiplePendingProposals.selector);
-    governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
+    governor.propose(_targets, _values, _signatures, _calldatas, 'description');
   }
 
   function testRevertsMultipleActiveProposals() public {
     (address[] memory _targets, uint256[] memory _values, string[] memory _signatures, bytes[] memory _calldatas) =
       _getProposalData(2);
-    governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
+    governor.propose(_targets, _values, _signatures, _calldatas, 'description');
 
     vm.roll(block.number + 13_141);
     vm.expectRevert(IGovernorCharlie.GovernorCharlie_MultipleActiveProposals.selector);
-    governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
+    governor.propose(_targets, _values, _signatures, _calldatas, 'description');
   }
 
   function testCreateProposal() public {
     (address[] memory _targets, uint256[] memory _values, string[] memory _signatures, bytes[] memory _calldatas) =
       _getProposalData(2);
-    governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
+    governor.propose(_targets, _values, _signatures, _calldatas, 'description');
 
     (address[] memory __targets, uint256[] memory __values, string[] memory __signatures, bytes[] memory __calldatas) =
       governor.getActions(1);
@@ -121,7 +121,7 @@ contract UnitGovernorCharlieCancel is Base {
 
     (address[] memory _targets, uint256[] memory _values, string[] memory _signatures, bytes[] memory _calldatas) =
       _getProposalData(2);
-    governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
+    governor.propose(_targets, _values, _signatures, _calldatas, 'description');
   }
 
   function testRevertsIfProposalIsAboveThreshold() public {
@@ -159,9 +159,9 @@ contract UnitGovernorCharlieQueue is Base {
 
     (address[] memory _targets, uint256[] memory _values, string[] memory _signatures, bytes[] memory _calldatas) =
       _getProposalData(2);
-    governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
+    governor.propose(_targets, _values, _signatures, _calldatas, 'description');
     vm.prank(newAddress());
-    governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
+    governor.propose(_targets, _values, _signatures, _calldatas, 'description');
   }
 
   function testRevertsIfProposalNotSucceded() public {
@@ -219,7 +219,7 @@ contract UnitGovernorCharlieExecute is Base {
 
     (address[] memory _targets, uint256[] memory _values, string[] memory _signatures, bytes[] memory _calldatas) =
       _getProposalData(2);
-    governor.propose(_targets, _values, _signatures, _calldatas, 'description', false);
+    governor.propose(_targets, _values, _signatures, _calldatas, 'description');
     vm.roll(block.number + governor.votingDelay() + 1);
     vm.prank(newAddress());
     governor.castVote(1, 1);
