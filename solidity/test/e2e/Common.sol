@@ -148,18 +148,25 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     deal(address(boringDaoLP), bob, bobCurveLPBalance);
 
     vm.startPrank(frank);
+
+    // Deploy AMPH token
+    amphToken = new AmphoraProtocolToken();
+    amphToken.initialize(frank, initialAMPH);
+
     // Deploy VaultController
     vaultController = new VaultController();
     label(address(vaultController), 'VaultController');
+
+    // Deploy claimer
+    amphClaimer =
+    new AMPHClaimer(address(vaultController), address(amphToken), CVX_ADDRESS, CRV_ADDRESS, cvxRate, crvRate, cvxRewardFee, crvRewardFee);
 
     // Deploy VaultDeployer
     vaultDeployer = new VaultDeployer(IVaultController(address(vaultController)));
     label(address(vaultDeployer), 'VaultDeployer');
 
     // Initialize VaultController
-    vaultController.initialize(
-      IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), IVaultDeployer(address(vaultDeployer))
-    ); // TODO: change this after finishing claim contract task
+    vaultController.initialize(IVaultController(address(0)), _tokens, amphClaimer, vaultDeployer);
 
     // Deploy and initialize USDA
     usdaToken = new USDA();
@@ -247,13 +254,6 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     usdaToken.setPauser(address(frank));
 
     // Deploy governance
-    amphToken = new AmphoraProtocolToken();
-    amphToken.initialize(frank, initialAMPH);
-
-    // deploy claimer
-    amphClaimer =
-    new AMPHClaimer(address(vaultController), address(amphToken), CVX_ADDRESS, CRV_ADDRESS, cvxRate, crvRate, cvxRewardFee, crvRewardFee);
-
     governor = new GovernorCharlie(address(amphToken));
 
     usdaToken.setPauser(address(governor));

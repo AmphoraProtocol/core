@@ -14,6 +14,7 @@ import {AnchoredViewRelay} from '@contracts/periphery/AnchoredViewRelay.sol';
 import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
 import {UniswapV3OracleRelay} from '@contracts/periphery/UniswapV3OracleRelay.sol';
 import {ThreeLines0_100} from '@contracts/utils/ThreeLines0_100.sol';
+import {AMPHClaimer} from '@contracts/core/AMPHClaimer.sol';
 import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
 
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
@@ -23,6 +24,7 @@ import {TestConstants} from '@test/utils/TestConstants.sol';
 abstract contract Deploy is Script, TestConstants {
   VaultController public vaultController;
   VaultDeployer public vaultDeployer;
+  AMPHClaimer public amphClaimer;
   USDA public usda;
 
   CurveMaster public curveMaster;
@@ -39,6 +41,12 @@ abstract contract Deploy is Script, TestConstants {
   AnchoredViewRelay public anchoredViewEth;
 
   uint256 public initialAmphSupply = 100_000_000 ether;
+
+  uint256 public cvxRate = 10 ether; // 10 AMPH per 1 CVX
+  uint256 public crvRate = 0.5 ether; // 0.5 AMPH per 1 CVX
+
+  uint256 public cvxRewardFee = 0.02 ether;
+  uint256 public crvRewardFee = 0.01 ether;
 
   function _deploy(address _deployer) internal {
     address[] memory _tokens = new address[](1);
@@ -58,10 +66,14 @@ abstract contract Deploy is Script, TestConstants {
     console.log('VAULT_CONTROLLER: ', address(vaultController));
     vaultDeployer = new VaultDeployer(IVaultController(address(vaultController)));
     console.log('VAULT_DEPLOYER: ', address(vaultDeployer));
+
+    // Deploy claimer
+    amphClaimer =
+    new AMPHClaimer(address(vaultController), address(amphToken), CVX_ADDRESS, CRV_ADDRESS, cvxRate, crvRate, cvxRewardFee, crvRewardFee);
+    console.log('AMPH_CLAIMER: ', address(amphClaimer));
+
     // Initialize vault controller
-    vaultController.initialize(
-      IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), IVaultDeployer(address(vaultDeployer))
-    ); // TODO: change this after finishing claim contract task
+    vaultController.initialize(IVaultController(address(0)), _tokens, amphClaimer, vaultDeployer);
 
     // Deploy and initialize USDA
     usda = new USDA();

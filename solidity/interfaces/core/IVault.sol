@@ -141,10 +141,10 @@ interface IVault {
    */
   function withdrawERC20(address _token, uint256 _amount) external;
 
-  /// @notice Claims avaiable rewards from convex
+  /// @notice Claims available rewards from multiple tokens
   /// @dev    Transfers a percentage of the crv and cvx rewards to claim AMPH tokens
-  /// @param _tokenAddress The address of erc20 token
-  function claimRewards(address _tokenAddress) external;
+  /// @param _tokenAddresses The addresses of the erc20 tokens
+  function claimRewards(address[] memory _tokenAddresses) external;
 
   /// @notice Returns an array of tokens and amounts available for claim
   /// @param _tokenAddress The address of erc20 token

@@ -463,11 +463,16 @@ contract E2EUniPool is IsolatedBase {
     IUniswapV2Factory _factory = IUniswapV2Factory(uniV2Router.factory());
     IUniswapV2Pair _pair = IUniswapV2Pair(_factory.getPair(WETH_ADDRESS, address(usdaToken)));
     assertTrue(address(_pair) != address(0));
-    (uint256 _reserve01, uint256 _reserve02,) = _pair.getReserves();
-    assertEq(_reserve01, _wethAmount);
-    assertEq(_reserve02, _usdaAmount);
-    assertEq(_pair.token0(), WETH_ADDRESS);
-    assertEq(_pair.token1(), address(usdaToken));
+    {
+      (uint256 _reserve01, uint256 _reserve02,) = _pair.getReserves();
+      (address _token0, address _token1) =
+        WETH_ADDRESS < address(usdaToken) ? (WETH_ADDRESS, address(usdaToken)) : (address(usdaToken), WETH_ADDRESS);
+      if (_token0 == address(usdaToken)) (_reserve01, _reserve02) = (_reserve02, _reserve01);
+      assertEq(_reserve01, _wethAmount);
+      assertEq(_reserve02, _usdaAmount);
+      assertEq(_pair.token0(), _token0);
+      assertEq(_pair.token1(), _token1);
+    }
 
     // check what happens when USDA rebases in the pool
     (uint256 _startingUSDAReserves,,) = _pair.getReserves();
@@ -552,9 +557,13 @@ contract E2EUniV3Pool is IsolatedBase {
     weth.approve(address(nfpManager), type(uint256).max);
     usdaToken.approve(address(nfpManager), type(uint256).max);
 
+    (address _token0, address _token1) =
+      WETH_ADDRESS < address(usdaToken) ? (WETH_ADDRESS, address(usdaToken)) : (address(usdaToken), WETH_ADDRESS);
+    if (_token0 == address(usdaToken)) (_startWETH, _startUSDA) = (_startUSDA, _startWETH);
+
     INonfungiblePositionManager.MintParams memory _params = INonfungiblePositionManager.MintParams({
-      token0: WETH_ADDRESS,
-      token1: address(usdaToken),
+      token0: _token0,
+      token1: _token1,
       fee: 10_000,
       tickLower: -76_000,
       tickUpper: -73_200,

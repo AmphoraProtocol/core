@@ -42,6 +42,7 @@ abstract contract Base is DSTestPlus, TestConstants {
   address public vaultOwner = label(newAddress(), 'vaultOwner');
 
   IERC20 public mockToken = IERC20(mockContract(newAddress(), 'mockToken'));
+  IAMPHClaimer public mockAmphClaimer = IAMPHClaimer(mockContract(newAddress(), 'mockAmphClaimer'));
   VaultController public vaultController;
   VaultControllerForTest public mockVaultController;
   VaultDeployer public vaultDeployer;
@@ -63,9 +64,7 @@ abstract contract Base is DSTestPlus, TestConstants {
     vm.startPrank(governance);
     vaultController = new VaultController();
     vaultDeployer = new VaultDeployer(IVaultController(address(vaultController)));
-    vaultController.initialize(
-      IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), IVaultDeployer(address(vaultDeployer))
-    ); // TODO: change this after finishing claim contract task
+    vaultController.initialize(IVaultController(address(0)), _tokens, mockAmphClaimer, vaultDeployer);
 
     curveMaster = new CurveMaster();
     threeLines = new ThreeLines0_100(2 ether, 0.05 ether, 0.045 ether, 0.5 ether, 0.55 ether);
@@ -136,7 +135,7 @@ contract UnitVaultControllerInitialize is Base {
     assertEq(vaultController.vaultsMinted(), 0);
     assertEq(vaultController.tokensRegistered(), 0);
     assertEq(vaultController.totalBaseLiability(), 0);
-    assertEq(address(vaultController.claimerContract()), address(0));
+    assertEq(address(vaultController.claimerContract()), address(mockAmphClaimer));
   }
 }
 
@@ -798,9 +797,7 @@ contract UnitVaultControllerGetVault is VaultBase {
     address[] memory _tokens = new address[](1);
     mockVaultController = new VaultControllerForTest();
     _mockVaultDeployer = new VaultDeployer(IVaultController(address(mockVaultController)));
-    mockVaultController.initialize(
-      IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), IVaultDeployer(address(_mockVaultDeployer))
-    );
+    mockVaultController.initialize(IVaultController(address(0)), _tokens, mockAmphClaimer, _mockVaultDeployer);
   }
 
   function testRevertIfVaultDoesNotExist(uint96 _id) public {

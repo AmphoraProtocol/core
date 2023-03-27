@@ -25,6 +25,10 @@ contract E2EVault is CommonE2EBase {
     weth.approve(address(bobVault), bobDeposit);
     bobVault.depositERC20(address(weth), bobDeposit);
     vm.stopPrank();
+
+    // fill with AMPH tokens
+    vm.prank(amphToken.owner());
+    amphToken.mint(address(amphClaimer), 100 ether);
   }
 
   function testWithdrawWhileLTVisEnough() public {
@@ -98,29 +102,44 @@ contract E2EVault is CommonE2EBase {
     vm.prank(BOOSTER);
     IBaseRewardPool(USDT_LP_REWARDS_ADDRESS).queueNewRewards(_depositAmount);
 
-    uint256 _balanceBefore = IERC20(CRV_ADDRESS).balanceOf(bob);
+    uint256 _balanceBeforeCRV = IERC20(CRV_ADDRESS).balanceOf(bob);
+    uint256 _balanceBeforeAMPH = amphToken.balanceOf(bob);
 
     vm.warp(block.timestamp + 5 days);
-    uint256 _crvEarned = IBaseRewardPool(USDT_LP_REWARDS_ADDRESS).earned(address(bobVault));
-    assertTrue(_crvEarned != 0);
 
+    IVault.Reward[] memory _rewards = bobVault.claimableRewards(address(usdtStableLP));
+    address[] memory _tokens = new address[](1);
+    _tokens[0] = address(usdtStableLP);
     vm.prank(bob);
-    bobVault.claimRewards(address(usdtStableLP));
+    bobVault.claimRewards(_tokens);
 
-    assertEq(IERC20(CRV_ADDRESS).balanceOf(bob), _balanceBefore + _crvEarned);
+    assertTrue(_rewards[0].amount != 0);
+    assertTrue(_rewards[1].amount != 0);
+
+    // _rewards[0] should be CRV and _rewards[1] AMPH in this case
+    assertEq(IERC20(CRV_ADDRESS).balanceOf(bob), _balanceBeforeCRV + _rewards[0].amount);
+    assertEq(amphToken.balanceOf(bob), _balanceBeforeAMPH + _rewards[1].amount);
   }
 
-  function testClaimCurveLPWithExtraRewards() public {
+  function testClaimMultipleCurveLPWithExtraRewards() public {
     uint256 _depositAmount = 0.1 ether;
 
     // deposit and stake
     vm.startPrank(bob);
     boringDaoLP.approve(address(bobVault), _depositAmount);
     bobVault.depositERC20(address(boringDaoLP), _depositAmount);
+
+    usdtStableLP.approve(address(bobVault), _depositAmount);
+    bobVault.depositERC20(address(usdtStableLP), _depositAmount);
     vm.stopPrank();
 
-    uint256 _balanceBefore = IERC20(CRV_ADDRESS).balanceOf(bob);
-    uint256 _balanceVirtualBefore = IERC20(BORING_DAO_ADDRESS).balanceOf(bob);
+    uint256 _balanceBeforeCRV = IERC20(CRV_ADDRESS).balanceOf(bob);
+    uint256 _balanceVirtualBefore = IERC20(BOR_DAO_ADDRESS).balanceOf(bob);
+    uint256 _balanceOtherVirtualBefore = IERC20(BORING_DAO_ADDRESS).balanceOf(bob);
+    uint256 _balanceBeforeAMPH = amphToken.balanceOf(bob);
+
+    vm.prank(BOOSTER);
+    IBaseRewardPool(USDT_LP_REWARDS_ADDRESS).queueNewRewards(_depositAmount);
 
     vm.prank(BOOSTER);
     IBaseRewardPool(BORING_DAO_LP_REWARDS_ADDRESS).queueNewRewards(_depositAmount);
@@ -131,17 +150,28 @@ contract E2EVault is CommonE2EBase {
     // pass time
     vm.warp(block.timestamp + 5 days);
 
-    uint256 _crvEarnner = IBaseRewardPool(BORING_DAO_LP_REWARDS_ADDRESS).earned(address(bobVault));
-    uint256 _virtualEarner = IVirtualBalanceRewardPool(BORING_DAO_LP_VIRTUAL_REWARDS_CONTRACT).earned(address(bobVault));
+    IVault.Reward[] memory _rewards = bobVault.claimableRewards(address(usdtStableLP));
+    IVault.Reward[] memory _rewards2 = bobVault.claimableRewards(address(boringDaoLP));
 
-    assertTrue(_crvEarnner != 0);
-    assertTrue(_virtualEarner != 0);
+    address[] memory _tokensToClaim = new address[](2);
+    _tokensToClaim[0] = address(boringDaoLP);
+    _tokensToClaim[1] = address(usdtStableLP);
 
     // claim
-    vm.prank(bob);
-    bobVault.claimRewards(address(boringDaoLP));
+    vm.startPrank(bob);
+    bobVault.claimRewards(_tokensToClaim);
+    vm.stopPrank();
 
-    assertEq(IERC20(CRV_ADDRESS).balanceOf(bob), _balanceBefore + _crvEarnner);
-    assertEq(IERC20(BORING_DAO_ADDRESS).balanceOf(bob), _balanceVirtualBefore + _virtualEarner);
+    assertTrue(_rewards[0].amount != 0); // _rewards[0] = CRV rewards
+    assertTrue(_rewards[1].amount != 0); // _rewards[1] = AMPH rewards
+    assertTrue(_rewards2[0].amount != 0); // _rewards2[0] = CRV rewards
+    assertTrue(_rewards2[1].amount != 0); // _rewards2[1] = extra rewards
+    assertTrue(_rewards2[2].amount != 0); // _rewards2[2] = other extra rewards
+    assertTrue(_rewards2[3].amount != 0); // _rewards2[2] = AMPH rewards
+
+    assertEq(IERC20(CRV_ADDRESS).balanceOf(bob), _balanceBeforeCRV + _rewards[0].amount + _rewards2[0].amount);
+    assertEq(amphToken.balanceOf(bob), _balanceBeforeAMPH + _rewards[1].amount + _rewards2[3].amount);
+    assertEq(IERC20(BOR_DAO_ADDRESS).balanceOf(bob), _balanceVirtualBefore + _rewards2[1].amount);
+    assertEq(IERC20(BORING_DAO_ADDRESS).balanceOf(bob), _balanceOtherVirtualBefore + _rewards2[2].amount);
   }
 }

@@ -122,67 +122,75 @@ contract Vault is IVault, Context {
     emit Withdraw(_tokenAddress, _amount);
   }
 
-  /// @notice Claims avaiable rewards from convex
+  /// @notice Claims avaiable rewards from multiple tokens
   /// @dev    Transfers a percentage of the crv and cvx rewards to claim AMPH tokens
-  /// @param _tokenAddress The address of erc20 token
-  function claimRewards(address _tokenAddress) external override onlyMinter {
-    if (CONTROLLER.tokenId(_tokenAddress) == 0) revert Vault_TokenNotRegistered();
-    if (CONTROLLER.tokenCollateralType(_tokenAddress) != IVaultController.CollateralType.CurveLP) {
-      revert Vault_TokenNotCurveLP();
-    }
+  /// @param _tokenAddresses The addresses of the erc20 tokens
+  function claimRewards(address[] memory _tokenAddresses) external override onlyMinter {
+    uint256 _tokensToClaim = _tokenAddresses.length;
+    uint256 _totalCrvReward;
+    uint256 _totalCvxReward;
 
-    IBaseRewardPool _rewardsContract = CONTROLLER.tokenCrvRewardsContract(_tokenAddress);
-    uint256 _crvReward = _rewardsContract.earned(address(this));
+    IAMPHClaimer _amphClaimer = CONTROLLER.claimerContract();
 
-    if (_crvReward != 0) {
-      // Claim the CRV reward
-      _rewardsContract.getReward(address(this), false);
-      CRV.transfer(msg.sender, _crvReward);
-    }
+    for (uint256 _i; _i < _tokensToClaim; _i++) {
+      if (CONTROLLER.tokenId(_tokenAddresses[_i]) == 0) revert Vault_TokenNotRegistered();
+      if (CONTROLLER.tokenCollateralType(_tokenAddresses[_i]) != IVaultController.CollateralType.CurveLP) {
+        revert Vault_TokenNotCurveLP();
+      }
 
-    // All other rewards
-    uint256 _rewardsAmount = _rewardsContract.extraRewardsLength();
+      IBaseRewardPool _rewardsContract = CONTROLLER.tokenCrvRewardsContract(_tokenAddresses[_i]);
+      uint256 _crvReward = _rewardsContract.earned(address(this));
+      _totalCrvReward += _crvReward;
 
-    uint256 _cvxReward;
+      if (_crvReward != 0) {
+        // Claim the CRV reward
+        _rewardsContract.getReward(address(this), false);
+      }
 
-    // Loop and claim all virtual rewards
-    for (uint256 _i; _i < _rewardsAmount; _i++) {
-      IVirtualBalanceRewardPool _virtualReward = _rewardsContract.extraRewards(_i);
-      IERC20 _rewardToken = _virtualReward.rewardToken();
-      uint256 _earnedReward = _virtualReward.earned(address(this));
-      if (_earnedReward != 0) {
-        _virtualReward.getReward();
-        if (address(_rewardToken) == address(CVX)) {
-          // Save the cvx reward in a variable
-          _cvxReward = _earnedReward;
-        } else {
-          // If it's any other token, transfer to the owner of the vault
-          if (_earnedReward > 0) {
-            _rewardToken.transfer(msg.sender, _earnedReward);
-            emit ClaimedReward(address(_rewardToken), _earnedReward);
+      // All other rewards
+      uint256 _rewardsAmount = _rewardsContract.extraRewardsLength();
+
+      // Loop and claim all virtual rewards
+      for (uint256 _j; _j < _rewardsAmount; _j++) {
+        IVirtualBalanceRewardPool _virtualReward = _rewardsContract.extraRewards(_j);
+        IERC20 _rewardToken = _virtualReward.rewardToken();
+        uint256 _earnedReward = _virtualReward.earned(address(this));
+        if (_earnedReward != 0) {
+          _virtualReward.getReward();
+          if (address(_rewardToken) == address(CVX)) {
+            // Save the cvx reward in a variable
+            _totalCvxReward += _earnedReward;
+          } else {
+            // If it's any other token, transfer to the owner of the vault
+            if (_earnedReward > 0) {
+              _rewardToken.transfer(_msgSender(), _earnedReward);
+              emit ClaimedReward(address(_rewardToken), _earnedReward);
+            }
           }
         }
       }
     }
 
-    // if(_crvReward > 0 || _cvxReward > 0) {
-    //   // Approve amounts for it to be taken
-    //   (uint256 _takenCVX, uint256 _takenCRV, ) = _amphClaimer.claimable(_cvxReward, _crvReward);
-    //   _crv.approve(address(_amphClaimer), _takenCRV);
-    //   _cvx.approve(address(_amphClaimer), _takenCVX);
+    if (_totalCrvReward > 0 || _totalCvxReward > 0) {
+      // Approve amounts for it to be taken
+      (uint256 _takenCVX, uint256 _takenCRV,) = _amphClaimer.claimable(_totalCvxReward, _totalCrvReward);
+      CRV.approve(address(_amphClaimer), _takenCRV);
+      CVX.approve(address(_amphClaimer), _takenCVX);
 
-    //   // Claim AMPH tokens depending on how much CRV and CVX was claimed
-    //   _amphClaimer.claimAmph(this.id(), _cvxReward, _crvReward, msg.sender);
+      // Claim AMPH tokens depending on how much CRV and CVX was claimed
+      _amphClaimer.claimAmph(this.id(), _totalCvxReward, _totalCrvReward, _msgSender());
 
-    //   // Send the remaining CRV and CVX
-    //   _crv.transfer(msg.sender, _crvReward - _takenCRV);
-    //   _cvx.transfer(msg.sender, _cvxReward - _takenCVX);
+      if (_takenCVX != 0) CVX.transfer(_msgSender(), _totalCvxReward - _takenCVX);
+      if (_takenCRV != 0) CRV.transfer(_msgSender(), _totalCrvReward - _takenCRV);
 
-    //   emit ClaimedReward(address(_crv), _crvReward - _takenCRV);
-    //   emit ClaimedReward(address(_cvx), _cvxReward - _takenCVX);
-    // }
+      emit ClaimedReward(address(CRV), _totalCrvReward - _takenCRV);
+      emit ClaimedReward(address(CVX), _totalCvxReward - _takenCVX);
+    }
   }
 
+  /// @notice Returns an array of all the available rewards the user can claim
+  /// @param _tokenAddress The address of the token collateral to check rewards for
+  /// @return _rewards The array of all the available rewards
   function claimableRewards(address _tokenAddress) external view override returns (Reward[] memory _rewards) {
     if (CONTROLLER.tokenId(_tokenAddress) == 0) revert Vault_TokenNotRegistered();
     if (CONTROLLER.tokenCollateralType(_tokenAddress) != IVaultController.CollateralType.CurveLP) {
@@ -190,21 +198,35 @@ contract Vault is IVault, Context {
     }
 
     IBaseRewardPool _rewardsContract = CONTROLLER.tokenCrvRewardsContract(_tokenAddress);
+    IAMPHClaimer _amphClaimer = CONTROLLER.claimerContract();
 
     uint256 _rewardsAmount = _rewardsContract.extraRewardsLength();
 
     uint256 _crvReward = _rewardsContract.earned(address(this));
+    uint256 _cvxReward;
+    uint256 _cvxPosition;
 
-    _rewards = new Reward[](_rewardsAmount+1);
+    // +2 for CRV and AMPH
+    _rewards = new Reward[](_rewardsAmount+2);
     _rewards[0] = Reward(CRV, _crvReward);
 
-    // TODO: we need to account for the amount the protocol keeps
-    for (uint256 _i = 0; _i < _rewardsAmount; _i++) {
+    uint256 _i;
+    for (_i; _i < _rewardsAmount; _i++) {
       IVirtualBalanceRewardPool _virtualReward = _rewardsContract.extraRewards(_i);
       IERC20 _rewardToken = _virtualReward.rewardToken();
       uint256 _earnedReward = _virtualReward.earned(address(this));
+      if (address(_rewardToken) == address(CVX)) {
+        // Save the cvx reward in a variable
+        _cvxReward = _earnedReward;
+        _cvxPosition = _i;
+      }
       _rewards[_i + 1] = Reward(_rewardToken, _earnedReward);
     }
+
+    (uint256 _takenCVX, uint256 _takenCRV, uint256 _claimableAmph) = _amphClaimer.claimable(_cvxReward, _crvReward);
+    _rewards[0].amount = _crvReward - _takenCRV;
+    _rewards[_i + 1] = Reward(_amphClaimer.AMPH(), _claimableAmph);
+    if (_cvxReward != 0) _rewards[_cvxPosition + 1].amount = _cvxReward - _takenCVX;
   }
 
   /// @notice Recovers dust from vault

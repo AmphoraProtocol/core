@@ -38,9 +38,7 @@ contract E2EVaultControllerMigration is CommonE2EBase {
     _tokens[0] = WETH_ADDRESS;
     _tokens[1] = UNI_ADDRESS;
     _tokens[2] = AAVE_ADDRESS;
-    newVaultController.initialize(
-      vaultController, _tokens, IAMPHClaimer(address(0)), IVaultDeployer(address(newVaultDeployer))
-    ); // TODO: change this after finishing claim contract task
+    newVaultController.initialize(vaultController, _tokens, amphClaimer, newVaultDeployer);
 
     newVaultController.transferOwnership(address(governor));
     vm.stopPrank();

@@ -177,9 +177,9 @@ contract E2EVaultController is CommonE2EBase {
     vaultController2.initialize(
       IVaultController(address(vaultController)),
       _tokens,
-      IAMPHClaimer(address(0)),
+      IAMPHClaimer(address(amphClaimer)),
       IVaultDeployer(address(vaultDeployer))
-    ); // TODO: change this after finishing claim contract task
+    );
     vm.stopPrank();
 
     assertEq(address(vaultController2.tokensOracle(WETH_ADDRESS)), address(anchoredViewEth));
