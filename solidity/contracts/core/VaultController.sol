@@ -535,6 +535,12 @@ contract VaultController is
     // decrease liquidator's USDA balance
     usda.vaultControllerBurn(_msgSender(), _usdaToRepurchase);
 
+    // withdraw from convex
+    CollateralInfo memory _assetInfo = tokenAddressCollateralInfo[_assetAddress];
+    if (_assetInfo.collateralType == IVaultController.CollateralType.CurveLP) {
+      _vault.controllerWithdrawAndUnwrap(_assetInfo.crvRewardsContract, _tokensToLiquidate);
+    }
+
     // finally, deliver tokens to liquidator
     _vault.controllerTransfer(_assetAddress, _msgSender(), _tokensToLiquidate);
     // and reduces total

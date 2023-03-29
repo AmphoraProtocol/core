@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import {IBaseRewardPool} from '@interfaces/utils/IBaseRewardPool.sol';
 
 /// @title Vault Interface
 interface IVault {
@@ -163,6 +164,14 @@ interface IVault {
    * @param _amount The amount of coins to move
    */
   function controllerTransfer(address _token, address _to, uint256 _amount) external;
+
+  /**
+   * @notice function used by the VaultController to withdraw from convex
+   * callable by the VaultController only
+   * @param _rewardPool pool to withdraw
+   * @param _amount amount of coins to withdraw
+   */
+  function controllerWithdrawAndUnwrap(IBaseRewardPool _rewardPool, uint256 _amount) external;
 
   /**
    * @notice Modifies a vault's liability. Can only be called by VaultController

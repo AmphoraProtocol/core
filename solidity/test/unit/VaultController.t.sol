@@ -9,6 +9,7 @@ import {ChainlinkOracleRelay} from '@contracts/periphery/ChainlinkOracleRelay.so
 import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
 import {AnchoredViewRelay} from '@contracts/periphery/AnchoredViewRelay.sol';
 import {USDA} from '@contracts/core/USDA.sol';
+import {ThreeCrvOracle} from '@contracts/periphery/ThreeCrvOracle.sol';
 import {ThreeLines0_100} from '@contracts/utils/ThreeLines0_100.sol';
 import {ExponentialNoError} from '@contracts/utils/ExponentialNoError.sol';
 
@@ -19,6 +20,7 @@ import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {IUSDA} from '@interfaces/core/IUSDA.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
 import {IBooster} from '@interfaces/utils/IBooster.sol';
+import {IBaseRewardPool} from '@interfaces/utils/IBaseRewardPool.sol';
 import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
 import {IVaultDeployer} from '@interfaces/core/IVaultDeployer.sol';
 
@@ -42,6 +44,8 @@ abstract contract Base is DSTestPlus, TestConstants {
   address public vaultOwner = label(newAddress(), 'vaultOwner');
 
   IERC20 public mockToken = IERC20(mockContract(newAddress(), 'mockToken'));
+  IERC20 public usdtLp = IERC20(mockContract(newAddress(), 'usdtLpAddress'));
+
   IAMPHClaimer public mockAmphClaimer = IAMPHClaimer(mockContract(newAddress(), 'mockAmphClaimer'));
   VaultController public vaultController;
   VaultControllerForTest public mockVaultController;
@@ -56,6 +60,7 @@ abstract contract Base is DSTestPlus, TestConstants {
   ChainlinkOracleRelay public chainLinkUni;
   AnchoredViewRelay public anchoredViewEth;
   AnchoredViewRelay public anchoredViewUni;
+  ThreeCrvOracle public threeCrvOracle;
 
   uint256 public cap = 100 ether;
 
@@ -91,6 +96,10 @@ abstract contract Base is DSTestPlus, TestConstants {
     // Deploy anchoredViewEth & anchoredViewUni relay
     anchoredViewEth = new AnchoredViewRelay(address(uniswapRelayEthUsdc), address(chainlinkEth), 10, 100);
     anchoredViewUni = new AnchoredViewRelay(address(uniswapRelayUniUsdc), address(chainLinkUni), 30, 100);
+
+    // Deploy the ThreeCrvOracle
+    threeCrvOracle = new ThreeCrvOracle();
+
     vm.stopPrank();
   }
 }
@@ -103,6 +112,8 @@ abstract contract VaultBase is Base {
   uint96 internal _vaultId = 1;
   uint192 internal _borrowAmount = 5 ether;
 
+  IBaseRewardPool internal _crvRewards = IBaseRewardPool(mockContract(newAddress(), 'crvRewards'));
+
   function setUp() public virtual override {
     super.setUp();
 
@@ -111,15 +122,28 @@ abstract contract VaultBase is Base {
       WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE, type(uint256).max, 0
     );
 
-    vm.startPrank(vaultOwner);
+    vm.prank(vaultOwner);
     _vault = IVault(vaultController.mintVault());
+
     vm.mockCall(
       WETH_ADDRESS,
       abi.encode(IERC20.transferFrom.selector, vaultOwner, address(_vault), _vaultDeposit),
       abi.encode(true)
     );
+
+    vm.prank(vaultOwner);
     _vault.depositERC20(WETH_ADDRESS, _vaultDeposit);
-    vm.stopPrank();
+
+    vm.mockCall(
+      address(vaultController.BOOSTER()),
+      abi.encodeWithSelector(IBooster.poolInfo.selector),
+      abi.encode(address(usdtLp), address(0), address(0), _crvRewards, address(0), false)
+    );
+
+    vm.prank(governance);
+    vaultController.registerErc20(
+      address(usdtLp), OTHER_LTV, address(threeCrvOracle), LIQUIDATION_INCENTIVE, type(uint256).max, 1
+    );
 
     vm.mockCall(
       address(anchoredViewEth), abi.encodeWithSelector(IAnchoredViewRelay.currentValue.selector), abi.encode(1 ether)
@@ -404,7 +428,7 @@ contract UnitVaultControllerChangeClaimerContract is Base {
   }
 }
 
-contract UnitVaultControllerLiquidateVault is VaultBase {
+contract UnitVaultControllerLiquidateVault is VaultBase, ExponentialNoError {
   event Liquidate(uint256 _vaultId, address _assetAddress, uint256 _usdaToRepurchase, uint256 _tokensToLiquidate);
 
   function setUp() public virtual override {
@@ -449,35 +473,93 @@ contract UnitVaultControllerLiquidateVault is VaultBase {
     vaultController.liquidateVault(_vaultId, WETH_ADDRESS, _tokensToLiquidate);
   }
 
-  function testCallExternalCalls() public {
-    // borrow a few usda
-    vm.prank(vaultOwner);
-    vaultController.borrowUSDA(_vaultId, _borrowAmount);
-    // make vault insolvent
-    vm.prank(vaultOwner);
-    _vault.withdrawERC20(WETH_ADDRESS, 8 ether);
+  function testLiquidateWithCurveLpAsCollateral() public {
+    vm.mockCall(address(usdtLp), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
 
-    // 2 ether is left in the vault, 0.95 is the liquidation incentive
-    vm.expectCall(address(_vault), abi.encodeWithSelector(IVault.modifyLiability.selector, false, 2 ether * 0.95));
+    vm.mockCall(address(vaultController.BOOSTER()), abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(true));
+
+    vm.prank(vaultOwner);
+    _vault.depositERC20(address(usdtLp), _vaultDeposit);
+
+    vm.mockCall(
+      address(_crvRewards), abi.encodeWithSelector(IBaseRewardPool.withdrawAndUnwrap.selector), abi.encode(true)
+    );
+
+    vm.mockCall(
+      address(threeCrvOracle), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(1 ether)
+    );
+
+    // borrow a few usda
+    vm.startPrank(vaultOwner);
+    vaultController.borrowUSDA(_vaultId, vaultController.vaultBorrowingPower(_vaultId));
+    vm.stopPrank();
+
+    // make vault insolvent
+    vm.warp(block.timestamp + 7 days);
+    vaultController.calculateInterest();
+
+    uint256 _tokensToLiquidate = vaultController.tokensToLiquidate(_vaultId, address(usdtLp));
+    uint256 _badFillPrice = _truncate(threeCrvOracle.currentValue() * (1e18 - LIQUIDATION_INCENTIVE));
+
+    (, uint192 _factor) = vaultController.interest();
+    uint256 _liability = (_truncate(_badFillPrice * _tokensToLiquidate) * 1e18) / _factor;
+
+    vm.expectCall(address(_vault), abi.encodeWithSelector(IVault.modifyLiability.selector, false, _liability));
     vm.expectCall(
-      address(usdaToken), abi.encodeWithSelector(IUSDA.vaultControllerBurn.selector, address(this), 2 ether * 0.95)
+      address(_crvRewards),
+      abi.encodeWithSelector(IBaseRewardPool.withdrawAndUnwrap.selector, _tokensToLiquidate, false)
     );
     vm.expectCall(
-      address(_vault), abi.encodeWithSelector(IVault.controllerTransfer.selector, WETH_ADDRESS, address(this), 2 ether)
+      address(_vault),
+      abi.encodeWithSelector(IVault.controllerTransfer.selector, address(usdtLp), address(this), _tokensToLiquidate)
+    );
+
+    vaultController.liquidateVault(_vaultId, address(usdtLp), 10 ether);
+  }
+
+  function testCallExternalCalls() public {
+    // borrow a few usda
+    vm.startPrank(vaultOwner);
+    vaultController.borrowUSDA(_vaultId, vaultController.vaultBorrowingPower(_vaultId));
+    vm.stopPrank();
+    // make vault insolvent
+    vm.warp(block.timestamp + 7 days);
+    vaultController.calculateInterest();
+
+    uint256 _tokensToLiquidate = vaultController.tokensToLiquidate(_vaultId, WETH_ADDRESS);
+    uint256 _badFillPrice = _truncate(anchoredViewEth.currentValue() * (1e18 - LIQUIDATION_INCENTIVE));
+
+    (, uint192 _factor) = vaultController.interest();
+    uint256 _liability = (_truncate(_badFillPrice * _tokensToLiquidate) * 1e18) / _factor;
+
+    vm.expectCall(address(_vault), abi.encodeWithSelector(IVault.modifyLiability.selector, false, _liability));
+    vm.expectCall(
+      address(usdaToken),
+      abi.encodeWithSelector(
+        IUSDA.vaultControllerBurn.selector, address(this), _truncate(_badFillPrice * _tokensToLiquidate)
+      )
+    );
+    vm.expectCall(
+      address(_vault),
+      abi.encodeWithSelector(IVault.controllerTransfer.selector, WETH_ADDRESS, address(this), _tokensToLiquidate)
     );
     vaultController.liquidateVault(_vaultId, WETH_ADDRESS, 10 ether);
   }
 
   function testEmitEvent() public {
     // borrow a few usda
-    vm.prank(vaultOwner);
-    vaultController.borrowUSDA(_vaultId, _borrowAmount);
+    vm.startPrank(vaultOwner);
+    vaultController.borrowUSDA(_vaultId, vaultController.vaultBorrowingPower(_vaultId));
+    vm.stopPrank();
     // make vault insolvent
-    vm.prank(vaultOwner);
-    _vault.withdrawERC20(WETH_ADDRESS, 8 ether);
+    vm.warp(block.timestamp + 7 days);
+    vaultController.calculateInterest();
+
+    uint256 _tokensToLiquidate = vaultController.tokensToLiquidate(_vaultId, WETH_ADDRESS);
+    uint256 _badFillPrice = _truncate(anchoredViewEth.currentValue() * (1e18 - LIQUIDATION_INCENTIVE));
 
     vm.expectEmit(true, true, true, true);
-    emit Liquidate(_vaultId, WETH_ADDRESS, 2 ether * 0.95, 2 ether);
+    emit Liquidate(_vaultId, WETH_ADDRESS, _truncate(_badFillPrice * _tokensToLiquidate), _tokensToLiquidate);
     vaultController.liquidateVault(_vaultId, WETH_ADDRESS, 10 ether);
   }
 }

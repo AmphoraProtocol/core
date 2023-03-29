@@ -231,7 +231,7 @@ contract GovernorCharlie is IGovernorCharlie {
       _newProposal.startBlock,
       _newProposal.endBlock,
       _description
-      );
+    );
 
     emit ProposalCreated(
       _newProposal.id,
@@ -243,7 +243,7 @@ contract GovernorCharlie is IGovernorCharlie {
       _newProposal.startBlock,
       _newProposal.endBlock,
       _description
-      );
+    );
     return _newProposal.id;
   }
 

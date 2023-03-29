@@ -229,6 +229,8 @@ contract UnitVaultWithdrawERC20 is Base {
   }
 
   function testRevertIfOverWithdrawal(uint256 _amount) public {
+    vm.assume(_amount <= 1 ether);
+
     vm.mockCall(
       address(mockVaultController), abi.encodeWithSelector(IVaultController.checkVault.selector, 1), abi.encode(false)
     );
@@ -409,6 +411,40 @@ contract UnitVaultControllerTransfer is Base {
     vm.prank(address(mockVaultController));
     vault.controllerTransfer(address(_mockToken), _to, _deposit);
     assertEq(vault.balances(address(_mockToken)), 0);
+  }
+}
+
+contract UnitVaultControllerWithdrawAndUnwrap is Base {
+  function testRevertsIfCalledByNonVault(IBaseRewardPool _rewardPool, uint256 _amount) public {
+    vm.expectRevert(IVault.Vault_NotVaultController.selector);
+    vault.controllerWithdrawAndUnwrap(_rewardPool, _amount);
+  }
+
+  function testControllerWithdrawAndUnwrap(IBaseRewardPool _rewardPool, uint256 _amount) public {
+    vm.assume(address(_rewardPool) != address(vm));
+
+    vm.mockCall(
+      address(_rewardPool), abi.encodeWithSelector(IBaseRewardPool.withdrawAndUnwrap.selector), abi.encode(true)
+    );
+
+    vm.expectCall(
+      address(_rewardPool), abi.encodeWithSelector(IBaseRewardPool.withdrawAndUnwrap.selector, _amount, false)
+    );
+
+    vm.prank(address(mockVaultController));
+    vault.controllerWithdrawAndUnwrap(_rewardPool, _amount);
+  }
+
+  function testRevertControllerWithdrawAndUnwrap(IBaseRewardPool _rewardPool, uint256 _amount) public {
+    vm.assume(address(_rewardPool) != address(vm));
+
+    vm.mockCall(
+      address(_rewardPool), abi.encodeWithSelector(IBaseRewardPool.withdrawAndUnwrap.selector), abi.encode(false)
+    );
+
+    vm.expectRevert(IVault.Vault_WithdrawAndUnstakeOnConvexFailed.selector);
+    vm.prank(address(mockVaultController));
+    vault.controllerWithdrawAndUnwrap(_rewardPool, _amount);
   }
 }
 

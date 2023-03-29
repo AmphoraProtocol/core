@@ -113,11 +113,13 @@ contract Vault is IVault, Context {
         revert Vault_WithdrawAndUnstakeOnConvexFailed();
       }
     }
+    // reduce balance
+    balances[_tokenAddress] -= _amount;
+    // check if the account is solvent
+    if (!CONTROLLER.checkVault(vaultInfo.id)) revert Vault_OverWithdrawal();
     // transfer the token to the owner
     SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(_tokenAddress), _msgSender(), _amount);
-    //  check if the account is solvent
-    if (!CONTROLLER.checkVault(vaultInfo.id)) revert Vault_OverWithdrawal();
-    balances[_tokenAddress] -= _amount;
+    // modify total deposited
     CONTROLLER.modifyTotalDeposited(vaultInfo.id, _amount, _tokenAddress, false);
     emit Withdraw(_tokenAddress, _amount);
   }
@@ -252,6 +254,17 @@ contract Vault is IVault, Context {
   function controllerTransfer(address _token, address _to, uint256 _amount) external override onlyVaultController {
     SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(_token), _to, _amount);
     balances[_token] -= _amount;
+  }
+
+  /// @notice function used by the VaultController to withdraw from convex
+  /// callable by the VaultController only
+  /// @param _rewardPool pool to withdraw
+  /// @param _amount amount of coins to withdraw
+  function controllerWithdrawAndUnwrap(
+    IBaseRewardPool _rewardPool,
+    uint256 _amount
+  ) external override onlyVaultController {
+    if (!_rewardPool.withdrawAndUnwrap(_amount, false)) revert Vault_WithdrawAndUnstakeOnConvexFailed();
   }
 
   /// @notice function used by the VaultController to reduce a vault's liability
