@@ -10,16 +10,15 @@ import {IBaseRewardPool} from '@interfaces/utils/IBaseRewardPool.sol';
 import {IVirtualBalanceRewardPool} from '@interfaces/utils/IVirtualBalanceRewardPool.sol';
 
 contract E2EVault is CommonE2EBase {
-  uint96 public bobsVaultId = 1;
   uint256 public bobDeposit = 5 ether;
 
   function setUp() public override {
     super.setUp();
 
     // Bob mints vault
-    _mintVault(bob);
+    bobVaultId = _mintVault(bob);
     // Since we only have 1 vault the id: 1 is gonna be Bob's vault
-    bobVault = IVault(vaultController.vaultAddress(bobsVaultId));
+    bobVault = IVault(vaultController.vaultAddress(bobVaultId));
 
     vm.startPrank(bob);
     weth.approve(address(bobVault), bobDeposit);
@@ -39,11 +38,11 @@ contract E2EVault is CommonE2EBase {
     bobVault.depositERC20(address(weth), 1 ether);
     vm.stopPrank();
 
-    uint192 _accountBorrowingPower = vaultController.vaultBorrowingPower(bobsVaultId);
+    uint192 _accountBorrowingPower = vaultController.vaultBorrowingPower(bobVaultId);
 
     // Borrow the maximum amount
     vm.prank(bob);
-    vaultController.borrowUSDA(bobsVaultId, _accountBorrowingPower);
+    vaultController.borrowUSDA(bobVaultId, _accountBorrowingPower);
 
     // Advance 1 week and add interest
     vm.warp(block.timestamp + 1 weeks);
@@ -74,6 +73,7 @@ contract E2EVault is CommonE2EBase {
     uint256 _depositAmount = 10 ether;
     uint256 _stakedBalance = usdtStableLP.balanceOf(USDT_LP_STAKED_CONTRACT);
 
+    // Deposit and stake
     vm.startPrank(bob);
     usdtStableLP.approve(address(bobVault), _depositAmount);
     bobVault.depositERC20(address(usdtStableLP), _depositAmount);
@@ -84,11 +84,32 @@ contract E2EVault is CommonE2EBase {
     assertEq(_balanceAfterDeposit, bobWETH - _depositAmount);
     assertEq(usdtStableLP.balanceOf(USDT_LP_STAKED_CONTRACT), _stakedBalance + _depositAmount);
 
+    // Withdraw and unstake
     vm.prank(bob);
     bobVault.withdrawERC20(address(usdtStableLP), _depositAmount);
     assertEq(bobVault.tokenBalance(address(usdtStableLP)), 0);
     assertEq(_balanceAfterDeposit + _depositAmount, bobWETH);
     assertEq(usdtStableLP.balanceOf(USDT_LP_STAKED_CONTRACT), _stakedBalance);
+  }
+
+  function testDepositMultipleCurveLPAndBorrow() public {
+    uint256 _depositAmount = 1 ether;
+
+    // deposit and stake
+    vm.startPrank(bob);
+    boringDaoLP.approve(address(bobVault), _depositAmount);
+    bobVault.depositERC20(address(boringDaoLP), _depositAmount);
+
+    usdtStableLP.approve(address(bobVault), _depositAmount);
+    bobVault.depositERC20(address(usdtStableLP), _depositAmount);
+    assertEq(usdaToken.balanceOf(bob), 0);
+
+    // get max borrowing power and borrow
+    uint192 _maxBorrow = vaultController.vaultBorrowingPower(bobVaultId);
+    assertGt(_maxBorrow, 0);
+    vaultController.borrowUSDA(bobVaultId, _maxBorrow);
+    vm.stopPrank();
+    assertEq(usdaToken.balanceOf(bob), _maxBorrow);
   }
 
   function testClaimCurveLPRewards() public {
@@ -104,6 +125,7 @@ contract E2EVault is CommonE2EBase {
 
     uint256 _balanceBeforeCRV = IERC20(CRV_ADDRESS).balanceOf(bob);
     uint256 _balanceBeforeAMPH = amphToken.balanceOf(bob);
+    assertEq(IERC20(CRV_ADDRESS).balanceOf(address(governor)), 0);
 
     vm.warp(block.timestamp + 5 days);
 
@@ -119,6 +141,7 @@ contract E2EVault is CommonE2EBase {
     // _rewards[0] should be CRV and _rewards[1] AMPH in this case
     assertEq(IERC20(CRV_ADDRESS).balanceOf(bob), _balanceBeforeCRV + _rewards[0].amount);
     assertEq(amphToken.balanceOf(bob), _balanceBeforeAMPH + _rewards[1].amount);
+    assertGt(IERC20(CRV_ADDRESS).balanceOf(address(governor)), 0);
   }
 
   function testClaimMultipleCurveLPWithExtraRewards() public {
@@ -132,6 +155,8 @@ contract E2EVault is CommonE2EBase {
     usdtStableLP.approve(address(bobVault), _depositAmount);
     bobVault.depositERC20(address(usdtStableLP), _depositAmount);
     vm.stopPrank();
+
+    assertEq(usdtStableLP.balanceOf(bob), bobCurveLPBalance - _depositAmount);
 
     uint256 _balanceBeforeCRV = IERC20(CRV_ADDRESS).balanceOf(bob);
     uint256 _balanceVirtualBefore = IERC20(BOR_DAO_ADDRESS).balanceOf(bob);
@@ -149,6 +174,12 @@ contract E2EVault is CommonE2EBase {
 
     // pass time
     vm.warp(block.timestamp + 5 days);
+
+    // Withdraw and unstake usdtCurveLP
+    vm.prank(bob);
+    bobVault.withdrawERC20(address(usdtStableLP), _depositAmount);
+    assertEq(bobVault.tokenBalance(address(usdtStableLP)), 0);
+    assertEq(usdtStableLP.balanceOf(bob), bobCurveLPBalance);
 
     IVault.Reward[] memory _rewards = bobVault.claimableRewards(address(usdtStableLP));
     IVault.Reward[] memory _rewards2 = bobVault.claimableRewards(address(boringDaoLP));

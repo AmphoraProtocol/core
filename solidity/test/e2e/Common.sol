@@ -234,9 +234,8 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
       WBTC_ADDRESS, WBTC_LTV, address(anchoredViewBtc), LIQUIDATION_INCENTIVE, type(uint256).max, 0
     );
 
-    /// TODO: change UNI_LTV  & anchoredViewUni
     vaultController.registerErc20(
-      USDT_LP_ADDRESS, OTHER_LTV, address(anchoredViewUni), LIQUIDATION_INCENTIVE, type(uint256).max, 1
+      USDT_LP_ADDRESS, OTHER_LTV, address(threeCrvOracle), LIQUIDATION_INCENTIVE, type(uint256).max, 1
     );
 
     /// TODO: change UNI_LTV  & anchoredViewUni
