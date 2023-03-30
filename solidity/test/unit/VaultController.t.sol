@@ -1002,3 +1002,55 @@ contract UnitVaultControllerVaultSummaries is VaultBase {
     assertEq(_summary[0].tokenBalances[0], _vaultDeposit);
   }
 }
+
+contract UnitVaultControllerEnabledTokens is Base {
+  address[] public arrayOfTokens = [address(1), address(2), address(3), address(4)];
+  uint256[] public arrayOfLtv = [WETH_LTV, UNI_LTV, WBTC_LTV, OTHER_LTV];
+  address[] public arrayOfOracles = [address(5), address(6), address(7), address(8)];
+
+  function setUp() public virtual override {
+    super.setUp();
+
+    // register a few tokens
+    vm.startPrank(governance);
+    for (uint256 _i = 0; _i < arrayOfTokens.length; _i++) {
+      vaultController.registerErc20(
+        arrayOfTokens[_i], arrayOfLtv[_i], arrayOfOracles[_i], LIQUIDATION_INCENTIVE, type(uint256).max, 0
+      );
+    }
+    vm.stopPrank();
+  }
+
+  function testEnabledTokens() public {
+    address[] memory _enabledTokens = vaultController.getEnabledTokens();
+    assertEq(arrayOfTokens.length, _enabledTokens.length);
+    assertEq(arrayOfTokens, _enabledTokens);
+
+    for (uint256 _i = 0; _i < arrayOfTokens.length; _i++) {
+      assertEq(arrayOfTokens[_i], vaultController.enabledTokens(_i));
+    }
+  }
+
+  function testGetCollateralsInfoWith5Items() public {
+    IVaultController.CollateralInfo[] memory _collateralsInfo =
+      vaultController.getCollateralsInfo(0, arrayOfTokens.length + 1);
+    assertEq(_collateralsInfo.length, arrayOfTokens.length);
+
+    for (uint256 _i = 0; _i < _collateralsInfo.length; _i++) {
+      assertEq(_collateralsInfo[_i].ltv, arrayOfLtv[_i]);
+      assertEq(_collateralsInfo[_i].liquidationIncentive, LIQUIDATION_INCENTIVE);
+      assertEq(address(_collateralsInfo[_i].oracle), arrayOfOracles[_i]);
+    }
+  }
+
+  function testGetCollateralsInfoWith2Items() public {
+    IVaultController.CollateralInfo[] memory _collateralsInfo = vaultController.getCollateralsInfo(0, 3);
+    assertEq(_collateralsInfo.length, 3);
+
+    for (uint256 _i = 0; _i < _collateralsInfo.length; _i++) {
+      assertEq(_collateralsInfo[_i].ltv, arrayOfLtv[_i]);
+      assertEq(_collateralsInfo[_i].liquidationIncentive, LIQUIDATION_INCENTIVE);
+      assertEq(address(_collateralsInfo[_i].oracle), arrayOfOracles[_i]);
+    }
+  }
+}

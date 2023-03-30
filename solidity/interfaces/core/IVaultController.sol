@@ -209,6 +209,8 @@ interface IVaultController {
 
   function vaultIDs(address _wallet) external view returns (uint96[] memory _vaultIDs);
 
+  function enabledTokens(uint256 _index) external view returns (address _enabledToken);
+
   function curveMaster() external view returns (CurveMaster _curveMaster);
 
   function tokenId(address _tokenAddress) external view returns (uint256 _tokenId);
@@ -236,6 +238,13 @@ interface IVaultController {
   function claimerContract() external view returns (IAMPHClaimer _claimerContract);
 
   function VAULT_DEPLOYER() external view returns (IVaultDeployer _vaultDeployer);
+
+  function getEnabledTokens() external view returns (address[] memory _enabledTokens);
+
+  function getCollateralsInfo(
+    uint256 _start,
+    uint256 _end
+  ) external view returns (CollateralInfo[] memory _collateralsInfo);
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC

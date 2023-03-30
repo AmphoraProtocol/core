@@ -118,6 +118,12 @@ contract VaultController is
     return walletVaultIDs[_wallet];
   }
 
+  /// @notice Returns an array of all enabled tokens
+  /// @return _enabledTokens array containing the token addresses
+  function getEnabledTokens() external view override returns (address[] memory _enabledTokens) {
+    _enabledTokens = enabledTokens;
+  }
+
   /// @notice Returns the token id given a token's address
   /// @param _tokenAddress The address of the token to target
   /// @return _tokenId The id of the token
@@ -208,6 +214,25 @@ contract VaultController is
   /// @return _booster The booster contract from convex
   function booster() external view returns (IBooster _booster) {
     return BOOSTER;
+  }
+
+  /// @notice Returns the selected collaterals info. Will iterate from `_start` (included) until `_end` (not included)
+  /// @param _start the start number to loop on the array
+  /// @param _end the end number to loop on the array
+  /// @return _collateralsInfo an array containing all the collateral info
+  function getCollateralsInfo(
+    uint256 _start,
+    uint256 _end
+  ) external view override returns (CollateralInfo[] memory _collateralsInfo) {
+    // check if `_end` is bigger than the tokens length
+    uint256 _enabledTokensLength = enabledTokens.length;
+    _end = _enabledTokensLength < _end ? _enabledTokensLength : _end;
+
+    _collateralsInfo = new CollateralInfo[](_end - _start);
+
+    for (uint256 _i = _start; _i < _end; _i++) {
+      _collateralsInfo[_i - _start] = tokenAddressCollateralInfo[enabledTokens[_i]];
+    }
   }
 
   /// @notice Migrates all collateral information from previous vault controller
