@@ -579,9 +579,8 @@ contract UnitUSDARecoverDust is Base {
     _usda.recoverDust(address(this));
   }
 
-  function testRevertsIfPaused() public {
+  function testRecoverIfPaused() public {
     _usda.pause();
-    vm.expectRevert('Pausable: paused');
     _usda.recoverDust(address(this));
   }
 }

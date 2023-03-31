@@ -250,7 +250,7 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
 
   /// @notice Recovers accidentally sent sUSD to this contract
   /// @param _to The receiver of the dust
-  function recoverDust(address _to) external onlyOwner whenNotPaused {
+  function recoverDust(address _to) external onlyOwner {
     // All sUSD sent directly to the contract is not accounted into the reserveAmount
     // This function allows governance to recover it
     uint256 _amount = reserve.balanceOf(address(this)) - reserveAmount;
