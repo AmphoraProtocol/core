@@ -456,7 +456,7 @@ contract UnitVaultControllerLiquidateVault is VaultBase, ExponentialNoError {
     address _assetAddress,
     uint256 _tokensToLiquidate
   ) public {
-    vm.assume(_assetAddress != WETH_ADDRESS && _tokensToLiquidate != 0);
+    vm.assume(_assetAddress != WETH_ADDRESS && _assetAddress != address(usdtLp) && _tokensToLiquidate != 0);
     vm.expectRevert(IVaultController.VaultController_TokenNotRegistered.selector);
     vaultController.liquidateVault(_id, _assetAddress, _tokensToLiquidate);
   }

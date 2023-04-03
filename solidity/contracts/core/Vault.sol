@@ -174,19 +174,27 @@ contract Vault is IVault, Context {
     }
 
     if (_totalCrvReward > 0 || _totalCvxReward > 0) {
-      // Approve amounts for it to be taken
-      (uint256 _takenCVX, uint256 _takenCRV,) = _amphClaimer.claimable(_totalCvxReward, _totalCrvReward);
-      CRV.approve(address(_amphClaimer), _takenCRV);
-      CVX.approve(address(_amphClaimer), _takenCVX);
+      uint256 _takenCVX;
+      uint256 _takenCRV;
 
-      // Claim AMPH tokens depending on how much CRV and CVX was claimed
-      _amphClaimer.claimAmph(this.id(), _totalCvxReward, _totalCrvReward, _msgSender());
+      if (address(_amphClaimer) != address(0)) {
+        // Approve amounts for it to be taken
+        (_takenCVX, _takenCRV,) = _amphClaimer.claimable(_totalCvxReward, _totalCrvReward);
+        CRV.approve(address(_amphClaimer), _takenCRV);
+        CVX.approve(address(_amphClaimer), _takenCVX);
 
-      if (_takenCVX != 0) CVX.transfer(_msgSender(), _totalCvxReward - _takenCVX);
-      if (_takenCRV != 0) CRV.transfer(_msgSender(), _totalCrvReward - _takenCRV);
+        // Claim AMPH tokens depending on how much CRV and CVX was claimed
+        _amphClaimer.claimAmph(this.id(), _totalCvxReward, _totalCrvReward, _msgSender());
+      }
 
-      emit ClaimedReward(address(CRV), _totalCrvReward - _takenCRV);
-      emit ClaimedReward(address(CVX), _totalCvxReward - _takenCVX);
+      uint256 _CVXToTransfer = _totalCvxReward - _takenCVX;
+      uint256 _CRVToTransfer = _totalCrvReward - _takenCRV;
+
+      if (_CVXToTransfer != 0) CVX.transfer(_msgSender(), _CVXToTransfer);
+      if (_CRVToTransfer != 0) CRV.transfer(_msgSender(), _CRVToTransfer);
+
+      emit ClaimedReward(address(CRV), _CRVToTransfer);
+      emit ClaimedReward(address(CVX), _CVXToTransfer);
     }
   }
 
@@ -225,9 +233,17 @@ contract Vault is IVault, Context {
       _rewards[_i + 1] = Reward(_rewardToken, _earnedReward);
     }
 
-    (uint256 _takenCVX, uint256 _takenCRV, uint256 _claimableAmph) = _amphClaimer.claimable(_cvxReward, _crvReward);
+    uint256 _takenCVX;
+    uint256 _takenCRV;
+    uint256 _claimableAmph;
+    // if claimer is not set, nothing will happen (and variables are already in zero)
+    if (address(_amphClaimer) != address(0)) {
+      // claimer is set, proceed
+      (_takenCVX, _takenCRV, _claimableAmph) = _amphClaimer.claimable(_cvxReward, _crvReward);
+      _rewards[_i + 1] = Reward(_amphClaimer.AMPH(), _claimableAmph);
+    }
+
     _rewards[0].amount = _crvReward - _takenCRV;
-    _rewards[_i + 1] = Reward(_amphClaimer.AMPH(), _claimableAmph);
     if (_cvxReward != 0) _rewards[_cvxPosition + 1].amount = _cvxReward - _takenCVX;
   }
 

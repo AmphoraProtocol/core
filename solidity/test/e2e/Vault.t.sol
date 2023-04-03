@@ -8,6 +8,7 @@ import {VaultController} from '@contracts/core/VaultController.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
 import {IBaseRewardPool} from '@interfaces/utils/IBaseRewardPool.sol';
 import {IVirtualBalanceRewardPool} from '@interfaces/utils/IVirtualBalanceRewardPool.sol';
+import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
 
 contract E2EVault is CommonE2EBase {
   uint256 public bobDeposit = 5 ether;
@@ -142,6 +143,45 @@ contract E2EVault is CommonE2EBase {
     assertEq(IERC20(CRV_ADDRESS).balanceOf(bob), _balanceBeforeCRV + _rewards[0].amount);
     assertEq(amphToken.balanceOf(bob), _balanceBeforeAMPH + _rewards[1].amount);
     assertGt(IERC20(CRV_ADDRESS).balanceOf(address(governor)), 0);
+  }
+
+  function testClaimCurveLPRewardsWithClaimerAsZeroAddress() public {
+    uint256 _depositAmount = 10 ether;
+
+    vm.startPrank(bob);
+    usdtStableLP.approve(address(bobVault), _depositAmount);
+    bobVault.depositERC20(address(usdtStableLP), _depositAmount);
+    vm.stopPrank();
+
+    vm.prank(BOOSTER);
+    IBaseRewardPool(USDT_LP_REWARDS_ADDRESS).queueNewRewards(_depositAmount);
+
+    vm.warp(block.timestamp + 5 days);
+
+    address[] memory _tokens = new address[](1);
+    _tokens[0] = address(usdtStableLP);
+
+    // change claimer to 0x0
+    vm.prank(address(governor));
+    vaultController.changeClaimerContract(IAMPHClaimer(address(0)));
+
+    // check that amph was not claimed
+    IVault.Reward[] memory _rewardsInZero = bobVault.claimableRewards(address(usdtStableLP));
+    for (uint256 _i; _i < _rewardsInZero.length; _i++) {
+      if (address(_rewardsInZero[_i].token) == address(amphToken)) revert(); // if finds amph rewards trigger a revert
+    }
+
+    uint256 _balanceBeforeCRV = IERC20(CRV_ADDRESS).balanceOf(bob);
+    uint256 _amphBalanceBeforeClaimingInZero = amphToken.balanceOf(bob);
+
+    vm.prank(bob);
+    bobVault.claimRewards(_tokens);
+
+    uint256 _balanceAfterCRV = IERC20(CRV_ADDRESS).balanceOf(bob);
+    uint256 _amphBalanceAfterClaimingInZero = amphToken.balanceOf(bob);
+
+    assertGt(_balanceAfterCRV, _balanceBeforeCRV);
+    assertEq(_amphBalanceBeforeClaimingInZero, _amphBalanceAfterClaimingInZero);
   }
 
   function testClaimMultipleCurveLPWithExtraRewards() public {
