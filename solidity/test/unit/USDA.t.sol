@@ -18,6 +18,10 @@ contract USDAForTest is USDA {
   function uFragmentsInitForTest(string memory __name, string memory __symbol) public {
     _UFragments_init(__name, __symbol);
   }
+
+  function getMsgData(uint256) public view returns (bytes memory _data) {
+    return _msgData();
+  }
 }
 
 abstract contract Base is DSTestPlus {
@@ -46,13 +50,19 @@ abstract contract Base is DSTestPlus {
     );
     // solhint-disable-next-line reentrancy
     _usda = new USDAForTest();
+  }
+}
+
+contract BaseInit is Base {
+  function setUp() public virtual override {
+    super.setUp();
     _usda.initialize(address(_mockToken));
     _usda.addVaultController(_vaultController);
     _usda.setPauser(address(this));
   }
 }
 
-contract UnitUSDAInit is Base {
+contract UnitUSDAInit is BaseInit {
   function testRevertsWhenInitializingAgain() public {
     vm.expectRevert('Initializable: contract is already initialized');
     _usda.initialize(address(_mockToken));
@@ -71,27 +81,45 @@ contract UnitUSDAInit is Base {
 
 contract UnitUSDAGetters is Base {
   function testOwnerReturnsThis() public {
+    _usda.initialize(address(_mockToken));
+    _usda.addVaultController(_vaultController);
+    _usda.setPauser(address(this));
     assertEq(_usda.owner(), address(this));
   }
 
   function testNameReturnsName() public {
+    assertEq(_usda.name(), '');
+    _usda.initialize(address(_mockToken));
+    _usda.addVaultController(_vaultController);
+    _usda.setPauser(address(this));
     assertEq(_usda.name(), 'USDA Token');
   }
 
   function testSymbolReturnsSymbol() public {
+    assertEq(_usda.symbol(), '');
+    _usda.initialize(address(_mockToken));
+    _usda.addVaultController(_vaultController);
+    _usda.setPauser(address(this));
     assertEq(_usda.symbol(), 'USDA');
   }
 
   function testDecimalsReturnsDecimals() public {
+    _usda.initialize(address(_mockToken));
+    _usda.addVaultController(_vaultController);
+    _usda.setPauser(address(this));
     assertEq(_usda.decimals(), 18);
   }
 
   function testReserveAddressReturnsToken() public {
+    assertEq(_usda.reserveAddress(), address(0));
+    _usda.initialize(address(_mockToken));
+    _usda.addVaultController(_vaultController);
+    _usda.setPauser(address(this));
     assertEq(_usda.reserveAddress(), address(_mockToken));
   }
 }
 
-contract UnitUSDADeposit is Base {
+contract UnitUSDADeposit is BaseInit {
   //TODO: This needs to be changed after we modify the decimals amount
   //  The maximum amount of tokens to deposit is 72.057.594.037 sUSD at a time
   function testDepositCallsTransferFrom(uint56 _amount) public {
@@ -160,7 +188,7 @@ contract UnitUSDADeposit is Base {
   }
 }
 
-contract UnitUSDADepositTo is Base {
+contract UnitUSDADepositTo is BaseInit {
   address internal _otherUser = newAddress();
 
   function testDepositCallsTransferFrom(uint56 _amount) public {
@@ -204,7 +232,7 @@ contract UnitUSDADepositTo is Base {
   }
 }
 
-contract UnitUSDAWithdraw is Base {
+contract UnitUSDAWithdraw is BaseInit {
   uint256 internal _depositAmount = 100 * 1e6;
 
   function setUp() public virtual override {
@@ -286,7 +314,7 @@ contract UnitUSDAWithdraw is Base {
   }
 }
 
-contract UnitUSDAWithdrawAll is Base {
+contract UnitUSDAWithdrawAll is BaseInit {
   uint256 internal _depositAmount = 100 * 1e6;
 
   function setUp() public virtual override {
@@ -361,7 +389,164 @@ contract UnitUSDAWithdrawAll is Base {
   }
 }
 
-contract UnitUSDAMint is Base {
+contract UnitUSDAWithdrawTo is BaseInit {
+  uint256 internal _depositAmount = 100 * 1e6;
+  address internal _receiver = newAddress();
+
+  function setUp() public virtual override {
+    super.setUp();
+    _usda.deposit(_depositAmount);
+  }
+
+  function testWithdrawToRevertsIfAmountIsZero() public {
+    vm.expectRevert(IUSDA.USDA_ZeroAmount.selector);
+    _usda.withdrawTo(0, _receiver);
+  }
+
+  function testWithdrawToRevertsIfAmountIsGreaterThanBalance() public {
+    vm.expectRevert(IUSDA.USDA_InsufficientFunds.selector);
+    _usda.withdrawTo(_depositAmount + 1, _receiver);
+  }
+
+  function testWithdrawToRevertsIfPaused() public {
+    _usda.pause();
+    vm.expectRevert('Pausable: paused');
+    _usda.withdrawTo(_depositAmount, _receiver);
+  }
+
+  function testRevertIfTransactionFails(uint256 _amount) public {
+    vm.assume(_amount <= _depositAmount);
+    vm.assume(_amount > 0);
+    vm.mockCall(
+      address(_mockToken), abi.encodeWithSelector(IERC20.transfer.selector, _receiver, _amount), abi.encode(false)
+    );
+    vm.expectRevert(IUSDA.USDA_TransferFailed.selector);
+    _usda.withdrawTo(_amount, _receiver);
+  }
+
+  function testWithdrawToSubstractsFromReserveAmount(uint256 _amount) public {
+    vm.assume(_amount <= _depositAmount);
+    vm.assume(_amount > 0);
+    uint256 _reserveBefore = _usda.reserveAmount();
+    _usda.withdrawTo(_amount, _receiver);
+    uint256 _reserveAfter = _usda.reserveAmount();
+    assertEq(_reserveBefore - _amount, _reserveAfter);
+  }
+
+  function testWithdrawToCallsTransferOnToken(uint256 _amount) public {
+    vm.assume(_amount <= _depositAmount);
+    vm.assume(_amount > 0);
+    vm.expectCall(address(_mockToken), abi.encodeWithSelector(_mockToken.transfer.selector, _receiver, _amount));
+    _usda.withdrawTo(_amount, _receiver);
+  }
+
+  function testWithdrawToSubstractsFromTotalSupply(uint256 _amount) public {
+    vm.assume(_amount <= _depositAmount);
+    vm.assume(_amount > 0);
+    uint256 _totalSupplyBefore = _usda.totalSupply();
+    _usda.withdrawTo(_amount, _receiver);
+    uint256 _totalSupplyAfter = _usda.totalSupply();
+    assertEq(_totalSupplyBefore - _amount, _totalSupplyAfter);
+  }
+
+  function testWithdrawToSubstractsFromUserBalance(uint256 _amount) public {
+    vm.assume(_amount <= _depositAmount);
+    vm.assume(_amount > 0);
+    uint256 _balanceBefore = _usda.balanceOf(address(this));
+    _usda.withdrawTo(_amount, _receiver);
+    uint256 _balanceAfter = _usda.balanceOf(address(this));
+    assertEq(_balanceBefore - _amount, _balanceAfter);
+  }
+
+  function testWithdrawToCallsPayInterest() public {
+    vm.expectCall(address(_vaultController), abi.encodeWithSelector(IVaultController.calculateInterest.selector));
+    _usda.withdrawTo(_depositAmount, _receiver);
+  }
+
+  function testEmitEvent(uint256 _amount) public {
+    vm.assume(_amount <= _depositAmount);
+    vm.assume(_amount > 0);
+    vm.expectEmit(true, true, true, true);
+    emit Withdraw(_receiver, _amount);
+    _usda.withdrawTo(_amount, _receiver);
+  }
+}
+
+contract UnitUSDAWithdrawAllTo is BaseInit {
+  uint256 internal _depositAmount = 100 * 1e6;
+  address internal _receiver = newAddress();
+
+  function setUp() public virtual override {
+    super.setUp();
+    _usda.deposit(_depositAmount);
+  }
+
+  function testWithdrawAllToRevertsIfPaused() public {
+    _usda.pause();
+    vm.expectRevert('Pausable: paused');
+    _usda.withdrawAllTo(_receiver);
+  }
+
+  function testRevertIfReserveIsEmpty() public {
+    // Make reserve amount 0
+    _usda.withdrawAllTo(_receiver);
+    vm.expectRevert(IUSDA.USDA_EmptyReserve.selector);
+    _usda.withdrawAllTo(_receiver);
+  }
+
+  function testRevertIfTransactionFails() public {
+    vm.mockCall(
+      address(_mockToken),
+      abi.encodeWithSelector(IERC20.transfer.selector, _receiver, _depositAmount),
+      abi.encode(false)
+    );
+    vm.expectRevert(IUSDA.USDA_TransferFailed.selector);
+    _usda.withdrawAllTo(_receiver);
+  }
+
+  function testWithdrawAllToSubstractsFromReserveAmount() public {
+    uint256 _reserveBefore = _usda.reserveAmount();
+    _usda.withdrawAllTo(_receiver);
+    uint256 _reserveAfter = _usda.reserveAmount();
+    assertEq(_reserveBefore - _depositAmount, _reserveAfter);
+  }
+
+  function testWithdrawAllToCallsTransferOnToken() public {
+    vm.expectCall(address(_mockToken), abi.encodeWithSelector(_mockToken.transfer.selector, _receiver, _depositAmount));
+    _usda.withdrawAllTo(_receiver);
+  }
+
+  function testWithdrawAllToSubstractsFromTotalSupply() public {
+    uint256 _totalSupplyBefore = _usda.totalSupply();
+    _usda.withdrawAllTo(_receiver);
+    uint256 _totalSupplyAfter = _usda.totalSupply();
+    assertEq(_totalSupplyBefore - _depositAmount, _totalSupplyAfter);
+  }
+
+  function testWithdrawAllToSubstractsFromUserBalance() public {
+    uint256 _balanceBefore = _usda.balanceOf(address(this));
+    _usda.withdrawAllTo(_receiver);
+    uint256 _balanceAfter = _usda.balanceOf(address(this));
+    assertEq(_balanceBefore - _depositAmount, _balanceAfter);
+  }
+
+  function testWithdrawAllToCallsPayInterest() public {
+    vm.expectCall(address(_vaultController), abi.encodeWithSelector(IVaultController.calculateInterest.selector));
+    _usda.withdrawAllTo(_receiver);
+  }
+
+  function testWithdrawAllToWhenAmountIsMoreThanReserve() public {
+    vm.prank(_vaultController);
+    // Remove half the reserve
+    _usda.vaultControllerTransfer(newAddress(), _depositAmount / 2);
+    vm.expectCall(
+      address(_mockToken), abi.encodeWithSelector(_mockToken.transfer.selector, _receiver, _depositAmount / 2)
+    );
+    _usda.withdrawAllTo(_receiver);
+  }
+}
+
+contract UnitUSDAMint is BaseInit {
   uint256 internal _mintAmount = 100 * 1e6;
 
   function testRevertsIfCalledByNonOwner() public {
@@ -405,7 +590,7 @@ contract UnitUSDAMint is Base {
   }
 }
 
-contract UnitUSDABurn is Base {
+contract UnitUSDABurn is BaseInit {
   uint256 internal _burnAmount = 100 * 1e6;
 
   function setUp() public virtual override {
@@ -458,7 +643,7 @@ contract UnitUSDABurn is Base {
   }
 }
 
-contract UnitUSDADonate is Base {
+contract UnitUSDADonate is BaseInit {
   uint256 internal _donateAmount = 10_000 * 1e6;
   address internal _otherUser = newAddress();
 
@@ -551,7 +736,7 @@ contract UnitUSDADonate is Base {
   }
 }
 
-contract UnitUSDARecoverDust is Base {
+contract UnitUSDARecoverDust is BaseInit {
   uint256 internal _amountToRecover = 100 ether;
   uint256 internal _depositAmount = 100_000 ether;
 
@@ -585,7 +770,7 @@ contract UnitUSDARecoverDust is Base {
   }
 }
 
-contract UnitUSDAVaultControllerMint is Base {
+contract UnitUSDAVaultControllerMint is BaseInit {
   uint256 internal _amountToMint = 100 ether;
 
   function testRevertsIfCalledByNonVault() public {
@@ -614,7 +799,7 @@ contract UnitUSDAVaultControllerMint is Base {
   }
 }
 
-contract UnitUSDAVaultControllerBurn is Base {
+contract UnitUSDAVaultControllerBurn is BaseInit {
   uint256 internal _mintAmount = 10 ether;
 
   function setUp() public virtual override {
@@ -657,7 +842,7 @@ contract UnitUSDAVaultControllerBurn is Base {
   }
 }
 
-contract UnitUSDAVaultControllerTransfer is Base {
+contract UnitUSDAVaultControllerTransfer is BaseInit {
   uint256 internal _amountToTransfer = 100 ether;
 
   function testRevertsIfCalledByNonVault() public {
@@ -689,7 +874,7 @@ contract UnitUSDAVaultControllerTransfer is Base {
   }
 }
 
-contract UnitVaultControllerDonate is Base {
+contract UnitVaultControllerDonate is BaseInit {
   uint256 internal _donateAmount = 10_000 * 1e6;
 
   function testRevertsIfCalledByNonVault(uint56 _amount) public {
@@ -708,9 +893,22 @@ contract UnitVaultControllerDonate is Base {
     uint256 _totalSupplyAfter = _usda.totalSupply();
     assertEq(_totalSupplyBefore + _amount, _totalSupplyAfter);
   }
+
+  function testVaultControllerDonateMoreThanMaxSupplyCapsMaxSupply() public {
+    _usda.mint(_donateAmount);
+    uint256 _maxSupply = _usda.MAX_SUPPLY();
+    uint256 _balanceBefore = _usda.balanceOf(address(this));
+    uint256 _totalSupplyBefore = _usda.totalSupply();
+    vm.prank(_vaultController);
+    _usda.vaultControllerDonate(_maxSupply - _totalSupplyBefore + 1);
+    uint256 _totalSupplyAfter = _usda.totalSupply();
+    uint256 _balanceAfter = _usda.balanceOf(address(this));
+    assertEq(_maxSupply, _totalSupplyAfter);
+    assertEq(_balanceAfter / _maxSupply, _balanceBefore / _totalSupplyBefore);
+  }
 }
 
-contract UnitUSDAAddVaultController is Base {
+contract UnitUSDAAddVaultController is BaseInit {
   function testRevertsIfCalledByNonOwner() public {
     vm.expectRevert('Ownable: caller is not the owner');
     vm.prank(newAddress());
@@ -736,7 +934,7 @@ contract UnitUSDAAddVaultController is Base {
   }
 }
 
-contract UnitUSDARemoveVaultController is Base {
+contract UnitUSDARemoveVaultController is BaseInit {
   function setUp() public virtual override {
     super.setUp();
     _usda.addVaultController(_vaultController2);
@@ -760,7 +958,7 @@ contract UnitUSDARemoveVaultController is Base {
   }
 }
 
-contract UnitUSDARemoveVaultControllerFromList is Base {
+contract UnitUSDARemoveVaultControllerFromList is BaseInit {
   function setUp() public virtual override {
     super.setUp();
     _usda.addVaultController(_vaultController2);
@@ -784,7 +982,7 @@ contract UnitUSDARemoveVaultControllerFromList is Base {
   }
 }
 
-contract UnitUSDAReserveRatio is Base {
+contract UnitUSDAReserveRatio is BaseInit {
   uint256 internal _depositAmount = 100 ether;
   uint256 internal _initialSupply = 1 ether;
 
@@ -815,5 +1013,43 @@ contract UnitUSDAReserveRatio is Base {
 
     uint256 _reserveRatio = (_depositAmount) * (1 ether) / (_depositAmount + _initialSupply);
     assertEq(_usda.reserveRatio(), _reserveRatio);
+  }
+}
+
+contract UnitUSDASetPauser is BaseInit {
+  function testSetPauser() public {
+    address _newPauser = newAddress();
+    assert(_usda.pauser() != _newPauser);
+    _usda.setPauser(_newPauser);
+    assert(_usda.pauser() == _newPauser);
+  }
+
+  function testSetPauserRevertsIfNotOwner() public {
+    vm.expectRevert('Ownable: caller is not the owner');
+    vm.prank(newAddress());
+    _usda.setPauser(newAddress());
+  }
+}
+
+contract UnitUSDAUnPause is BaseInit {
+  function testUnPause() public {
+    _usda.pause();
+    assert(_usda.paused());
+    _usda.unpause();
+    assert(!_usda.paused());
+  }
+
+  function testUnPauseRevertsIfNotPauser() public {
+    _usda.pause();
+    assert(_usda.paused());
+    vm.expectRevert(IUSDA.USDA_OnlyPauser.selector);
+    vm.prank(newAddress());
+    _usda.unpause();
+  }
+}
+
+contract UnitUSDAGetMsgData is BaseInit {
+  function testGetMsgData(uint256 _n) public {
+    assertEq(_usda.getMsgData(_n), abi.encodeWithSelector(USDAForTest.getMsgData.selector, _n));
   }
 }
