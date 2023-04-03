@@ -42,6 +42,27 @@ In order to run the `DepositAndBorrow` script we will need to have deployed the 
 
 4. Finally we will be able to run the borrow script. To borrow an amount of USDA tokens we call `yarn scripts:borrow`.
 
+## Code Coverage (unit tests)
+
+Running `forge coverage` on the project doesn't work straight away because of a "stack too deep" error in `GovernorCharlie` contract, for more information on the issue [check here](https://github.com/foundry-rs/foundry/issues/3357#issuecomment-1297192171). To bypass this problem for now we can do:
+
+1. Comment the whole `Governor.t.sol` file in `test/unit`
+
+2. In `foundry.toml` change the path of test to `test = './solidity/test/unit'`
+
+3. Run `forge coverage -C solidity/contracts/core`
+
+Following the steps above will create the summary of the code coverage. If you want to check the detailed report and see line-by-line the code covegare then we can do:
+
+1. After following steps 1 & 2 from before we can then create the `lcov` report which will be saved in `lcov.info` file
+
+    `forge coverage -C solidity/contracts/core --report lcov`
+
+2. Use `genhtml` to create an html interface that will display the uncovered lines using the lcov report, the html files will be available in the newly created folder `report`
+
+    `genhtml -o report lcov.info`
+
+
 ## Repository
 
 ```
