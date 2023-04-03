@@ -8,7 +8,7 @@ import {IVault} from '@interfaces/core/IVault.sol';
 
 import {AMPHClaimer} from '@contracts/core/AMPHClaimer.sol';
 
-import {DSTestPlus} from 'solidity-utils/test/DSTestPlus.sol';
+import {DSTestPlus, console} from 'solidity-utils/test/DSTestPlus.sol';
 
 contract AMPHMath is AMPHClaimer {
   constructor() AMPHClaimer(address(0), address(0), address(0), address(0), 0, 0, 0, 0) {}
@@ -242,7 +242,11 @@ contract UnitAMPHClaimerClaimable is Base {
     vm.assume(_cvxAmount <= type(uint256).max / amphPerCvx);
     vm.assume(_crvAmount <= type(uint256).max / amphPerCrv);
 
-    vm.mockCall(address(_mockAMPH), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(0));
+    uint256 _crvToSend = amphMath.totalToFraction(_crvAmount, crvRewardFee);
+    uint256 _cvxToSend = amphMath.totalToFraction(_cvxAmount, cvxRewardFee);
+    uint256 _amphToPay = ((_cvxToSend * amphPerCvx) + (_crvToSend * amphPerCrv)) / 1 ether;
+    vm.assume(_amphToPay > 0);
+    vm.mockCall(address(_mockAMPH), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(_amphToPay - 1));
 
     (uint256 _cvxAmountToSend, uint256 _crvAmountToSend, uint256 _claimableAmph) =
       amphClaimer.claimable(_cvxAmount, _crvAmount);
