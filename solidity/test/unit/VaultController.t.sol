@@ -9,7 +9,7 @@ import {ChainlinkOracleRelay} from '@contracts/periphery/oracles/ChainlinkOracle
 import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
 import {AnchoredViewRelay} from '@contracts/periphery/oracles/AnchoredViewRelay.sol';
 import {USDA} from '@contracts/core/USDA.sol';
-import {ThreeCrvOracle} from '@contracts/periphery/ThreeCrvOracle.sol';
+import {ThreeCrvOracle} from '@contracts/periphery/oracles/ThreeCrvOracle.sol';
 import {ThreeLines0_100} from '@contracts/utils/ThreeLines0_100.sol';
 import {ExponentialNoError} from '@contracts/utils/ExponentialNoError.sol';
 
