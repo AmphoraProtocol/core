@@ -412,7 +412,7 @@ contract VaultController is
   /// @param _id The id of vault we want to target
   /// @param _amount The amount of USDA to borrow
   function borrowUSDA(uint96 _id, uint192 _amount) external override {
-    _borrowUSDA(_id, _amount, _msgSender());
+    _borrow(_id, _amount, _msgSender(), true);
   }
 
   /// @notice Borrows USDA from a vault and send the USDA to a specific address
@@ -420,15 +420,24 @@ contract VaultController is
   /// @param _amount The amount of USDA to borrow
   /// @param _target The address to receive borrowed USDA
   function borrowUSDAto(uint96 _id, uint192 _amount, address _target) external override {
-    _borrowUSDA(_id, _amount, _target);
+    _borrow(_id, _amount, _target, true);
+  }
+
+  /// @notice Borrows sUSD directly from reserve, liability is still in USDA, and USDA must be repaid
+  /// @param _id The id of vault we want to target
+  /// @param _susdAmount The amount of sUSD to borrow
+  /// @param _target The address to receive borrowed sUSD
+  function borrowsUSDto(uint96 _id, uint192 _susdAmount, address _target) external override {
+    _borrow(_id, _susdAmount, _target, false);
   }
 
   /// @notice business logic to perform the USDA loan
   /// @param _id vault to borrow against
   /// @param _amount amount of USDA to borrow
   /// @param _target address to receive borrowed USDA
+  /// @param _isUSDA boolean indicating if the borrowed asset is USDA (if FALSE is sUSD)
   /// @dev pays interest
-  function _borrowUSDA(uint96 _id, uint192 _amount, address _target) internal paysInterest whenNotPaused {
+  function _borrow(uint96 _id, uint192 _amount, address _target, bool _isUSDA) internal paysInterest whenNotPaused {
     // grab the vault by id if part of our system. revert if not
     IVault _vault = _getVault(_id);
     // only the minter of the vault may borrow from their vault
@@ -447,82 +456,67 @@ contract VaultController is
     uint256 _totalLiquidityValue = _getVaultBorrowingPower(_vault);
     // the ltv must be above the newly calculated _usdaLiability, else revert
     if (_totalLiquidityValue < _usdaLiability) revert VaultController_VaultInsolvent();
-    // now send usda to the target, equal to the amount they are owed
-    usda.vaultControllerMint(_target, _amount);
+
+    if (_isUSDA) {
+      // now send usda to the target, equal to the amount they are owed
+      usda.vaultControllerMint(_target, _amount);
+    } else {
+      // send sUSD to the target from reserve instead of mint
+      usda.vaultControllerTransfer(_target, _amount);
+    }
+
     // emit the event
     emit BorrowUSDA(_id, address(_vault), _amount);
-  }
-
-  /// @notice Borrows sUSD directly from reserve, liability is still in USDA, and USDA must be repaid
-  /// @param _id The id of vault we want to target
-  /// @param _susdAmount The amount of sUSD to borrow
-  /// @param _target The address to receive borrowed sUSD
-  function borrowsUSDto(uint96 _id, uint192 _susdAmount, address _target) external override paysInterest whenNotPaused {
-    // grab the vault by id if part of our system. revert if not
-    IVault _vault = _getVault(_id);
-    // only the minter of the vault may borrow from their vault
-    if (_msgSender() != _vault.minter()) revert VaultController_OnlyMinter();
-    // the base amount is the amount of USDA they wish to borrow divided by the interest factor
-    uint192 _baseAmount = _safeu192(uint256(_susdAmount * EXP_SCALE) / uint256(interest.factor));
-    // _baseLiability should contain the vault's new liability, in terms of base units
-    // true indicates that we are adding to the liability
-    uint256 _baseLiability = _vault.modifyLiability(true, _baseAmount);
-    // increase the total base liability by the _baseAmount
-    // the same amount we added to the vault's liability
-    totalBaseLiability = totalBaseLiability + _safeu192(_baseAmount);
-    // now take the vault's total base liability and multiply it by the interest factor
-    uint256 _usdaLiability = _truncate(uint256(interest.factor) * _baseLiability);
-    // now get the ltv of the vault, aka their borrowing power, in usda
-    uint256 _totalLiquidityValue = _getVaultBorrowingPower(_vault);
-    // the ltv must be above the newly calculated _usdaLiability, else revert
-    if (_totalLiquidityValue < _usdaLiability) revert VaultController_VaultInsolvent();
-    // emit the event
-    emit BorrowUSDA(_id, address(_vault), _susdAmount);
-    //send sUSD to the target from reserve instead of mint
-    usda.vaultControllerTransfer(_target, _susdAmount);
   }
 
   /// @notice Repays a vault's USDA loan. Anyone may repay
   /// @dev Pays interest
   /// @param _id The id of vault we want to target
   /// @param _amount The amount of USDA to repay
-  function repayUSDA(uint96 _id, uint192 _amount) external override paysInterest whenNotPaused {
-    // grab the vault by id if part of our system. revert if not
-    IVault _vault = _getVault(_id);
-    // the base amount is the amount of USDA entered divided by the interest factor
-    uint192 _baseAmount = _safeu192((_amount * EXP_SCALE) / interest.factor);
-    // decrease the total base liability by the calculated base amount
-    totalBaseLiability = totalBaseLiability - _baseAmount;
-    // ensure that _baseAmount is lower than the vault's base liability.
-    // this may not be needed, since modifyLiability *should* revert if is not true
-    if (_baseAmount > _vault.baseLiability()) revert VaultController_RepayTooMuch(); //repay all here if true?
-    // decrease the vault's liability by the calculated base amount
-    _vault.modifyLiability(false, _baseAmount);
-    // burn the amount of USDA submitted from the sender
-    usda.vaultControllerBurn(_msgSender(), _amount);
-    // emit the event
-    emit RepayUSDA(_id, address(_vault), _amount);
+  function repayUSDA(uint96 _id, uint192 _amount) external override {
+    _repay(_id, _amount, false);
   }
 
   /// @notice Repays all of a vault's USDA. Anyone may repay a vault's liabilities
   /// @dev Pays interest
   /// @param _id The id of vault we want to target
-  function repayAllUSDA(uint96 _id) external override paysInterest whenNotPaused {
+  function repayAllUSDA(uint96 _id) external override {
+    _repay(_id, 0, true);
+  }
+
+  /// @notice business logic to perform the USDA repay
+  /// @param _id vault to repay
+  /// @param _amountInUSDA amount of USDA to borrow
+  /// @param _repayAll if TRUE, repay all debt
+  /// @dev pays interest
+  function _repay(uint96 _id, uint192 _amountInUSDA, bool _repayAll) internal paysInterest whenNotPaused {
     // grab the vault by id if part of our system. revert if not
     IVault _vault = _getVault(_id);
-    //store the vault baseLiability in memory
-    uint256 _baseLiability = _vault.baseLiability();
-    // get the total USDA liability, equal to the interest factor * vault's base liabilty
-    //uint256 _usdaLiability = _truncate(_safeu192(interest.factor * vault.baseLiability()));
-    uint256 _usdaLiability = uint256(_safeu192(_truncate(interest.factor * _baseLiability)));
-    // decrease the total base liability by the vault's base liability
-    totalBaseLiability = totalBaseLiability - _safeu192(_baseLiability);
-    // decrease the vault's liability by the vault's base liability
-    _vault.modifyLiability(false, _baseLiability);
-    // burn the amount of USDA paid back from the vault
-    usda.vaultControllerBurn(_msgSender(), _usdaLiability);
 
-    emit RepayUSDA(_id, address(_vault), _usdaLiability);
+    uint192 _baseAmount;
+
+    // if _repayAll == TRUE, repay total liability
+    if (_repayAll) {
+      // store the vault baseLiability in memory
+      _baseAmount = _safeu192(_vault.baseLiability());
+      // get the total USDA liability, equal to the interest factor * vault's base liabilty
+      _amountInUSDA = _safeu192(_truncate(interest.factor * _baseAmount));
+    } else {
+      // the base amount is the amount of USDA entered divided by the interest factor
+      _baseAmount = _safeu192((_amountInUSDA * EXP_SCALE) / interest.factor);
+    }
+
+    // decrease the total base liability by the calculated base amount
+    totalBaseLiability = totalBaseLiability - _baseAmount;
+    // ensure that _baseAmount is lower than the vault's base liability.
+    // this may not be needed, since modifyLiability *should* revert if is not true
+    if (_baseAmount > _vault.baseLiability()) revert VaultController_RepayTooMuch();
+    // decrease the vault's liability by the calculated base amount
+    _vault.modifyLiability(false, _baseAmount);
+    // burn the amount of USDA submitted from the sender
+    usda.vaultControllerBurn(_msgSender(), _amountInUSDA);
+
+    emit RepayUSDA(_id, address(_vault), _amountInUSDA);
   }
 
   /// @notice Liquidates an underwater vault
