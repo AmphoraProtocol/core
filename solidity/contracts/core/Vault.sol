@@ -133,14 +133,12 @@ contract Vault is IVault, Context {
     uint256 _totalCvxReward;
 
     IAMPHClaimer _amphClaimer = CONTROLLER.claimerContract();
+    for (uint256 _i; _i < _tokensToClaim;) {
+      IVaultController.CollateralInfo memory _collateralInfo = CONTROLLER.tokenCollateralInfo(_tokenAddresses[_i]);
+      if (_collateralInfo.tokenId == 0) revert Vault_TokenNotRegistered();
+      if (_collateralInfo.collateralType != IVaultController.CollateralType.CurveLP) revert Vault_TokenNotCurveLP();
 
-    for (uint256 _i; _i < _tokensToClaim; _i++) {
-      if (CONTROLLER.tokenId(_tokenAddresses[_i]) == 0) revert Vault_TokenNotRegistered();
-      if (CONTROLLER.tokenCollateralType(_tokenAddresses[_i]) != IVaultController.CollateralType.CurveLP) {
-        revert Vault_TokenNotCurveLP();
-      }
-
-      IBaseRewardPool _rewardsContract = CONTROLLER.tokenCrvRewardsContract(_tokenAddresses[_i]);
+      IBaseRewardPool _rewardsContract = _collateralInfo.crvRewardsContract;
       uint256 _crvReward = _rewardsContract.earned(address(this));
       _totalCrvReward += _crvReward;
 
@@ -153,7 +151,7 @@ contract Vault is IVault, Context {
       uint256 _rewardsAmount = _rewardsContract.extraRewardsLength();
 
       // Loop and claim all virtual rewards
-      for (uint256 _j; _j < _rewardsAmount; _j++) {
+      for (uint256 _j; _j < _rewardsAmount;) {
         IVirtualBalanceRewardPool _virtualReward = _rewardsContract.extraRewards(_j);
         IERC20 _rewardToken = _virtualReward.rewardToken();
         uint256 _earnedReward = _virtualReward.earned(address(this));
@@ -164,37 +162,41 @@ contract Vault is IVault, Context {
             _totalCvxReward += _earnedReward;
           } else {
             // If it's any other token, transfer to the owner of the vault
-            if (_earnedReward > 0) {
-              _rewardToken.transfer(_msgSender(), _earnedReward);
-              emit ClaimedReward(address(_rewardToken), _earnedReward);
-            }
+            _rewardToken.transfer(_msgSender(), _earnedReward);
+            emit ClaimedReward(address(_rewardToken), _earnedReward);
           }
         }
+        unchecked {
+          ++_j;
+        }
+      }
+      unchecked {
+        ++_i;
       }
     }
 
     if (_totalCrvReward > 0 || _totalCvxReward > 0) {
-      uint256 _takenCVX;
-      uint256 _takenCRV;
-
       if (address(_amphClaimer) != address(0)) {
         // Approve amounts for it to be taken
-        (_takenCVX, _takenCRV,) = _amphClaimer.claimable(_totalCvxReward, _totalCrvReward);
-        CRV.approve(address(_amphClaimer), _takenCRV);
-        CVX.approve(address(_amphClaimer), _takenCVX);
+        (uint256 _takenCVX, uint256 _takenCRV, uint256 _claimableAmph) =
+          _amphClaimer.claimable(_totalCvxReward, _totalCrvReward);
+        if (_claimableAmph != 0) {
+          CRV.approve(address(_amphClaimer), _takenCRV);
+          CVX.approve(address(_amphClaimer), _takenCVX);
 
-        // Claim AMPH tokens depending on how much CRV and CVX was claimed
-        _amphClaimer.claimAmph(this.id(), _totalCvxReward, _totalCrvReward, _msgSender());
+          // Claim AMPH tokens depending on how much CRV and CVX was claimed
+          _amphClaimer.claimAmph(this.id(), _totalCvxReward, _totalCrvReward, _msgSender());
+
+          _totalCvxReward -= _takenCVX;
+          _totalCrvReward -= _takenCRV;
+        }
       }
 
-      uint256 _CVXToTransfer = _totalCvxReward - _takenCVX;
-      uint256 _CRVToTransfer = _totalCrvReward - _takenCRV;
+      if (_totalCvxReward != 0) CVX.transfer(_msgSender(), _totalCvxReward);
+      if (_totalCrvReward != 0) CRV.transfer(_msgSender(), _totalCrvReward);
 
-      if (_CVXToTransfer != 0) CVX.transfer(_msgSender(), _CVXToTransfer);
-      if (_CRVToTransfer != 0) CRV.transfer(_msgSender(), _CRVToTransfer);
-
-      emit ClaimedReward(address(CRV), _CRVToTransfer);
-      emit ClaimedReward(address(CVX), _CVXToTransfer);
+      emit ClaimedReward(address(CRV), _totalCrvReward);
+      emit ClaimedReward(address(CVX), _totalCvxReward);
     }
   }
 
