@@ -1,17 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {IOracleRelay, OracleRelay} from '@contracts/periphery/OracleRelay.sol';
+import {IOracleRelay, OracleRelay} from '@contracts/periphery/oracles/OracleRelay.sol';
 import {AggregatorInterface} from '@chainlink/interfaces/AggregatorInterface.sol';
 
 /// @title Oracle that wraps a chainlink oracle
 /// @notice The oracle returns (chainlinkPrice) * mul / div
-contract ChainlinkOracleRelay is OracleRelay {
+
+/// @notice This oracle is for tokens that don't have a USD pair but do have a wETH/ETH pair
+contract ChainlinkTokenOracleRelay is OracleRelay {
   /// @notice emitted when the oracle price is less than zero
   error ChainlinkOracle_PriceLessThanZero();
 
-  AggregatorInterface private immutable _AGGREGATOR;
+  //Previously deployed chainlink relay for ETH/USD
+  IOracleRelay public constant ETH_PRICE_FEED = IOracleRelay(0xd38D3b40F5C2a52823AE0932B8D658932FDb9ED1);
 
+  AggregatorInterface private immutable _AGGREGATOR;
   uint256 public immutable MULTIPLY;
   uint256 public immutable DIVIDE;
 
@@ -29,7 +33,11 @@ contract ChainlinkOracleRelay is OracleRelay {
   /// @return _value the current value
   /// @dev implementation in getLastSecond
   function currentValue() external view override returns (uint256 _value) {
-    return _getLastSecond();
+    uint256 _priceInEth = _getLastSecond();
+
+    uint256 _ethPrice = ETH_PRICE_FEED.currentValue();
+
+    return (_ethPrice * _priceInEth) / 1e18;
   }
 
   /// @notice returns last second value of the oracle

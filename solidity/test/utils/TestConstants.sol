@@ -5,6 +5,7 @@ contract TestConstants {
   // Token addresses
   address public constant WETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
   address public constant SUSD_ADDRESS = 0x57Ab1ec28D129707052df4dF418D58a2D46d5f51;
+  address public constant USDT_ADDRESS = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
   address public constant UNI_ADDRESS = 0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984;
   address public constant AAVE_ADDRESS = 0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9;
   address public constant DYDX_ADDRESS = 0x92D6C1e31e14520e676a687F0a93788B716BEff5;
@@ -15,6 +16,7 @@ contract TestConstants {
   address public constant BORING_DAO_LP_ADDRESS = 0x2fE94ea3d5d4a175184081439753DE15AeF9d614;
   address public constant CVX_ADDRESS = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
   address public constant CRV_ADDRESS = 0xD533a949740bb3306d119CC777fa900bA034cd52;
+  address public constant TRI_CRYPTO_LP_TOKEN = 0xc4AD29ba4B3c580e6D59105FFf484999997675Ff;
 
   // Pool addresses
   address public constant USDC_WETH_POOL_ADDRESS = 0x8ad599c3A0ff1De082011EFDDc58f1908eb6e6D8;
@@ -22,6 +24,7 @@ contract TestConstants {
   address public constant AAVE_WETH_POOL_ADDRESS = 0x5aB53EE1d50eeF2C1DD3d5402789cd27bB52c1bB;
   address public constant DYDX_WETH_POOL_ADDRESS = 0xD8de6af55F618a7Bc69835D55DDC6582220c36c0;
   address public constant USDC_WBTC_POOL_ADDRESS = 0x99ac8cA7087fA4A2A1FB6357269965A2014ABc35;
+  address public constant TRI_CRYPTO2_POOL_ADDRESS = 0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
 
   // Chainlink addresses
   address public constant CHAINLINK_ETH_FEED_ADDRESS = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;

@@ -10,12 +10,13 @@ import {VaultDeployer} from '@contracts/core/VaultDeployer.sol';
 import {USDA} from '@contracts/core/USDA.sol';
 import {AmphoraProtocolToken} from '@contracts/governance/AmphoraProtocolToken.sol';
 import {GovernorCharlie} from '@contracts/governance/GovernorCharlie.sol';
-import {ChainlinkOracleRelay} from '@contracts/periphery/ChainlinkOracleRelay.sol';
-import {AnchoredViewRelay} from '@contracts/periphery/AnchoredViewRelay.sol';
+import {ChainlinkOracleRelay} from '@contracts/periphery/oracles/ChainlinkOracleRelay.sol';
+import {AnchoredViewRelay} from '@contracts/periphery/oracles/AnchoredViewRelay.sol';
 import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
-import {UniswapV3OracleRelay} from '@contracts/periphery/UniswapV3OracleRelay.sol';
-import {UniswapV3TokenOracleRelay} from '@contracts/periphery/UniswapV3TokenOracleRelay.sol';
-import {ThreeCrvOracle} from '@contracts/periphery/ThreeCrvOracle.sol';
+import {UniswapV3OracleRelay} from '@contracts/periphery/oracles/UniswapV3OracleRelay.sol';
+import {UniswapV3TokenOracleRelay} from '@contracts/periphery/oracles/UniswapV3TokenOracleRelay.sol';
+import {ThreeCrvOracle} from '@contracts/periphery/oracles/ThreeCrvOracle.sol';
+import {TriCryptoOracle} from '@contracts/periphery/oracles/TriCryptoOracle.sol';
 import {ThreeLines0_100} from '@contracts/utils/ThreeLines0_100.sol';
 import {WUSDA} from '@contracts/core/WUSDA.sol';
 import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
@@ -69,6 +70,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   AnchoredViewRelay public anchoredViewBtc;
   // Curve oracles
   ThreeCrvOracle public threeCrvOracle;
+  TriCryptoOracle public triCryptoOracle;
   // Governance
   GovernorCharlie public governor;
 
@@ -218,6 +220,8 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     anchoredViewBtc = new AnchoredViewRelay(address(uniswapRelayWbtcUsdc), address(chainlinkBtc), 30, 100);
     // Deploy the ThreeCrvOracle
     threeCrvOracle = new ThreeCrvOracle();
+    // Deploy the triCryptoOracle
+    triCryptoOracle = new TriCryptoOracle();
 
     // Register WETH as acceptable erc20 to vault controller
     vaultController.registerErc20(
@@ -241,6 +245,11 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     /// TODO: change UNI_LTV  & anchoredViewUni
     vaultController.registerErc20(
       BORING_DAO_LP_ADDRESS, OTHER_LTV, address(anchoredViewUni), LIQUIDATION_INCENTIVE, type(uint256).max, 20
+    );
+
+    // Register the triCrypto2 pool as collateral
+    vaultController.registerErc20(
+      TRI_CRYPTO2_POOL_ADDRESS, OTHER_LTV, address(triCryptoOracle), LIQUIDATION_INCENTIVE, type(uint256).max, 0
     );
 
     // Register USDA as acceptable erc20 to vault controller

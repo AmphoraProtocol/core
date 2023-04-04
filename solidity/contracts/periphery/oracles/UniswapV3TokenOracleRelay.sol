@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.5.0 <0.9.0;
 
-import {IOracleRelay, OracleRelay} from '@contracts/periphery/OracleRelay.sol';
+import {IOracleRelay, OracleRelay} from '@contracts/periphery/oracles/OracleRelay.sol';
 import {IUniswapV3PoolDerivedState} from '@uniswap/v3-core/contracts/interfaces/pool/IUniswapV3PoolDerivedState.sol';
 import {TickMath} from '@uniswap/v3-core/contracts/libraries/TickMath.sol';
 

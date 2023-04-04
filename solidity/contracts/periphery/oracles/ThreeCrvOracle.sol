@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {IOracleRelay, OracleRelay} from '@contracts/periphery/OracleRelay.sol';
+import {IOracleRelay, OracleRelay} from '@contracts/periphery/oracles/OracleRelay.sol';
 import {AggregatorInterface} from '@chainlink/interfaces/AggregatorInterface.sol';
+import {ICurvePool} from '@interfaces/utils/ICurvePool.sol';
 import {Math} from '@openzeppelin/contracts/utils/math/Math.sol';
-
-interface ICurvePool {
-  function get_virtual_price() external view returns (uint256 _price);
-}
 
 contract ThreeCrvOracle is OracleRelay {
   ICurvePool public constant THREE_CRV = ICurvePool(0x52EA46506B9CC5Ef470C5bf89f17Dc28bB35D85C);

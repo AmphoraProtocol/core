@@ -2828,6 +2828,11 @@ slice-ansi@^4.0.0:
     astral-regex "^2.0.0"
     is-fullwidth-code-point "^3.0.0"
 
+solady@0.0.85:
+  version "0.0.85"
+  resolved "https://registry.yarnpkg.com/solady/-/solady-0.0.85.tgz#95bf25c6517ad847da2fa10ea8dcaf83b651b48d"
+  integrity sha512-W+02JbEZY8lWI3JXvt8txUBaHeYqj10P1Alzmu3GL/kQP+ffB7Ata/r1q3cfSCjc75uOdGpDHiW4xCZbq5LdWw==
+
 solhint-plugin-defi-wonderland@1.1.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/solhint-plugin-defi-wonderland/-/solhint-plugin-defi-wonderland-1.1.0.tgz#6b82ee4da9fea1a4aeed4409915c3980f0f6b6a2"

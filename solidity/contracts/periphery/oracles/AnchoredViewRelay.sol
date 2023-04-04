@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {IOracleRelay, OracleRelay} from '@contracts/periphery/OracleRelay.sol';
+import {IOracleRelay, OracleRelay} from '@contracts/periphery/oracles/OracleRelay.sol';
 
 /// @title implementation of compounds' AnchoredView
 /// @notice using a main relay and an anchor relay, the AnchoredView

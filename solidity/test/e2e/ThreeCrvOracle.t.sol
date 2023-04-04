@@ -18,14 +18,14 @@ contract E2EThreeCurveOracle is CommonE2EBase {
   ICToken public cDAI = ICToken(0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643);
   IThreeCRVForTest public threeCrv;
 
-  uint256 public constant ONE_PERCENT = 0.1e18;
+  uint256 public constant POINT_ONE_PERCENT = 0.001e18;
 
   function setUp() public override {
     super.setUp();
     threeCrv = IThreeCRVForTest(address(threeCrvOracle.THREE_CRV()));
   }
 
-  function testReturnsTheCorrectPrice() public {
+  function testThreeCrvReturnsTheCorrectPrice() public {
     // Get the current value of the Three crv oracle
     uint256 _currentValue = threeCrvOracle.currentValue();
 
@@ -50,8 +50,8 @@ contract E2EThreeCurveOracle is CommonE2EBase {
     uint256 _lpAmountTaken3 = threeCrv.calc_token_amount(_amounts3, false);
 
     // the current value should be close to 1 LP token with less than 0.1% difference
-    assertApproxEqRel(_lpAmountTaken1, 1 ether, ONE_PERCENT);
-    assertApproxEqRel(_lpAmountTaken2, 1 ether, ONE_PERCENT);
-    assertApproxEqRel(_lpAmountTaken3, 1 ether, ONE_PERCENT);
+    assertApproxEqRel(_lpAmountTaken1, 1 ether, POINT_ONE_PERCENT);
+    assertApproxEqRel(_lpAmountTaken2, 1 ether, POINT_ONE_PERCENT);
+    assertApproxEqRel(_lpAmountTaken3, 1 ether, POINT_ONE_PERCENT);
   }
 }

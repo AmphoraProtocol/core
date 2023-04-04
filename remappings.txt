@@ -5,6 +5,8 @@ unit-v2-periphery/=node_modules/@uniswap/v2-periphery/contracts
 uni-v3-core/=node_modules/@uniswap/v3-core/contracts
 uni-v3-periphery/=node_modules/@uniswap/v3-periphery/contracts
 solidity-utils/=node_modules/@defi-wonderland/solidity-utils/solidity
+solady/=node_modules/solady/src
+
 
 @chainlink/=node_modules/@chainlink/contracts/src/v0.8
 @openzeppelin/contracts/=node_modules/@openzeppelin/contracts
