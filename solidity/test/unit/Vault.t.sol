@@ -914,4 +914,90 @@ contract UnitVaultClaimableRewards is Base {
     assertEq(address(_rewards[2].token), address(mockAmphToken));
     assertEq(_rewards[2].amount, 3 ether);
   }
+
+  function testClaimableRewardsWithCVX() public {
+    vm.mockCall(
+      BORING_DAO_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(1)
+    );
+
+    vm.mockCall(
+      BORING_DAO_LP_REWARDS_ADDRESS,
+      abi.encodeWithSelector(IBaseRewardPool.extraRewards.selector, 0),
+      abi.encode(mockVirtualRewardsPool)
+    );
+
+    // mock call extra rewards to be cvx
+    vm.mockCall(
+      address(mockVirtualRewardsPool),
+      abi.encodeWithSelector(IVirtualBalanceRewardPool.rewardToken.selector),
+      abi.encode(CVX_ADDRESS)
+    );
+
+    vm.mockCall(
+      address(mockVirtualRewardsPool),
+      abi.encodeWithSelector(IVirtualBalanceRewardPool.earned.selector, address(vault)),
+      abi.encode(1 ether)
+    );
+
+    vm.mockCall(
+      address(mockAmphClaimer),
+      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, 1 ether, 1 ether),
+      abi.encode(0.2 ether, 0.5 ether, 3 ether)
+    );
+
+    vm.mockCall(address(mockAmphClaimer), abi.encodeWithSelector(IAMPHClaimer.AMPH.selector), abi.encode(mockAmphToken));
+
+    IVault.Reward[] memory _rewards = vault.claimableRewards(address(_mockToken));
+    assertEq(address(_rewards[0].token), CRV_ADDRESS);
+    assertEq(_rewards[0].amount, 0.5 ether);
+
+    assertEq(address(_rewards[1].token), address(CVX_ADDRESS));
+    assertEq(_rewards[1].amount, 0.8 ether);
+
+    assertEq(address(_rewards[2].token), address(mockAmphToken));
+    assertEq(_rewards[2].amount, 3 ether);
+  }
+
+  function testClaimableWhenAmphClaimerIsZeroAddress() public {
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.claimerContract.selector),
+      abi.encode(address(0))
+    );
+
+    vm.mockCall(
+      BORING_DAO_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(1)
+    );
+
+    vm.mockCall(
+      BORING_DAO_LP_REWARDS_ADDRESS,
+      abi.encodeWithSelector(IBaseRewardPool.extraRewards.selector, 0),
+      abi.encode(mockVirtualRewardsPool)
+    );
+
+    vm.mockCall(
+      address(mockVirtualRewardsPool),
+      abi.encodeWithSelector(IVirtualBalanceRewardPool.rewardToken.selector),
+      abi.encode(mockVirtualRewardsToken)
+    );
+
+    vm.mockCall(
+      address(mockVirtualRewardsPool),
+      abi.encodeWithSelector(IVirtualBalanceRewardPool.earned.selector, address(vault)),
+      abi.encode(1 ether)
+    );
+
+    IVault.Reward[] memory _rewards = vault.claimableRewards(address(_mockToken));
+
+    assertEq(_rewards.length, 3);
+
+    assertEq(address(_rewards[0].token), CRV_ADDRESS);
+    assertEq(_rewards[0].amount, 1 ether);
+
+    assertEq(address(_rewards[1].token), address(mockVirtualRewardsToken));
+    assertEq(_rewards[1].amount, 1 ether);
+
+    assertEq(address(_rewards[2].token), address(0));
+    assertEq(_rewards[2].amount, 0);
+  }
 }
