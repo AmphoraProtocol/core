@@ -271,8 +271,6 @@ contract VaultController is
 
     // emit the event
     emit NewVault(_vaultAddress, vaultsMinted, _msgSender());
-    // return the vault address, allowing the caller to automatically find their vault
-    return _vaultAddress;
   }
 
   /// @notice Pauses the functionality of the contract
@@ -492,7 +490,6 @@ contract VaultController is
   function _repay(uint96 _id, uint192 _amountInUSDA, bool _repayAll) internal paysInterest whenNotPaused {
     // grab the vault by id if part of our system. revert if not
     IVault _vault = _getVault(_id);
-
     uint192 _baseAmount;
 
     // if _repayAll == TRUE, repay total liability
@@ -505,7 +502,6 @@ contract VaultController is
       // the base amount is the amount of USDA entered divided by the interest factor
       _baseAmount = _safeu192((_amountInUSDA * EXP_SCALE) / interest.factor);
     }
-
     // decrease the total base liability by the calculated base amount
     totalBaseLiability = totalBaseLiability - _baseAmount;
     // ensure that _baseAmount is lower than the vault's base liability.
@@ -623,7 +619,6 @@ contract VaultController is
     // the maximum amount of tokens to liquidate is the amount that will bring the vault to solvency
     // divided by the denominator
     uint256 _maxTokensToLiquidate = (_amountToSolvency(_id) * 1e18) / _denominator;
-
     //Cannot liquidate more than is necessary to make vault over-collateralized
     if (_tokensToLiquidate > _maxTokensToLiquidate) _tokensToLiquidate = _maxTokensToLiquidate;
 
@@ -696,7 +691,7 @@ contract VaultController is
     for (uint192 _i = 1; _i <= enabledTokens.length; ++_i) {
       CollateralInfo memory _collateral = tokenAddressCollateralInfo[enabledTokens[_i - 1]];
       // if the ltv is 0, continue
-      if (_collateral.tokenId == 0) continue;
+      if (_collateral.ltv == 0) continue;
       // get the address of the token through the array of enabled tokens
       // note that index 0 of enabledTokens corresponds to a vaultId of 1, so we must subtract 1 from i to get the correct index
       address _tokenAddress = enabledTokens[_i - 1];
@@ -800,7 +795,6 @@ contract VaultController is
       _vaultSummaries[_i - _start] =
         VaultSummary(_i, this.vaultBorrowingPower(_i), this.vaultLiability(_i), enabledTokens, _tokenBalances);
     }
-    return _vaultSummaries;
   }
 
   function _modifyTotalDeposited(uint256 _amount, address _token, bool _increase) internal {
