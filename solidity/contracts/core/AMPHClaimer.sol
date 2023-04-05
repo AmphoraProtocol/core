@@ -66,12 +66,8 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
     uint256 _crvTotalRewards,
     address _receiver
   ) external override returns (uint256 _cvxAmountToSend, uint256 _crvAmountToSend, uint256 _claimedAmph) {
-    if (msg.sender != vaultController.vaultAddress(_vaultId)) {
-      emit ClaimedAmph(msg.sender, _cvxAmountToSend, _crvAmountToSend, _claimedAmph);
-      return (0, 0, 0);
-    }
-
-    (_cvxAmountToSend, _crvAmountToSend, _claimedAmph) = _claimable(_cvxTotalRewards, _crvTotalRewards);
+    (_cvxAmountToSend, _crvAmountToSend, _claimedAmph) =
+      _claimable(msg.sender, _vaultId, _cvxTotalRewards, _crvTotalRewards);
     CVX.safeTransferFrom(msg.sender, owner(), _cvxAmountToSend);
     CRV.safeTransferFrom(msg.sender, owner(), _crvAmountToSend);
 
@@ -82,16 +78,21 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
   }
 
   /// @notice Returns the claimable amount of AMPH given a CVX and CRV quantity
+  /// @param _sender the address of the account claiming
+  /// @param _vaultId the vault id that is claiming
   /// @param _cvxTotalRewards the max CVX amount to exchange
   /// @param _crvTotalRewards the max CVR amount to exchange
   /// @return _cvxAmountToSend the amount of CVX the contract will extract
   /// @return _crvAmountToSend the amount of CRV the contract will extract
   /// @return _claimableAmph the amount of AMPH receivable
   function claimable(
+    address _sender,
+    uint96 _vaultId,
     uint256 _cvxTotalRewards,
     uint256 _crvTotalRewards
   ) external view override returns (uint256 _cvxAmountToSend, uint256 _crvAmountToSend, uint256 _claimableAmph) {
-    (_cvxAmountToSend, _crvAmountToSend, _claimableAmph) = _claimable(_cvxTotalRewards, _crvTotalRewards);
+    (_cvxAmountToSend, _crvAmountToSend, _claimableAmph) =
+      _claimable(_sender, _vaultId, _cvxTotalRewards, _crvTotalRewards);
   }
 
   /// @notice Used by governance to change the vault controller
@@ -157,9 +158,13 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
 
   /// @dev Returns the claimable amount of AMPH, also the CVX and CRV the contract needs to extract
   function _claimable(
+    address _sender,
+    uint96 _vaultId,
     uint256 _cvxTotalRewards,
     uint256 _crvTotalRewards
   ) internal view returns (uint256 _cvxAmountToSend, uint256 _crvAmountToSend, uint256 _claimableAmph) {
+    if (_sender != vaultController.vaultAddress(_vaultId)) return (0, 0, 0);
+
     uint256 _amphBalance = AMPH.balanceOf(address(this));
 
     // if both amounts are zero, or AMPH balance is zero simply return all zeros

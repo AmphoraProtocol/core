@@ -42,8 +42,7 @@ contract E2EAMPHClaimer is CommonE2EBase {
     vm.stopPrank();
 
     // try to claim sending 0 tokens
-    vm.prank(address(bobVault));
-    (uint256 _cvx0, uint256 _crv0, uint256 _amph0) = amphClaimer.claimable(0, 0);
+    (uint256 _cvx0, uint256 _crv0, uint256 _amph0) = amphClaimer.claimable(address(bobVault), bobVaultId, 0, 0);
     assert(_cvx0 == 0);
     assert(_crv0 == 0);
     assert(_amph0 == 0);
@@ -56,7 +55,8 @@ contract E2EAMPHClaimer is CommonE2EBase {
     vm.startPrank(address(bobVault));
     cvx.approve(address(amphClaimer), type(uint256).max);
     crv.approve(address(amphClaimer), type(uint256).max);
-    (uint256 _cvx1, uint256 _crv1, uint256 _amph1) = amphClaimer.claimable(1 ether, 1 ether);
+    (uint256 _cvx1, uint256 _crv1, uint256 _amph1) =
+      amphClaimer.claimable(address(bobVault), bobVaultId, 1 ether, 1 ether);
     assert(_cvx1 > 0);
     assert(_crv1 > 0);
     assert(_amph1 > 0);
@@ -74,7 +74,8 @@ contract E2EAMPHClaimer is CommonE2EBase {
     vm.startPrank(address(bobVault));
     uint256 _cvxBalanceBefore = cvx.balanceOf(address(bobVault));
     uint256 _crvBalanceBefore = crv.balanceOf(address(bobVault));
-    (uint256 _cvx2, uint256 _crv2, uint256 _amph2) = amphClaimer.claimable(1 ether, 1 ether);
+    (uint256 _cvx2, uint256 _crv2, uint256 _amph2) =
+      amphClaimer.claimable(address(bobVault), bobVaultId, 1 ether, 1 ether);
     assert(_cvx2 == 0);
     assert(_crv2 == 0);
     assert(_amph2 == 0);

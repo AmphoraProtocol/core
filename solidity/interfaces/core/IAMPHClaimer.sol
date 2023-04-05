@@ -89,6 +89,8 @@ interface IAMPHClaimer {
   ) external returns (uint256 _cvxAmountToSend, uint256 _crvAmountToSend, uint256 _claimedAmph);
 
   function claimable(
+    address _sender,
+    uint96 _vaultId,
     uint256 _cvxTotalRewards,
     uint256 _crvTotalRewards
   ) external view returns (uint256 _cvxAmountToSend, uint256 _crvAmountToSend, uint256 _claimableAmph);

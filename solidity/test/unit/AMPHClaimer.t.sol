@@ -106,7 +106,7 @@ contract UnitAMPHClaimerClaimAMPH is Base {
     vm.mockCall(bobVault, abi.encodeWithSelector(IVault.minter.selector), abi.encode(bob));
 
     (uint256 _cvxAmountToSend, uint256 _crvAmountToSend, uint256 _claimableAmph) =
-      amphClaimer.claimable(_cvxAmount, _crvAmount);
+      amphClaimer.claimable(address(bobVault), 1, _cvxAmount, _crvAmount);
 
     vm.expectEmit(true, true, true, true);
     emit ClaimedAmph(bobVault, _cvxAmountToSend, _crvAmountToSend, _claimableAmph);
@@ -122,7 +122,7 @@ contract UnitAMPHClaimerClaimAMPH is Base {
     vm.mockCall(bobVault, abi.encodeWithSelector(IVault.minter.selector), abi.encode(bob));
 
     (uint256 _cvxAmountToSend, uint256 _crvAmountToSend, uint256 _claimableAmph) =
-      amphClaimer.claimable(_cvxAmount, _crvAmount);
+      amphClaimer.claimable(address(bobVault), 1, _cvxAmount, _crvAmount);
 
     vm.expectCall(
       address(_mockCVX), abi.encodeWithSelector(IERC20.transferFrom.selector, bobVault, deployer, _cvxAmountToSend)
@@ -142,7 +142,8 @@ contract UnitAMPHClaimerClaimable is Base {
     vm.assume(_amphAmount > 0);
     vm.mockCall(address(_mockAMPH), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(_amphAmount));
 
-    (uint256 _cvxAmountToSend, uint256 _crvAmountToSend, uint256 _claimableAmph) = amphClaimer.claimable(0, 0);
+    (uint256 _cvxAmountToSend, uint256 _crvAmountToSend, uint256 _claimableAmph) =
+      amphClaimer.claimable(address(bobVault), 1, 0, 0);
 
     assert(_cvxAmountToSend == 0);
     assert(_crvAmountToSend == 0);
@@ -155,7 +156,7 @@ contract UnitAMPHClaimerClaimable is Base {
     vm.mockCall(address(_mockAMPH), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(0));
 
     (uint256 _cvxAmountToSend, uint256 _crvAmountToSend, uint256 _claimableAmph) =
-      amphClaimer.claimable(_cvxAmount, _crvAmount);
+      amphClaimer.claimable(address(bobVault), 1, _cvxAmount, _crvAmount);
 
     assert(_cvxAmountToSend == 0);
     assert(_crvAmountToSend == 0);
@@ -171,7 +172,7 @@ contract UnitAMPHClaimerClaimable is Base {
     vm.mockCall(address(_mockAMPH), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(type(uint256).max));
 
     (uint256 _cvxAmountToSend, uint256 _crvAmountToSend, uint256 _claimableAmph) =
-      amphClaimer.claimable(_cvxAmount, _crvAmount);
+      amphClaimer.claimable(address(bobVault), 1, _cvxAmount, _crvAmount);
 
     uint256 _cvxAmountToExtract = amphMath.totalToFraction(_cvxAmount, cvxRewardFee);
     uint256 _crvAmountToExtract = amphMath.totalToFraction(_crvAmount, crvRewardFee);
@@ -199,7 +200,8 @@ contract UnitAMPHClaimerClaimable is Base {
 
     vm.mockCall(address(_mockAMPH), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(type(uint256).max));
 
-    (uint256 _cvxAmountToSend, uint256 _crvAmountToSend, uint256 _claimableAmph) = amphClaimer.claimable(_cvxAmount, 0);
+    (uint256 _cvxAmountToSend, uint256 _crvAmountToSend, uint256 _claimableAmph) =
+      amphClaimer.claimable(address(bobVault), 1, _cvxAmount, 0);
 
     uint256 _cvxAmountToExtract = amphMath.totalToFraction(_cvxAmount, cvxRewardFee);
     uint256 _crvAmountToExtract = amphMath.totalToFraction(0, crvRewardFee);
@@ -221,7 +223,8 @@ contract UnitAMPHClaimerClaimable is Base {
 
     vm.mockCall(address(_mockAMPH), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(type(uint256).max));
 
-    (uint256 _cvxAmountToSend, uint256 _crvAmountToSend, uint256 _claimableAmph) = amphClaimer.claimable(0, _crvAmount);
+    (uint256 _cvxAmountToSend, uint256 _crvAmountToSend, uint256 _claimableAmph) =
+      amphClaimer.claimable(address(bobVault), 1, 0, _crvAmount);
 
     uint256 _cvxAmountToExtract = amphMath.totalToFraction(0, cvxRewardFee);
     uint256 _crvAmountToExtract = amphMath.totalToFraction(_crvAmount, crvRewardFee);
@@ -249,7 +252,7 @@ contract UnitAMPHClaimerClaimable is Base {
     vm.mockCall(address(_mockAMPH), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(_amphToPay - 1));
 
     (uint256 _cvxAmountToSend, uint256 _crvAmountToSend, uint256 _claimableAmph) =
-      amphClaimer.claimable(_cvxAmount, _crvAmount);
+      amphClaimer.claimable(address(bobVault), 1, _cvxAmount, _crvAmount);
 
     assert(_cvxAmountToSend == 0);
     assert(_crvAmountToSend == 0);

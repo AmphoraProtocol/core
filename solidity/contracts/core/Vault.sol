@@ -179,7 +179,7 @@ contract Vault is IVault, Context {
       if (address(_amphClaimer) != address(0)) {
         // Approve amounts for it to be taken
         (uint256 _takenCVX, uint256 _takenCRV, uint256 _claimableAmph) =
-          _amphClaimer.claimable(_totalCvxReward, _totalCrvReward);
+          _amphClaimer.claimable(address(this), this.id(), _totalCvxReward, _totalCrvReward);
         if (_claimableAmph != 0) {
           CRV.approve(address(_amphClaimer), _takenCRV);
           CVX.approve(address(_amphClaimer), _takenCVX);
@@ -241,7 +241,7 @@ contract Vault is IVault, Context {
     // if claimer is not set, nothing will happen (and variables are already in zero)
     if (address(_amphClaimer) != address(0)) {
       // claimer is set, proceed
-      (_takenCVX, _takenCRV, _claimableAmph) = _amphClaimer.claimable(_cvxReward, _crvReward);
+      (_takenCVX, _takenCRV, _claimableAmph) = _amphClaimer.claimable(address(this), this.id(), _cvxReward, _crvReward);
       _rewards[_i + 1] = Reward(_amphClaimer.AMPH(), _claimableAmph);
     }
 

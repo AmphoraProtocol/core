@@ -260,7 +260,7 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
   /// @notice function for the vaultController to mint
   /// @param _target whom to mint the USDA to
   /// @param _amount the amount of USDA to mint
-  function vaultControllerMint(address _target, uint256 _amount) external override onlyVaultController {
+  function vaultControllerMint(address _target, uint256 _amount) external override onlyVaultController whenNotPaused {
     // see comments in the deposit function for an explaination of this math
     _gonBalances[_target] = _gonBalances[_target] + _amount * _gonsPerFragment;
     _totalSupply = _totalSupply + _amount;
@@ -285,7 +285,10 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
   /// @notice Allows VaultController to send sUSD from the reserve
   /// @param _target whom to receive the sUSD from reserve
   /// @param _susdAmount the amount of sUSD to send
-  function vaultControllerTransfer(address _target, uint256 _susdAmount) external override onlyVaultController {
+  function vaultControllerTransfer(
+    address _target,
+    uint256 _susdAmount
+  ) external override onlyVaultController whenNotPaused {
     // Account for the susd withdrawn
     reserveAmount -= _susdAmount;
     // ensure transfer success

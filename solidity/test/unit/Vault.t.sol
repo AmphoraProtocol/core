@@ -585,7 +585,7 @@ contract UnitVaultClaimRewards is Base {
 
     vm.mockCall(
       address(mockAmphClaimer),
-      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, 0, 1 ether),
+      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, address(vault), 1, 0, 1 ether),
       abi.encode(0, 0.5 ether, 1 ether)
     );
 
@@ -622,7 +622,7 @@ contract UnitVaultClaimRewards is Base {
 
     vm.mockCall(
       address(mockAmphClaimer),
-      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, 0, 1 ether),
+      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, address(vault), 1, 0, 1 ether),
       abi.encode(0, 0.5 ether, 1 ether)
     );
 
@@ -675,7 +675,7 @@ contract UnitVaultClaimRewards is Base {
 
     vm.mockCall(
       address(mockAmphClaimer),
-      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, 0, 2 ether),
+      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, address(vault), 1, 0, 2 ether),
       abi.encode(0, 0.5 ether, 1 ether)
     );
 
@@ -725,7 +725,7 @@ contract UnitVaultClaimRewards is Base {
 
     vm.mockCall(
       address(mockAmphClaimer),
-      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, 0, 1 ether),
+      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, address(vault), 1, 0, 1 ether),
       abi.encode(0, 0.5 ether, 0)
     );
 
@@ -803,7 +803,7 @@ contract UnitVaultClaimRewards is Base {
 
     vm.mockCall(
       address(mockAmphClaimer),
-      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, 1 ether, 1 ether),
+      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, address(vault), 1, 1 ether, 1 ether),
       abi.encode(0.2 ether, 0.5 ether, 1 ether)
     );
 
@@ -898,7 +898,7 @@ contract UnitVaultClaimableRewards is Base {
 
     vm.mockCall(
       address(mockAmphClaimer),
-      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, 0, 1 ether),
+      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, address(vault), 1, 0, 1 ether),
       abi.encode(0, 0.5 ether, 3 ether)
     );
 
@@ -941,7 +941,7 @@ contract UnitVaultClaimableRewards is Base {
 
     vm.mockCall(
       address(mockAmphClaimer),
-      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, 1 ether, 1 ether),
+      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, address(vault), 1, 1 ether, 1 ether),
       abi.encode(0.2 ether, 0.5 ether, 3 ether)
     );
 

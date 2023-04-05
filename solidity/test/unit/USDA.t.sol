@@ -780,6 +780,14 @@ contract UnitUSDAVaultControllerMint is BaseInit {
     _usda.vaultControllerMint(address(this), _amountToMint);
   }
 
+  function testRevertsIfPaused() public {
+    _usda.pause();
+
+    vm.expectRevert('Pausable: paused');
+    vm.prank(_vaultController);
+    _usda.vaultControllerMint(address(this), _amountToMint);
+  }
+
   function testAddsToTotalSupply(uint56 _amount) public {
     vm.assume(_amount > 0);
     uint256 _totalSupplyBefore = _usda.totalSupply();
@@ -849,6 +857,14 @@ contract UnitUSDAVaultControllerTransfer is BaseInit {
     vm.expectRevert(
       abi.encodeWithSelector(IRoles.Roles_Unauthorized.selector, address(this), _usda.VAULT_CONTROLLER_ROLE())
     );
+    _usda.vaultControllerTransfer(address(this), _amountToTransfer);
+  }
+
+  function testRevertsIfPaused() public {
+    _usda.pause();
+
+    vm.expectRevert('Pausable: paused');
+    vm.prank(_vaultController);
     _usda.vaultControllerTransfer(address(this), _amountToTransfer);
   }
 
