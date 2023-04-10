@@ -27,8 +27,7 @@
     "test": "yarn test:unit && yarn test:e2e",
     "test:e2e": "forge test --match-contract E2E -vvv",
     "test:gas": "forge test --match-contract E2E -vvv --gas-report",
-    "test:unit": "forge test --match-contract Unit -vvv",
-    "typechain": "typechain --target=ethers-v5 --out-dir ./typechain-contracts './out/I*/*.json'"
+    "test:unit": "forge test --match-contract Unit -vvv"
   },
   "lint-staged": {
     "*.{js,css,md,ts,sol}": "forge fmt",
@@ -52,13 +51,11 @@
     "@commitlint/cli": "17.0.3",
     "@commitlint/config-conventional": "17.0.3",
     "@defi-wonderland/crypto-husky-checks": "0.0.0-29a10090",
-    "@typechain/ethers-v5": "10.2.0",
     "cross-env": "7.0.3",
     "husky": "8.0.2",
     "lint-staged": "10",
     "solhint": "3.3.6",
     "solhint-plugin-defi-wonderland": "1.1.0",
-    "sort-package-json": "2.4.1",
-    "typechain": "8.1.1"
+    "sort-package-json": "2.4.1"
   }
 }
