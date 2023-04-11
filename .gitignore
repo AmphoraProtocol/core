@@ -20,5 +20,6 @@ broadcast/*/*/*
 lcov.info
 report
 
-# Typechain files
-typechain-contracts
+# Docs build files
+docs/book
+docs/src/solidity/*

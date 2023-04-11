@@ -23,6 +23,9 @@ optimizer_runs = 20000
 verbosity = 0
 fuzz_runs = 1000
 
+[profile.docs]
+src = './solidity/interfaces/'
+
 [rpc_endpoints]
 mainnet = "${MAINNET_RPC}"
 goerli = "${GOERLI_RPC}"
