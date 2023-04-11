@@ -27,6 +27,41 @@ abstract contract Base is DSTestPlus {
   }
 }
 
+contract UnitWUSDAViewFunctions is Base {
+  function testUnderlying() public {
+    assertEq(usdaToken, wusda.underlying());
+  }
+
+  function testTotalUnderlying() public {
+    assertEq(wusda.totalUnderlying(), (wusda.totalSupply() * usdaTotalSupply) / wusdaMaxSupply);
+  }
+
+  function testBalanceOfUnderlying(address _owner, uint256 _usdaAmount) public {
+    vm.assume(_owner != address(vm));
+    vm.assume(_owner != usdaToken);
+    vm.assume(_owner != address(0));
+    vm.assume(_usdaAmount < usdaTotalSupply);
+    vm.assume(_usdaAmount * usdaTotalSupply >= wusdaMaxSupply);
+
+    vm.mockCall(usdaToken, abi.encodeWithSelector(IERC20.balanceOf.selector, _owner), abi.encode(_usdaAmount));
+    vm.prank(_owner);
+    uint256 _deposited = wusda.deposit(_usdaAmount);
+    assertEq(wusda.balanceOfUnderlying(_owner), (_deposited * usdaTotalSupply) / wusdaMaxSupply);
+  }
+
+  function testUnderlyingToWrapper(uint256 _usdaAmount) public {
+    vm.assume(_usdaAmount < usdaTotalSupply);
+    vm.assume(_usdaAmount * wusdaMaxSupply >= usdaTotalSupply);
+    assertEq(wusda.underlyingToWrapper(_usdaAmount), (_usdaAmount * wusdaMaxSupply / usdaTotalSupply));
+  }
+
+  function testWrapperToUnderlying(uint256 _wusdaAmount) public {
+    vm.assume(_wusdaAmount < wusdaMaxSupply);
+    vm.assume(_wusdaAmount * usdaTotalSupply >= wusdaMaxSupply);
+    assertEq(wusda.wrapperToUnderlying(_wusdaAmount), (_wusdaAmount * usdaTotalSupply / wusdaMaxSupply));
+  }
+}
+
 contract UnitWUSDAMint is Base {
   function testMintAddsToTotalSupply(uint256 _amount) public {
     vm.assume(_amount <= wusdaMaxSupply);
