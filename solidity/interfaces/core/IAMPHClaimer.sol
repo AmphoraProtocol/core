@@ -63,11 +63,11 @@ interface IAMPHClaimer {
 
   function vaultController() external view returns (IVaultController _vaultController);
 
-  function CVX() external view returns (IERC20 _CVX);
+  function CVX() external view returns (IERC20 _cvx);
 
-  function CRV() external view returns (IERC20 _CVX);
+  function CRV() external view returns (IERC20 _crv);
 
-  function AMPH() external view returns (IERC20 _AMPH);
+  function AMPH() external view returns (IERC20 _amph);
 
   function amphPerCvx() external view returns (uint256 _amphPerCvx);
 

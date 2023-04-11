@@ -95,20 +95,20 @@ interface IGovernorCharlieEvents {
 
   // This events are needed so that tally can index the votes and actions
   event ProposalCreated(
-    uint256 id,
-    address proposer,
-    address[] targets,
-    uint256[] values,
-    string[] signatures,
-    bytes[] calldatas,
-    uint256 startBlock,
-    uint256 endBlock,
-    string description
+    uint256 _id,
+    address _proposer,
+    address[] _targets,
+    uint256[] _values,
+    string[] _signatures,
+    bytes[] _calldatas,
+    uint256 _startBlock,
+    uint256 _endBlock,
+    string _description
   );
 
-  event VoteCast(address indexed voter, uint256 proposalId, uint8 support, uint256 votes, string reason);
+  event VoteCast(address indexed _voter, uint256 _proposalId, uint8 _support, uint256 _votes, string _reason);
 
-  event ProposalCanceled(uint256 id);
-  event ProposalQueued(uint256 id, uint256 eta);
-  event ProposalExecuted(uint256 id);
+  event ProposalCanceled(uint256 _id);
+  event ProposalQueued(uint256 _id, uint256 _eta);
+  event ProposalExecuted(uint256 _id);
 }

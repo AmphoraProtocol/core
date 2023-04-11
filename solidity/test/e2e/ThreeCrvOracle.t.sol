@@ -14,11 +14,11 @@ interface ICToken {
 }
 
 contract E2EThreeCurveOracle is CommonE2EBase {
+  uint256 public constant POINT_ONE_PERCENT = 0.001e18;
+
   ICToken public cUSD = ICToken(0x39AA39c021dfbaE8faC545936693aC917d5E7563);
   ICToken public cDAI = ICToken(0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643);
   IThreeCRVForTest public threeCrv;
-
-  uint256 public constant POINT_ONE_PERCENT = 0.001e18;
 
   function setUp() public override {
     super.setUp();

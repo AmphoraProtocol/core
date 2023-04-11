@@ -1,3 +1,4 @@
+// solhint-disable max-states-count
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.4 <0.9.0;
 
@@ -779,7 +780,7 @@ contract UnitVaultControllerModifyTotalDeposited is VaultBase {
   }
 
   function testRevertNotValidToken(address _token) public {
-    vm.assume(_token != WETH_ADDRESS);
+    vm.assume(_token != WETH_ADDRESS && _token != address(usdtLp));
 
     vm.prank(vaultController.vaultAddress(_vaultId));
     vm.expectRevert(IVaultController.VaultController_TokenNotRegistered.selector);

@@ -20,7 +20,9 @@ abstract contract Base is DSTestPlus {
     vm.mockCall(usdaToken, abi.encodeWithSelector(IERC20.transfer.selector), abi.encode(true));
     vm.mockCall(usdaToken, abi.encodeWithSelector(IERC20.totalSupply.selector), abi.encode(usdaTotalSupply));
 
+    // solhint-disable-next-line reentrancy
     wusda = new WUSDA(usdaToken, name, symbol);
+    // solhint-disable-next-line reentrancy
     wusdaMaxSupply = wusda.MAX_wUSDA_SUPPLY();
   }
 }
@@ -218,7 +220,6 @@ contract UnitWUSDADeposit is Base {
     vm.mockCall(usdaToken, abi.encodeWithSelector(IERC20.totalSupply.selector), abi.encode(_usdaTotalSupply));
     uint256 _maxUSDAAmount = (_usdaTotalSupply * wusdaMaxSupply) / _usdaTotalSupply;
     vm.assume(_usdaAmount <= _maxUSDAAmount);
-    uint256 _expectedAmount = (_usdaAmount * wusdaMaxSupply) / _usdaTotalSupply;
     vm.expectCall(
       usdaToken, abi.encodeWithSelector(IERC20.transferFrom.selector, address(this), address(wusda), _usdaAmount)
     );
@@ -254,7 +255,6 @@ contract UnitWUSDADepositFor is Base {
     vm.mockCall(usdaToken, abi.encodeWithSelector(IERC20.totalSupply.selector), abi.encode(_usdaTotalSupply));
     uint256 _maxUSDAAmount = (_usdaTotalSupply * wusdaMaxSupply) / _usdaTotalSupply;
     vm.assume(_usdaAmount <= _maxUSDAAmount);
-    uint256 _expectedAmount = (_usdaAmount * wusdaMaxSupply) / _usdaTotalSupply;
     vm.expectCall(
       usdaToken, abi.encodeWithSelector(IERC20.transferFrom.selector, address(this), address(wusda), _usdaAmount)
     );

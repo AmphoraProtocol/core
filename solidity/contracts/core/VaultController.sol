@@ -31,6 +31,7 @@ contract VaultController is
   // The convex booster contract
   IBooster public immutable BOOSTER = IBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
   // TODO: Change to immutable, can't initialize it in initializer
+  // solhint-disable-next-line defi-wonderland/wonder-var-name-mixedcase
   IVaultDeployer public VAULT_DEPLOYER;
 
   // mapping of vault id to vault address

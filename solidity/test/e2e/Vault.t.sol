@@ -168,7 +168,7 @@ contract E2EVault is CommonE2EBase {
     // check that amph was not claimed
     IVault.Reward[] memory _rewardsInZero = bobVault.claimableRewards(address(usdtStableLP));
     for (uint256 _i; _i < _rewardsInZero.length; _i++) {
-      if (address(_rewardsInZero[_i].token) == address(amphToken)) revert(); // if finds amph rewards trigger a revert
+      if (address(_rewardsInZero[_i].token) == address(amphToken)) revert('fail: amph was claimed'); // if finds amph rewards trigger a revert
     }
 
     uint256 _balanceBeforeCRV = IERC20(CRV_ADDRESS).balanceOf(bob);
