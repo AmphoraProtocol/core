@@ -47,10 +47,10 @@ contract AnchoredViewRelay is OracleRelay {
 
   /// @notice compares the main value (chainlink) to the anchor value (uniswap v3)
   /// @notice the two prices must closely match +-buffer, or it will revert
-  /// @return _value current value of oracle
-  function _getLastSecond() private view returns (uint256 _value) {
+  /// @return _mainValue current value of oracle
+  function _getLastSecond() private view returns (uint256 _mainValue) {
     // get the main price
-    uint256 _mainValue = mainRelay.currentValue();
+    _mainValue = mainRelay.currentValue();
     require(_mainValue > 0, 'invalid oracle value');
 
     uint256 _anchorPrice = anchorRelay.currentValue();
@@ -66,8 +66,5 @@ contract AnchoredViewRelay is OracleRelay {
     // ensure the anchor price is within bounds
     require(_mainValue < _upperBounds, 'anchor too low');
     require(_mainValue > _lowerBounds, 'anchor too high');
-
-    // return _mainValue
-    return _mainValue;
   }
 }

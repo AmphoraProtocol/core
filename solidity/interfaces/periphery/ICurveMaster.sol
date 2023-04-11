@@ -22,7 +22,7 @@ interface ICurveMaster {
 
   function getValueAt(address _tokenAddress, int256 _xValue) external view returns (int256 _value);
 
-  function curves(address _curveAddress) external view returns (address _curve);
+  function curves(address _tokenAddress) external view returns (address _curve);
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC
