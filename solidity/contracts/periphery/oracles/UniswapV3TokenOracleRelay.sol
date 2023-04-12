@@ -5,10 +5,10 @@ import {IOracleRelay, OracleRelay} from '@contracts/periphery/oracles/OracleRela
 import {IUniswapV3PoolDerivedState} from '@uniswap/v3-core/contracts/interfaces/pool/IUniswapV3PoolDerivedState.sol';
 import {TickMath} from '@uniswap/v3-core/contracts/libraries/TickMath.sol';
 
-/// @title Oracle that wraps a univ3 pool
-/// @notice This oracle is for tokens that do not have a stable Uniswap V3 pair against sUSD
-/// if QUOTE_TOKEN_IS_TOKEN0 == true, then the reciprocal is returned
-/// quote_token refers to the token we are comparing to, so for an Aave price in ETH, Aave is the target and Eth is the quote
+/// @notice Oracle that wraps a univ3 pool
+/// @dev This oracle is for tokens that do not have a stable Uniswap V3 pair against sUSD
+///      If QUOTE_TOKEN_IS_TOKEN0 == true, then the reciprocal is returned
+///      quote_token refers to the token we are comparing to, so for an Aave price in ETH, Aave is the target and Eth is the quote
 contract UniswapV3TokenOracleRelay is OracleRelay {
   /// @notice Thrown when the tick time diff fails
   error UniswapV3OracleRelay_TickTimeDiffTooLarge();
@@ -23,12 +23,12 @@ contract UniswapV3TokenOracleRelay is OracleRelay {
   uint256 public immutable MUL;
   uint256 public immutable DIV;
 
-  /// @notice all values set at construction time
-  /// @param _lookback how many seconds to twap for
-  /// @param _poolAddress address of chainlink feed
-  /// @param _quoteTokenIsToken0 true if eth is token 0, or false if eth is token 1
-  /// @param _mul numerator of scalar
-  /// @param _div denominator of scalar
+  /// @notice All values set at construction time
+  /// @param _lookback How many seconds to twap for
+  /// @param _poolAddress The address of chainlink feed
+  /// @param _quoteTokenIsToken0 Boolean, true if eth is token 0, or false if eth is token 1
+  /// @param _mul The numerator of scalar
+  /// @param _div The denominator of scalar
   constructor(
     uint32 _lookback,
     address _poolAddress,
@@ -43,9 +43,9 @@ contract UniswapV3TokenOracleRelay is OracleRelay {
     POOL = IUniswapV3PoolDerivedState(_poolAddress);
   }
 
-  /// @notice the current reported value of the oracle
-  /// @return _usdPrice the price in USD terms
-  /// @dev implementation in _getLastSeconds
+  /// @notice Returns the current reported value of the oracle
+  /// @dev Implementation in _getLastSeconds
+  /// @return _usdPrice The price in USD terms
   function currentValue() external view override returns (uint256 _usdPrice) {
     uint256 _priceInEth = _getLastSeconds(LOOKBACK);
 
@@ -55,8 +55,9 @@ contract UniswapV3TokenOracleRelay is OracleRelay {
     return (_ethPrice * _priceInEth) / 1e18;
   }
 
-  /// @notice returns last second value of the oracle
-  /// @return _price last second value of the oracle
+  /// @notice Returns last second value of the oracle
+  /// @param _tickTimeDifference How many seconds to twap for
+  /// @return _price The last second value of the oracle
   function _getLastSeconds(uint32 _tickTimeDifference) private view returns (uint256 _price) {
     int56[] memory _tickCumulatives;
     uint32[] memory _input = new uint32[](2);

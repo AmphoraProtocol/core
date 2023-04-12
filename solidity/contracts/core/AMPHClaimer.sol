@@ -8,26 +8,32 @@ import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
 
-/// @title AMPHClaimer contract, used to exchange CVX and CRV at a fixed rate for AMPH
+/// @notice AMPHClaimer contract, used to exchange CVX and CRV at a fixed rate for AMPH
 contract AMPHClaimer is IAMPHClaimer, Ownable {
   using SafeERC20 for IERC20;
 
+  /// @dev The CVX token
   IERC20 public immutable CVX;
+
+  /// @dev The CRV token
   IERC20 public immutable CRV;
+
+  /// @dev The AMPH token
   IERC20 public immutable AMPH;
 
-  /// @dev how much AMPH you will receive per 1 CVX (1e18)
+  /// @dev How much AMPH you will receive per 1 CVX (1e18)
   uint256 public amphPerCvx;
 
-  /// @dev how much AMPH you will receive per 1 CRV (1e18)
+  /// @dev How much AMPH you will receive per 1 CRV (1e18)
   uint256 public amphPerCrv;
 
-  /// @dev percentage of rewards taken in CVX (1e18 == 100%)
+  /// @dev Percentage of rewards taken in CVX (1e18 == 100%)
   uint256 public cvxRewardFee;
 
-  /// @dev percentage of rewards taken in CRV (1e18 == 100%)
+  /// @dev Percentage of rewards taken in CRV (1e18 == 100%)
   uint256 public crvRewardFee;
 
+  /// @dev The vault controller
   IVaultController public vaultController;
 
   constructor(
@@ -53,13 +59,13 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
   }
 
   /// @notice Claims an amount of AMPH given a CVX and CRV quantity
-  /// @param _vaultId the vault id that is claiming
-  /// @param _cvxTotalRewards the max CVX amount to exchange
-  /// @param _crvTotalRewards the max CVR amount to exchange
-  /// @param _receiver the receiver of the AMPH
-  /// @return _cvxAmountToSend the amount of CVX the contract extracted
-  /// @return _crvAmountToSend the amount of CRV the contract extracted
-  /// @return _claimedAmph the amount of AMPH received
+  /// @param _vaultId The vault id that is claiming
+  /// @param _cvxTotalRewards The max CVX amount to exchange
+  /// @param _crvTotalRewards The max CVR amount to exchange
+  /// @param _receiver The receiver of the AMPH
+  /// @return _cvxAmountToSend The amount of CVX the contract extracted
+  /// @return _crvAmountToSend The amount of CRV the contract extracted
+  /// @return _claimedAmph The amount of AMPH received
   function claimAmph(
     uint96 _vaultId,
     uint256 _cvxTotalRewards,
@@ -78,13 +84,13 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
   }
 
   /// @notice Returns the claimable amount of AMPH given a CVX and CRV quantity
-  /// @param _sender the address of the account claiming
-  /// @param _vaultId the vault id that is claiming
-  /// @param _cvxTotalRewards the max CVX amount to exchange
-  /// @param _crvTotalRewards the max CVR amount to exchange
-  /// @return _cvxAmountToSend the amount of CVX the contract will extract
-  /// @return _crvAmountToSend the amount of CRV the contract will extract
-  /// @return _claimableAmph the amount of AMPH receivable
+  /// @param _sender The address of the account claiming
+  /// @param _vaultId The vault id that is claiming
+  /// @param _cvxTotalRewards The max CVX amount to exchange
+  /// @param _crvTotalRewards The max CVR amount to exchange
+  /// @return _cvxAmountToSend The amount of CVX the contract will extract
+  /// @return _crvAmountToSend The amount of CRV the contract will extract
+  /// @return _claimableAmph The amount of AMPH receivable
   function claimable(
     address _sender,
     uint96 _vaultId,
@@ -96,7 +102,7 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
   }
 
   /// @notice Used by governance to change the vault controller
-  /// @param _newVaultController the new vault controller
+  /// @param _newVaultController The new vault controller
   function changeVaultController(address _newVaultController) external override onlyOwner {
     vaultController = IVaultController(_newVaultController);
 
@@ -104,7 +110,7 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
   }
 
   /// @notice Used by governance to change the CVX per AMPH rate
-  /// @param _newRate the new rate
+  /// @param _newRate The new rate
   function changeCvxRate(uint256 _newRate) external override onlyOwner {
     amphPerCvx = _newRate;
 
@@ -112,7 +118,7 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
   }
 
   /// @notice Used by governance to change the CRV per AMPH rate
-  /// @param _newRate the new rate
+  /// @param _newRate The new rate
   function changeCrvRate(uint256 _newRate) external override onlyOwner {
     amphPerCrv = _newRate;
 
@@ -120,8 +126,8 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
   }
 
   /// @notice Used by governance to recover tokens from the contract
-  /// @param _token token to recover
-  /// @param _amount amount to recover
+  /// @param _token The token to recover
+  /// @param _amount The amount to recover
   function recoverDust(address _token, uint256 _amount) external override onlyOwner {
     IERC20(_token).transfer(owner(), _amount);
 
@@ -129,7 +135,7 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
   }
 
   /// @notice Used by governance to change the fee taken from the CVX reward
-  /// @param _newFee the new reward fee
+  /// @param _newFee The new reward fee
   function changeCvxRewardFee(uint256 _newFee) external override onlyOwner {
     cvxRewardFee = _newFee;
 
@@ -137,7 +143,7 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
   }
 
   /// @notice Used by governance to change the fee taken from the CRV reward
-  /// @param _newFee the new reward fee
+  /// @param _newFee The new reward fee
   function changeCrvRewardFee(uint256 _newFee) external override onlyOwner {
     crvRewardFee = _newFee;
 

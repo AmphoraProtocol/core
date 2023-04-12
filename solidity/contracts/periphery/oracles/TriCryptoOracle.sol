@@ -7,6 +7,7 @@ import {ICurvePool} from '@interfaces/utils/ICurvePool.sol';
 import {Math} from '@openzeppelin/contracts/utils/math/Math.sol';
 import {FixedPointMathLib} from 'solady/utils/FixedPointMathLib.sol';
 
+/// @notice Oracle Relay for the TriCrypto pool (USDT/WBTC/WETH)
 contract TriCryptoOracle is OracleRelay {
   address public constant POOL = 0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
   AggregatorInterface public constant BTC_FEED = AggregatorInterface(0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c);
@@ -22,16 +23,16 @@ contract TriCryptoOracle is OracleRelay {
 
   constructor() OracleRelay(OracleType.Chainlink) {}
 
-  /// @notice the current reported value of the oracle
-  /// @return _value the current value
-  /// @dev implementation in getLastSecond
+  /// @notice The current reported value of the oracle
+  /// @dev Implementation in _get
+  /// @return _value The current value
   function currentValue() external view override returns (uint256 _value) {
     _value = _get();
   }
 
   /// @notice Calculated the price of 1 LP token
-  /// @return _maxPrice the current value
   /// @dev This function comes from the implementation in vyper that is on the bottom
+  /// @return _maxPrice The current value
   function _get() internal view returns (uint256 _maxPrice) {
     uint256 _vp = TRI_CRYPTO.get_virtual_price();
 

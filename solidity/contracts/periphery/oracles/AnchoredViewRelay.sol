@@ -3,8 +3,7 @@ pragma solidity ^0.8.9;
 
 import {IOracleRelay, OracleRelay} from '@contracts/periphery/oracles/OracleRelay.sol';
 
-/// @title implementation of compounds' AnchoredView
-/// @notice using a main relay and an anchor relay, the AnchoredView
+/// @notice Implementation of compounds' AnchoredView, using a main relay and an anchor relay, the AnchoredView
 /// ensures that the main relay's price is within some amount of the anchor relay price
 /// if not, the call reverts, effectively disabling the oracle & any actions which require it
 contract AnchoredViewRelay is OracleRelay {
@@ -17,11 +16,11 @@ contract AnchoredViewRelay is OracleRelay {
   uint256 public widthNumerator;
   uint256 public widthDenominator;
 
-  /// @notice all values set at construction time
-  /// @param _anchorAddress address of OracleRelay to use as anchor
-  /// @param _mainAddress address of OracleRelay to use as main
-  /// @param _widthNumerator numerator of the allowable deviation width
-  /// @param _widthDenominator denominator of the allowable deviation width
+  /// @notice All values set at construction time
+  /// @param _anchorAddress The address of OracleRelay to use as anchor
+  /// @param _mainAddress The address of OracleRelay to use as main
+  /// @param _widthNumerator The numerator of the allowable deviation width
+  /// @param _widthDenominator The denominator of the allowable deviation width
   constructor(
     address _anchorAddress,
     address _mainAddress,
@@ -38,16 +37,16 @@ contract AnchoredViewRelay is OracleRelay {
     widthDenominator = _widthDenominator;
   }
 
-  /// @notice returns current value of oracle
-  /// @return _value current value of oracle
-  /// @dev implementation in getLastSecond
+  /// @notice Returns current value of oracle
+  /// @dev Implementation in getLastSecond
+  /// @return _value The current value of oracle
   function currentValue() external view override returns (uint256 _value) {
     return _getLastSecond();
   }
 
-  /// @notice compares the main value (chainlink) to the anchor value (uniswap v3)
-  /// @notice the two prices must closely match +-buffer, or it will revert
-  /// @return _mainValue current value of oracle
+  /// @notice Compares the main value (chainlink) to the anchor value (uniswap v3)
+  /// @dev The two prices must closely match +-buffer, or it will revert
+  /// @return _mainValue The current value of oracle
   function _getLastSecond() private view returns (uint256 _mainValue) {
     // get the main price
     _mainValue = mainRelay.currentValue();

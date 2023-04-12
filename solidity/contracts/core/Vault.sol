@@ -14,76 +14,76 @@ import {Context} from '@openzeppelin/contracts/utils/Context.sol';
 import {SafeERC20Upgradeable} from '@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol';
 import {IERC20Upgradeable} from '@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol';
 
-/// @title Vault
-/// @notice our implentation of maker-vault like vault
-/// major differences:
+/// @notice Vault contract, our implementation of maker-vault like vault
+/// @dev Major differences:
 /// 1. multi-collateral
 /// 2. generate interest in USDA
 contract Vault is IVault, Context {
   using SafeERC20Upgradeable for IERC20;
 
+  /// @dev The CVX token
   IERC20 public constant CVX = IERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
+
+  /// @dev The CRV token
   IERC20 public constant CRV = IERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
 
+  /// @dev The vault controller
   IVaultController public immutable CONTROLLER;
 
-  /// @notice Metadata of vault, aka the id & the minter's address
+  /// @dev Metadata of vault, aka the id & the minter's address
   VaultInfo public vaultInfo;
 
-  /// @notice this is the unscaled liability of the vault.
-  /// the number is meaningless on its own, and must be combined with the factor taken from
+  /// @dev This is the unscaled liability of the vault.
+  /// The number is meaningless on its own, and must be combined with the factor taken from
   /// the vaultController in order to find the true liabilitiy
   uint256 public baseLiability;
 
   mapping(address => uint256) public balances;
 
-  /// @notice checks if _msgSender is the controller of the vault
+  /// @notice Checks if _msgSender is the controller of the vault
   modifier onlyVaultController() {
     if (_msgSender() != address(CONTROLLER)) revert Vault_NotVaultController();
     _;
   }
 
-  /// @notice checks if _msgSender is the minter of the vault
+  /// @notice Checks if _msgSender is the minter of the vault
   modifier onlyMinter() {
     if (_msgSender() != vaultInfo.minter) revert Vault_NotMinter();
     _;
   }
 
-  /// @notice must be called by VaultController, else it will not be registered as a vault in system
-  /// @param _id unique id of the vault, ever increasing and tracked by VaultController
-  /// @param _minter address of the person who created this vault
-  /// @param _controllerAddress address of the VaultController
+  /// @notice Must be called by VaultController, else it will not be registered as a vault in system
+  /// @param _id Unique id of the vault, ever increasing and tracked by VaultController
+  /// @param _minter The address of the person who created this vault
+  /// @param _controllerAddress The address of the VaultController
   constructor(uint96 _id, address _minter, address _controllerAddress) {
     vaultInfo = VaultInfo(_id, _minter);
     CONTROLLER = IVaultController(_controllerAddress);
   }
 
-  /// @notice minter of the vault
-  /// @return _minter address of minter
+  /// @notice Returns the minter of the vault
+  /// @return _minter The address of minter
   function minter() external view override returns (address _minter) {
     return vaultInfo.minter;
   }
 
-  /// @notice id of the vault
-  /// @return _id address of minter
+  /// @notice Returns the id of the vault
+  /// @return _id The id of the vault
   function id() external view override returns (uint96 _id) {
     return vaultInfo.id;
   }
 
-  /// @notice get vaults balance of an erc20 token
-  /// @param _token address of the erc20 token
-  /// @return _balance the token balance
+  /// @notice Returns the vault's balance of an erc20 token
+  /// @param _token The address of the erc20 token
+  /// @return _balance The token balance
   function tokenBalance(address _token) external view override returns (uint256 _balance) {
     return balances[_token];
   }
 
-  /**
-   * @notice Used to deposit a token to the vault
-   * @dev    Deposits and stakes on convex if token is of type CurveLP
-   *
-   * @param _token The address of the token to deposit
-   * @param _amount The amount of the token to deposit
-   */
+  /// @notice Used to deposit a token to the vault
+  /// @dev    Deposits and stakes on convex if token is of type CurveLP
+  /// @param _token The address of the token to deposit
+  /// @param _amount The amount of the token to deposit
   function depositERC20(address _token, uint256 _amount) external override onlyMinter {
     if (CONTROLLER.tokenId(_token) == 0) revert Vault_TokenNotRegistered();
     if (_amount == 0) revert Vault_AmountZero();
@@ -101,9 +101,8 @@ contract Vault is IVault, Context {
 
   /// @notice Withdraws an erc20 token from the vault
   /// @dev    This can only be called by the minter
-  /// @dev    The withdraw will be denied if ones vault would become insolvent
-  /// @dev    If the withdraw token is of CurveLP then unstake and withdraw directly to user
-  ///
+  ///         The withdraw will be denied if ones vault would become insolvent
+  ///         If the withdraw token is of CurveLP then unstake and withdraw directly to user
   /// @param _tokenAddress The address of erc20 token
   /// @param _amount The amount of erc20 token to withdraw
   function withdrawERC20(address _tokenAddress, uint256 _amount) external override onlyMinter {
@@ -124,7 +123,7 @@ contract Vault is IVault, Context {
     emit Withdraw(_tokenAddress, _amount);
   }
 
-  /// @notice Claims avaiable rewards from multiple tokens
+  /// @notice Claims available rewards from multiple tokens
   /// @dev    Transfers a percentage of the crv and cvx rewards to claim AMPH tokens
   /// @param _tokenAddresses The addresses of the erc20 tokens
   function claimRewards(address[] memory _tokenAddresses) external override onlyMinter {
@@ -250,8 +249,8 @@ contract Vault is IVault, Context {
   }
 
   /// @notice Recovers dust from vault
-  /// this can only be called by the minter
-  /// @param _tokenAddress address of erc20 token
+  /// @dev This can only be called by the minter
+  /// @param _tokenAddress The address of erc20 token
   function recoverDust(address _tokenAddress) external override onlyMinter {
     if (CONTROLLER.tokenId(_tokenAddress) == 0) revert Vault_TokenNotRegistered();
     IERC20Upgradeable _token = IERC20Upgradeable(_tokenAddress);
@@ -264,20 +263,20 @@ contract Vault is IVault, Context {
     emit Recover(_tokenAddress, _dust);
   }
 
-  /// @notice function used by the VaultController to transfer tokens
-  /// callable by the VaultController only
-  /// @param _token token to transfer
-  /// @param _to person to send the coins to
-  /// @param _amount amount of coins to move
+  /// @notice Function used by the VaultController to transfer tokens
+  /// @dev Callable by the VaultController only
+  /// @param _token The token to transfer
+  /// @param _to The address to send the tokens to
+  /// @param _amount The amount of tokens to move
   function controllerTransfer(address _token, address _to, uint256 _amount) external override onlyVaultController {
     SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(_token), _to, _amount);
     balances[_token] -= _amount;
   }
 
-  /// @notice function used by the VaultController to withdraw from convex
-  /// callable by the VaultController only
-  /// @param _rewardPool pool to withdraw
-  /// @param _amount amount of coins to withdraw
+  /// @notice Function used by the VaultController to withdraw from convex
+  /// @dev Callable by the VaultController only
+  /// @param _rewardPool The pool to withdraw
+  /// @param _amount The amount of tokens to withdraw
   function controllerWithdrawAndUnwrap(
     IBaseRewardPool _rewardPool,
     uint256 _amount
@@ -285,11 +284,11 @@ contract Vault is IVault, Context {
     if (!_rewardPool.withdrawAndUnwrap(_amount, false)) revert Vault_WithdrawAndUnstakeOnConvexFailed();
   }
 
-  /// @notice function used by the VaultController to reduce a vault's liability
-  /// callable by the VaultController only
-  /// @param _increase true to increase, false to decrease
-  /// @param _baseAmount change in base liability
-  /// @return _newLiability the new liability
+  /// @notice Function used by the VaultController to reduce a vault's liability
+  /// @dev Callable by the VaultController only
+  /// @param _increase True to increase, false to decrease
+  /// @param _baseAmount The change in base liability
+  /// @return _newLiability The new liability
   function modifyLiability(
     bool _increase,
     uint256 _baseAmount

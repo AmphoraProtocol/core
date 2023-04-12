@@ -410,11 +410,11 @@ contract GovernorCharlie is IGovernorCharlie {
 
   /**
    * @notice Gets actions of a proposal
-   * @param _proposalId the id of the proposal
-   * @return _targets proposal targets
-   * @return _values proposal values
-   * @return _signatures proposal signatures
-   * @return _calldatas proposal calldatae
+   * @param _proposalId The id of the proposal
+   * @return _targets The proposal targets
+   * @return _values The proposal values
+   * @return _signatures The proposal signatures
+   * @return _calldatas The proposal calldata
    */
   function getActions(uint256 _proposalId)
     external
@@ -433,7 +433,7 @@ contract GovernorCharlie is IGovernorCharlie {
 
   /**
    * @notice Returns the proposal
-   * @param _proposalId the id of proposal
+   * @param _proposalId The id of proposal
    * @return _proposal The proposal
    */
   function getProposal(uint256 _proposalId) external view returns (Proposal memory _proposal) {
@@ -442,7 +442,7 @@ contract GovernorCharlie is IGovernorCharlie {
 
   /**
    * @notice Gets the receipt for a voter on a given proposal
-   * @param _proposalId the id of proposal
+   * @param _proposalId The id of proposal
    * @param _voter The address of the voter
    * @return _votingReceipt The voting receipt
    */
@@ -502,7 +502,7 @@ contract GovernorCharlie is IGovernorCharlie {
 
   /**
    * @notice Cast a vote for a proposal by signature
-   * @dev external override function that accepts EIP-712 signatures for voting on proposals.
+   * @dev External override function that accepts EIP-712 signatures for voting on proposals.
    */
   function castVoteBySig(uint256 _proposalId, uint8 _support, uint8 _v, bytes32 _r, bytes32 _s) external override {
     bytes32 _domainSeparator =
@@ -562,7 +562,7 @@ contract GovernorCharlie is IGovernorCharlie {
 
   /**
    * @notice Governance function for setting the governance token
-   * @param  _token new token addr
+   * @param  _token The new token address
    */
   function setNewToken(address _token) external onlyGov {
     amph = IAMPH(_token);
@@ -570,7 +570,7 @@ contract GovernorCharlie is IGovernorCharlie {
 
   /**
    * @notice Governance function for setting the max whitelist period
-   * @param  _second how many seconds to whitelist for
+   * @param  _second How many seconds to whitelist for
    */
   function setMaxWhitelistPeriod(uint256 _second) external onlyGov {
     maxWhitelistPeriod = _second;
@@ -600,7 +600,7 @@ contract GovernorCharlie is IGovernorCharlie {
 
   /**
    * @notice Governance function for setting the voting delay
-   * @param _newVotingDelay new voting delay, in blocks
+   * @param _newVotingDelay The new voting delay, in blocks
    */
   function setVotingDelay(uint256 _newVotingDelay) external override onlyGov {
     uint256 _oldVotingDelay = votingDelay;
@@ -611,7 +611,7 @@ contract GovernorCharlie is IGovernorCharlie {
 
   /**
    * @notice Governance function for setting the voting period
-   * @param _newVotingPeriod new voting period, in blocks
+   * @param _newVotingPeriod The new voting period, in blocks
    */
   function setVotingPeriod(uint256 _newVotingPeriod) external override onlyGov {
     uint256 _oldVotingPeriod = votingPeriod;
@@ -622,7 +622,7 @@ contract GovernorCharlie is IGovernorCharlie {
 
   /**
    * @notice Governance function for setting the emergency voting period
-   * @param _newEmergencyVotingPeriod new voting period, in blocks
+   * @param _newEmergencyVotingPeriod The new voting period, in blocks
    */
   function setEmergencyVotingPeriod(uint256 _newEmergencyVotingPeriod) external override onlyGov {
     uint256 _oldEmergencyVotingPeriod = emergencyVotingPeriod;
@@ -633,7 +633,7 @@ contract GovernorCharlie is IGovernorCharlie {
 
   /**
    * @notice Governance function for setting the proposal threshold
-   * @param _newProposalThreshold new proposal threshold
+   * @param _newProposalThreshold The new proposal threshold
    */
   function setProposalThreshold(uint256 _newProposalThreshold) external override onlyGov {
     uint256 _oldProposalThreshold = proposalThreshold;
@@ -644,7 +644,7 @@ contract GovernorCharlie is IGovernorCharlie {
 
   /**
    * @notice Governance function for setting the quorum
-   * @param _newQuorumVotes new proposal quorum
+   * @param _newQuorumVotes The new proposal quorum
    */
   function setQuorumVotes(uint256 _newQuorumVotes) external override onlyGov {
     uint256 _oldQuorumVotes = quorumVotes;
@@ -655,7 +655,7 @@ contract GovernorCharlie is IGovernorCharlie {
 
   /**
    * @notice Governance function for setting the emergency quorum
-   * @param _newEmergencyQuorumVotes new proposal quorum
+   * @param _newEmergencyQuorumVotes The new proposal quorum
    */
   function setEmergencyQuorumVotes(uint256 _newEmergencyQuorumVotes) external override onlyGov {
     uint256 _oldEmergencyQuorumVotes = emergencyQuorumVotes;
@@ -690,7 +690,7 @@ contract GovernorCharlie is IGovernorCharlie {
 
   /**
    * @notice Governance function for setting the optimistic voting delay
-   * @param _newOptimisticVotingDelay new optimistic voting delay, in blocks
+   * @param _newOptimisticVotingDelay The new optimistic voting delay, in blocks
    */
   function setOptimisticDelay(uint256 _newOptimisticVotingDelay) external override onlyGov {
     uint256 _oldOptimisticVotingDelay = optimisticVotingDelay;
@@ -701,7 +701,7 @@ contract GovernorCharlie is IGovernorCharlie {
 
   /**
    * @notice Governance function for setting the optimistic quorum
-   * @param _newOptimisticQuorumVotes new optimistic quorum votes, in blocks
+   * @param _newOptimisticQuorumVotes The new optimistic quorum votes, in blocks
    */
   function setOptimisticQuorumVotes(uint256 _newOptimisticQuorumVotes) external override onlyGov {
     uint256 _oldOptimisticQuorumVotes = optimisticQuorumVotes;
@@ -710,10 +710,14 @@ contract GovernorCharlie is IGovernorCharlie {
     emit OptimisticQuorumVotesSet(_oldOptimisticQuorumVotes, optimisticQuorumVotes);
   }
 
+  /// @notice Returns the timelock address
+  /// @param _timelock The timelock address
   function timelock() external view override returns (address _timelock) {
     _timelock = address(this);
   }
 
+  /// @notice Returns the proposal time lock delay
+  /// @return _delay The proposal time lock delay
   function delay() external view override returns (uint256 _delay) {
     _delay = proposalTimelockDelay;
   }

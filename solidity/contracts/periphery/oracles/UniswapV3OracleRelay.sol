@@ -5,9 +5,9 @@ import {IOracleRelay, OracleRelay} from '@contracts/periphery/oracles/OracleRela
 import {IUniswapV3PoolDerivedState} from '@uniswap/v3-core/contracts/interfaces/pool/IUniswapV3PoolDerivedState.sol';
 import {TickMath} from '@uniswap/v3-core/contracts/libraries/TickMath.sol';
 
-/// @title Oracle that wraps a univ3 pool
-/// @notice The oracle returns (univ3) * mul / div
-/// if QUOTE_TOKEN_IS_TOKEN0 == true, then the reciprocal is returned
+/// @notice Oracle that wraps a univ3 pool
+/// @dev The oracle returns (univ3) * mul / div
+///      if QUOTE_TOKEN_IS_TOKEN0 == true, then the reciprocal is returned
 contract UniswapV3OracleRelay is OracleRelay {
   /// @notice Thrown when the tick time diff fails
   error UniswapV3OracleRelay_TickTimeDiffTooLarge();
@@ -19,12 +19,12 @@ contract UniswapV3OracleRelay is OracleRelay {
   uint256 public immutable MUL;
   uint256 public immutable DIV;
 
-  /// @notice all values set at construction time
-  /// @param _lookback how many seconds to twap for
-  /// @param  _poolAddress address of chainlink feed
-  /// @param _quoteTokenIsToken0 marker for which token to use as quote/base in calculation
-  /// @param _mul numerator of scalar
-  /// @param _div denominator of scalar
+  /// @notice All values set at construction time
+  /// @param _lookback How many seconds to twap for
+  /// @param  _poolAddress The address of chainlink feed
+  /// @param _quoteTokenIsToken0 The marker for which token to use as quote/base in calculation
+  /// @param _mul The numerator of scalar
+  /// @param _div The denominator of scalar
   constructor(
     uint32 _lookback,
     address _poolAddress,
@@ -39,15 +39,16 @@ contract UniswapV3OracleRelay is OracleRelay {
     POOL = IUniswapV3PoolDerivedState(_poolAddress);
   }
 
-  /// @notice the current reported value of the oracle
-  /// @return _value the current value
-  /// @dev implementation in getLastSecond
+  /// @notice Returns the current reported value of the oracle
+  /// @dev Implementation in _getLastSecond
+  /// @return _value The current value
   function currentValue() external view override returns (uint256 _value) {
     return _getLastSeconds(LOOKBACK);
   }
 
-  /// @notice returns last second value of the oracle
-  /// @return _price last second value of the oracle
+  /// @notice Returns last second value of the oracle
+  /// @param _seconds How many seconds to twap for
+  /// @return _price The last second value of the oracle
   function _getLastSeconds(uint32 _seconds) private view returns (uint256 _price) {
     int56[] memory _tickCumulatives;
     uint32[] memory _input = new uint32[](2);

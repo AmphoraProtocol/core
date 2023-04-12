@@ -18,8 +18,7 @@ import {ContextUpgradeable} from '@openzeppelin/contracts-upgradeable/utils/Cont
 import {Context} from '@openzeppelin/contracts/utils/Context.sol';
 import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 
-/// @title USDA token contract
-/// @notice handles all minting/burning of usda
+/// @notice USDA token contract, handles all minting/burning of usda
 /// @dev extends UFragments
 contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, ExponentialNoError, Roles {
   using EnumerableSet for EnumerableSet.AddressSet;
@@ -28,25 +27,28 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
 
   EnumerableSet.AddressSet internal _vaultControllers;
 
+  /// @dev The reserve token
   IERC20 public reserve;
 
+  /// @dev The address of the pauser
   address public pauser;
 
+  /// @dev The reserve amount
   uint256 public reserveAmount;
 
-  /// @notice checks if _msgSender() is a valid VaultController
+  /// @notice Checks if _msgSender() is a valid VaultController
   modifier onlyVaultController() {
     _checkRole(VAULT_CONTROLLER_ROLE, _msgSender());
     _;
   }
 
-  /// @notice checks if _msgSender() is pauser
+  /// @notice Checks if _msgSender() is pauser
   modifier onlyPauser() {
     if (_msgSender() != address(pauser)) revert USDA_OnlyPauser();
     _;
   }
 
-  /// @notice any function with this modifier will call the pay_interest() function before any function logic is called
+  /// @notice Any function with this modifier will call the pay_interest() function before any function logic is called
   modifier paysInterest() {
     for (uint256 _i; _i < _vaultControllers.length();) {
       IVaultController(_vaultControllers.at(_i)).calculateInterest();
@@ -57,77 +59,82 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
     _;
   }
 
-  /// @notice initializer for contract
-  /// @param _reserveAddr the address of sUSD
-  /// @dev consider adding decimals?
+  /// @notice Initializer for contract
+  /// @param _reserveAddr The address of sUSD
   function initialize(address _reserveAddr) public override initializer {
     _UFragments_init('USDA Token', 'USDA');
     __Pausable_init();
     reserve = IERC20(_reserveAddr);
   }
 
-  ///@notice sets the pauser for both USDA and VaultController
-  ///@notice the pauser is a separate role from the owner
+  /// @notice Sets the pauser for both USDA and VaultController
+  /// @dev The pauser is a separate role from the owner
   function setPauser(address _pauser) external override onlyOwner {
     pauser = _pauser;
   }
 
-  /// @notice pause contract, pauser only
+  /// @notice Pause contract
+  /// @dev Can only be called by the pauser
   function pause() external override onlyPauser {
     _pause();
   }
 
-  /// @notice unpause contract, pauser only
+  /// @notice Unpause contract, pauser only
+  /// @dev Can only be called by the pauser
   function unpause() external override onlyPauser {
     _unpause();
   }
 
-  ///@notice gets the owner of the USDA contract
-  ///@return _ownerAddress address of owner
+  /// @notice Returns the owner of the USDA contract
+  /// @return _ownerAddress The address of owner
   function owner() public view override(IUSDA, OwnableUpgradeable) returns (address _ownerAddress) {
     return super.owner();
   }
 
-  /// @notice getter for name
-  /// @return _name name of token
+  /// @notice Returns the name of the token
+  /// @return _name The name of the token
   function name() public view override(IERC20Metadata, ERC20Detailed) returns (string memory _name) {
     return super.name();
   }
 
-  /// @notice getter for symbol
-  /// @return _symbol symbol for token
+  /// @notice Returns the symbol of the token
+  /// @return _symbol The symbol of the token
   function symbol() public view override(IERC20Metadata, ERC20Detailed) returns (string memory _symbol) {
     return super.symbol();
   }
 
-  /// @notice getter for decimals
-  /// @return _decimals decimals for token
+  /// @notice Returns the decimals of the token
+  /// @return _decimals The decimals of the token
   function decimals() public view override(IERC20Metadata, ERC20Detailed) returns (uint8 _decimals) {
     return super.decimals();
   }
 
-  /// @notice getter for address of the reserve currency, or susd
-  /// @return _reserveAddress the reserve address
+  /// @notice Returns the address of the reserve currency, or susd
+  /// @return _reserveAddress The reserve address
   function reserveAddress() public view override returns (address _reserveAddress) {
     return address(reserve);
   }
 
-  /// @notice deposit sUSD to mint USDA
-  /// @dev caller should obtain 1 USDA for each sUSD
+  /// @notice Deposit sUSD to mint USDA
+  /// @dev Caller should obtain 1 USDA for each sUSD
   /// the calculations for deposit mimic the calculations done by mint in the ampleforth contract, simply with the susd transfer
   /// 'fragments' are the units that we see, so 1000 fragments == 1000 USDA
   /// 'gons' are the internal accounting unit, used to keep scale.
-  /// we use the variable _gonsPerFragment in order to convert between the two
+  /// We use the variable _gonsPerFragment in order to convert between the two
   /// try dimensional analysis when doing the math in order to verify units are correct
-  /// @param _susdAmount amount of sUSD to deposit
+  /// @param _susdAmount The amount of sUSD to deposit
   function deposit(uint256 _susdAmount) external override {
     _deposit(_susdAmount, _msgSender());
   }
 
+  /// @notice Deposits sUSD to mint USDA and transfer to a different address
+  /// @param _susdAmount The amount of sUSD to deposit
+  /// @param _target The address to receive the USDA tokens
   function depositTo(uint256 _susdAmount, address _target) external override {
     _deposit(_susdAmount, _target);
   }
 
+  /// @notice Business logic to deposit sUSD and mint USDA for the caller
   function _deposit(uint256 _susdAmount, address _target) internal paysInterest whenNotPaused {
     if (_susdAmount == 0) revert USDA_ZeroAmount();
     // Account for the susd received
@@ -144,22 +151,22 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
     emit Deposit(_target, _susdAmount);
   }
 
-  /// @notice withdraw sUSD by burning USDA
-  /// caller should obtain 1 sUSD for every 1 USDA
-  /// @param _susdAmount amount of sUSD to withdraw
+  /// @notice Withdraw sUSD by burning USDA
+  /// @dev The caller should obtain 1 sUSD for every 1 USDA
+  /// @param _susdAmount The amount of sUSD to withdraw
   function withdraw(uint256 _susdAmount) external override {
     _withdraw(_susdAmount, _msgSender());
   }
 
-  ///@notice withdraw sUSD to a specific address by burning USDA from the caller
-  /// _target should obtain 1 sUSD for every 1 USDA burned from the caller
+  /// @notice Withdraw sUSD to a specific address by burning USDA from the caller
+  /// @dev The _target address should obtain 1 sUSD for every 1 USDA burned from the caller
   /// @param _susdAmount amount of sUSD to withdraw
   /// @param _target address to receive the sUSD
   function withdrawTo(uint256 _susdAmount, address _target) external override {
     _withdraw(_susdAmount, _target);
   }
 
-  ///@notice business logic to withdraw sUSD and burn USDA from the caller
+  /// @notice Business logic to withdraw sUSD and burn USDA from the caller
   function _withdraw(uint256 _susdAmount, address _target) internal paysInterest whenNotPaused {
     // check balances all around
     if (_susdAmount == 0) revert USDA_ZeroAmount();
@@ -178,23 +185,23 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
     emit Withdraw(_target, _susdAmount);
   }
 
-  /// @notice withdraw sUSD by burning USDA
-  /// caller should obtain 1 sUSD for every 1 USDA
-  /// this function is effectively just withdraw, but we calculate the amount for the sender
+  /// @notice Withdraw sUSD by burning USDA
+  /// @dev The caller should obtain 1 sUSD for every 1 USDA
+  /// @dev This function is effectively just withdraw, but we calculate the amount for the sender
   function withdrawAll() external override {
     _withdrawAll(_msgSender());
   }
 
-  /// @notice withdraw sUSD by burning USDA
+  /// @notice Withdraw sUSD by burning USDA
+  /// @dev This function is effectively just withdraw, but we calculate the amount for the _target
   /// @param _target should obtain 1 sUSD for every 1 USDA burned from caller
-  /// this function is effectively just withdraw, but we calculate the amount for the _target
   function withdrawAllTo(address _target) external override {
     _withdrawAll(_target);
   }
 
-  /// @notice business logic for withdrawAll
-  /// @param _target should obtain 1 sUSD for every 1 USDA burned from caller
-  /// this function is effectively just withdraw, but we calculate the amount for the _target
+  /// @notice Business logic for withdrawAll
+  /// @dev This function is effectively just withdraw, but we calculate the amount for the _target
+  /// @param _target Should obtain 1 sUSD for every 1 USDA burned from caller
   function _withdrawAll(address _target) internal paysInterest whenNotPaused {
     if (reserveAmount == 0) revert USDA_EmptyReserve();
     uint256 _susdAmount = this.balanceOf(_msgSender());
@@ -212,8 +219,8 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
     emit Withdraw(_target, _susdAmount);
   }
 
-  /// @notice admin function to mint USDA
-  /// @param _susdAmount the amount of USDA to mint, denominated in sUSD
+  /// @notice Admin function to mint USDA
+  /// @param _susdAmount The amount of USDA to mint, denominated in sUSD
   function mint(uint256 _susdAmount) external override paysInterest onlyOwner {
     if (_susdAmount == 0) revert USDA_ZeroAmount();
     // see comments in the deposit function for an explaination of this math
@@ -225,8 +232,8 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
     emit Mint(_msgSender(), _susdAmount);
   }
 
-  /// @notice admin function to burn USDA
-  /// @param _susdAmount the amount of USDA to burn, denominated in sUSD
+  /// @notice Admin function to burn USDA
+  /// @param _susdAmount The amount of USDA to burn, denominated in sUSD
   function burn(uint256 _susdAmount) external override paysInterest onlyOwner {
     if (_susdAmount == 0) revert USDA_ZeroAmount();
     // see comments in the deposit function for an explaination of this math
@@ -238,8 +245,8 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
     emit Burn(_msgSender(), _susdAmount);
   }
 
-  /// @notice donates susd to the protocol reserve
-  /// @param _susdAmount the amount of sUSD to donate
+  /// @notice Donates susd to the protocol reserve
+  /// @param _susdAmount The amount of sUSD to donate
   function donate(uint256 _susdAmount) external override paysInterest whenNotPaused {
     if (_susdAmount == 0) revert USDA_ZeroAmount();
     // Account for the susd received
@@ -257,9 +264,9 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
     reserve.transfer(_to, _amount);
   }
 
-  /// @notice function for the vaultController to mint
-  /// @param _target whom to mint the USDA to
-  /// @param _amount the amount of USDA to mint
+  /// @notice Function for the vaultController to mint
+  /// @param _target The address to mint the USDA to
+  /// @param _amount The amount of USDA to mint
   function vaultControllerMint(address _target, uint256 _amount) external override onlyVaultController whenNotPaused {
     // see comments in the deposit function for an explaination of this math
     _gonBalances[_target] = _gonBalances[_target] + _amount * _gonsPerFragment;
@@ -269,9 +276,9 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
     emit Mint(_target, _amount);
   }
 
-  /// @notice function for the vaultController to burn
-  /// @param _target whom to burn the USDA from
-  /// @param _amount the amount of USDA to burn
+  /// @notice Function for the vaultController to burn
+  /// @param _target The address to burn the USDA from
+  /// @param _amount The amount of USDA to burn
   function vaultControllerBurn(address _target, uint256 _amount) external override onlyVaultController {
     if (_gonBalances[_target] < (_amount * _gonsPerFragment)) revert USDA_NotEnoughBalance();
     // see comments in the withdraw function for an explaination of this math
@@ -283,8 +290,8 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
   }
 
   /// @notice Allows VaultController to send sUSD from the reserve
-  /// @param _target whom to receive the sUSD from reserve
-  /// @param _susdAmount the amount of sUSD to send
+  /// @param _target The address to receive the sUSD from reserve
+  /// @param _susdAmount The amount of sUSD to send
   function vaultControllerTransfer(
     address _target,
     uint256 _susdAmount
@@ -295,14 +302,14 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
     if (!reserve.transfer(_target, _susdAmount)) revert USDA_TransferFailed();
   }
 
-  /// @notice function for the vaultController to scale all USDA balances
-  /// @param _amount amount of USDA (e18) to donate
+  /// @notice Function for the vaultController to scale all USDA balances
+  /// @param _amount The amount of USDA (e18) to donate
   function vaultControllerDonate(uint256 _amount) external override onlyVaultController {
     _donation(_amount);
   }
 
-  /// @notice function for distributing the donation to all USDA holders
-  /// @param _amount amount of USDA to donate
+  /// @notice Function for distributing the donation to all USDA holders
+  /// @param _amount The amount of USDA to donate
   function _donation(uint256 _amount) internal {
     _totalSupply = _totalSupply + _amount;
     if (_totalSupply > MAX_SUPPLY) _totalSupply = MAX_SUPPLY;
@@ -310,8 +317,8 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
     emit Donation(_msgSender(), _amount, _totalSupply);
   }
 
-  /// @notice get reserve ratio
-  /// @return _e18reserveRatio USDA reserve ratio
+  /// @notice Returns the reserve ratio
+  /// @return _e18reserveRatio The USDA reserve ratio
   function reserveRatio() external view override returns (uint192 _e18reserveRatio) {
     _e18reserveRatio = _safeu192((reserveAmount * EXP_SCALE) / _totalSupply);
   }
@@ -336,7 +343,7 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
 
   /// @notice Removes a vault controller from the list
   /// @param _vaultController The vault controller to remove
-  /// @dev the vault controller is removed from the list but keeps the role as to not brick it
+  /// @dev The vault controller is removed from the list but keeps the role as to not brick it
   function removeVaultControllerFromList(address _vaultController) external onlyOwner {
     _vaultControllers.remove(_vaultController);
   }

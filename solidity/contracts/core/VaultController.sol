@@ -18,9 +18,9 @@ import {OwnableUpgradeable} from '@openzeppelin/contracts-upgradeable/access/Own
 import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import {PausableUpgradeable} from '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
-/// @title Controller of all vaults in the USDA borrow/lend system
-/// @notice VaultController contains all business logic for borrowing and lending through the protocol.
-/// It is also in charge of accruing interest.
+/// @notice Controller of all vaults in the USDA borrow/lend system
+///         VaultController contains all business logic for borrowing and lending through the protocol.
+///         It is also in charge of accruing interest.
 contract VaultController is
   Initializable,
   PausableUpgradeable,
@@ -28,41 +28,53 @@ contract VaultController is
   ExponentialNoError,
   OwnableUpgradeable
 {
-  // The convex booster contract
+  /// @dev The convex booster interface
   IBooster public immutable BOOSTER = IBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
   // TODO: Change to immutable, can't initialize it in initializer
+  /// @dev The vault deployer interface
   // solhint-disable-next-line defi-wonderland/wonder-var-name-mixedcase
   IVaultDeployer public VAULT_DEPLOYER;
 
-  // mapping of vault id to vault address
+  /// @dev Mapping of vault id to vault address
   mapping(uint96 => address) public vaultIdVaultAddress;
 
-  // mapping of wallet address to vault IDs []
+  /// @dev Mapping of wallet address to vault IDs arrays
   mapping(address => uint96[]) public walletVaultIDs;
 
-  // mapping of token address to collateral info
+  /// @dev Mapping of token address to collateral info
   mapping(address => CollateralInfo) public tokenAddressCollateralInfo;
 
+  /// @dev Array of enabled tokens addresses
   address[] public enabledTokens;
 
+  /// @dev The curve master contract
   CurveMaster public curveMaster;
+
+  /// @dev The interest contract
   Interest public interest;
 
+  /// @dev The usda interface
   IUSDA public usda;
+
+  /// @dev The amphora claimer interface
   IAMPHClaimer public claimerContract;
 
+  /// @dev Total number of minted vaults
   uint96 public vaultsMinted;
+  /// @dev Total number of tokens registered
   uint256 public tokensRegistered;
+  /// @dev Total base liability
   uint192 public totalBaseLiability;
+  /// @dev The protocol's fee
   uint192 public protocolFee;
 
-  /// @notice any function with this modifier will call the _payInterest() function before
+  /// @notice Any function with this modifier will call the _payInterest() function before
   modifier paysInterest() {
     _payInterest();
     _;
   }
 
-  ///@notice any function with this modifier can be paused or unpaused by USDA._pauser() in the case of an emergency
+  ///@notice Any function with this modifier can be paused or unpaused by USDA._pauser() in the case of an emergency
   modifier onlyPauser() {
     if (_msgSender() != usda.pauser()) revert VaultController_OnlyPauser();
     _;
@@ -120,7 +132,7 @@ contract VaultController is
   }
 
   /// @notice Returns an array of all enabled tokens
-  /// @return _enabledTokens array containing the token addresses
+  /// @return _enabledTokens The array containing the token addresses
   function getEnabledTokens() external view override returns (address[] memory _enabledTokens) {
     _enabledTokens = enabledTokens;
   }
@@ -218,9 +230,9 @@ contract VaultController is
   }
 
   /// @notice Returns the selected collaterals info. Will iterate from `_start` (included) until `_end` (not included)
-  /// @param _start the start number to loop on the array
-  /// @param _end the end number to loop on the array
-  /// @return _collateralsInfo an array containing all the collateral info
+  /// @param _start The start number to loop on the array
+  /// @param _end The end number to loop on the array
+  /// @return _collateralsInfo The array containing all the collateral info
   function getCollateralsInfo(
     uint256 _start,
     uint256 _end
@@ -385,7 +397,7 @@ contract VaultController is
   }
 
   /// @notice Change the claimer contract, used to exchange a fee from curve lp rewards for AMPH tokens
-  /// @param _newClaimerContract the new claimer contract
+  /// @param _newClaimerContract The new claimer contract
   function changeClaimerContract(IAMPHClaimer _newClaimerContract) external override onlyOwner {
     IAMPHClaimer _oldClaimerContract = claimerContract;
     claimerContract = _newClaimerContract;
@@ -430,12 +442,12 @@ contract VaultController is
     _borrow(_id, _susdAmount, _target, false);
   }
 
-  /// @notice business logic to perform the USDA loan
-  /// @param _id vault to borrow against
-  /// @param _amount amount of USDA to borrow
-  /// @param _target address to receive borrowed USDA
-  /// @param _isUSDA boolean indicating if the borrowed asset is USDA (if FALSE is sUSD)
-  /// @dev pays interest
+  /// @notice Business logic to perform the USDA loan
+  /// @dev Pays interest
+  /// @param _id The vault's id to borrow against
+  /// @param _amount The amount of USDA to borrow
+  /// @param _target The address to receive borrowed USDA
+  /// @param _isUSDA Boolean indicating if the borrowed asset is USDA (if FALSE is sUSD)
   function _borrow(uint96 _id, uint192 _amount, address _target, bool _isUSDA) internal paysInterest whenNotPaused {
     // grab the vault by id if part of our system. revert if not
     IVault _vault = _getVault(_id);
@@ -483,11 +495,11 @@ contract VaultController is
     _repay(_id, 0, true);
   }
 
-  /// @notice business logic to perform the USDA repay
-  /// @param _id vault to repay
-  /// @param _amountInUSDA amount of USDA to borrow
-  /// @param _repayAll if TRUE, repay all debt
-  /// @dev pays interest
+  /// @notice Business logic to perform the USDA repay
+  /// @dev Pays interest
+  /// @param _id The vault's id to repay
+  /// @param _amountInUSDA The amount of USDA to borrow
+  /// @param _repayAll Boolean if TRUE, repay all debt
   function _repay(uint96 _id, uint192 _amountInUSDA, bool _repayAll) internal paysInterest whenNotPaused {
     // grab the vault by id if part of our system. revert if not
     IVault _vault = _getVault(_id);
@@ -587,12 +599,12 @@ contract VaultController is
     ) = _liquidationMath(_id, _assetAddress, 2 ** 256 - 1);
   }
 
-  /// @notice internal function with business logic for liquidation math
-  /// @param _id the vault to get info for
-  /// @param _assetAddress the token to calculate how many tokens to liquidate
-  /// @param _tokensToLiquidate the max amount of tokens one wishes to liquidate
-  /// @return _actualTokensToLiquidate the amount of tokens underwater this vault is
-  /// @return _badFillPrice the bad fill price for the token
+  /// @notice Internal function with business logic for liquidation math
+  /// @param _id The vault to get info for
+  /// @param _assetAddress The token to calculate how many tokens to liquidate
+  /// @param _tokensToLiquidate The max amount of tokens one wishes to liquidate
+  /// @return _actualTokensToLiquidate The amount of tokens underwater this vault is
+  /// @return _badFillPrice The bad fill price for the token
   function _liquidationMath(
     uint96 _id,
     address _assetAddress,
@@ -631,10 +643,10 @@ contract VaultController is
     _actualTokensToLiquidate = _tokensToLiquidate;
   }
 
-  /// @notice internal helper function to wrap getting of vaults
-  /// @notice it will revert if the vault does not exist
-  /// @param _id id of vault
-  /// @return _vault IVault contract of
+  /// @notice Internal helper function to wrap getting of vaults
+  /// @dev It will revert if the vault does not exist
+  /// @param _id The id of vault
+  /// @return _vault The vault for that id
   function _getVault(uint96 _id) internal view returns (IVault _vault) {
     address _vaultAddress = vaultIdVaultAddress[_id];
     if (_vaultAddress == address(0)) revert VaultController_VaultDoesNotExist();
@@ -642,7 +654,7 @@ contract VaultController is
   }
 
   /// @notice Returns the amount of USDA needed to reach even solvency
-  /// @dev this amount is a moving target and changes with each block as payInterest is called
+  /// @dev This amount is a moving target and changes with each block as payInterest is called
   /// @param _id The id of vault we want to target
   /// @return _usdaToSolvency The amount of USDA needed to reach even solvency
   function amountToSolvency(uint96 _id) public view override returns (uint256 _usdaToSolvency) {
@@ -650,16 +662,16 @@ contract VaultController is
     return _amountToSolvency(_id);
   }
 
-  /// @notice bussiness logic for amountToSolvency
-  /// @param _id id of vault
-  /// @return _usdaToSolvency amount of USDA needed to reach even solvency
+  /// @notice Bussiness logic for amountToSolvency
+  /// @param _id The id of vault
+  /// @return _usdaToSolvency The amount of USDA needed to reach even solvency
   function _amountToSolvency(uint96 _id) internal view returns (uint256 _usdaToSolvency) {
     return _vaultLiability(_id) - _getVaultBorrowingPower(_getVault(_id));
   }
 
-  /// @notice get vault liability of vault
-  /// @param _id id of vault
-  /// @return _liability amount of USDA the vault owes
+  /// @notice Returns vault liability of vault
+  /// @param _id The id of vault
+  /// @return _liability The amount of USDA the vault owes
   function vaultLiability(uint96 _id) external view override returns (uint192 _liability) {
     return _vaultLiability(_id);
   }
@@ -683,9 +695,9 @@ contract VaultController is
     return _getVaultBorrowingPower(_getVault(_id));
   }
 
-  /// @notice returns the borrowing power of a vault
-  /// @param _vault the vault to get the borrowing power of
-  /// @return _borrowPower the borrowing power of the vault
+  /// @notice Returns the borrowing power of a vault
+  /// @param _vault The vault to get the borrowing power of
+  /// @return _borrowPower The borrowing power of the vault
   //solhint-disable-next-line code-complexity
   function _getVaultBorrowingPower(IVault _vault) private view returns (uint192 _borrowPower) {
     // loop over each registed token, adding the indivuduals ltv to the total ltv of the vault
@@ -716,9 +728,9 @@ contract VaultController is
     return _payInterest();
   }
 
-  /// @notice accrue interest to borrowers and distribute it to USDA holders.
-  /// this function is called before any function that changes the reserve ratio
-  /// @return _interest the interest to distribute to USDA holders
+  /// @notice Accrue interest to borrowers and distribute it to USDA holders.
+  /// @dev This function is called before any function that changes the reserve ratio
+  /// @return _interest The interest to distribute to USDA holders
   function _payInterest() private returns (uint256 _interest) {
     // calculate the time difference between the current block and the last time the block was called
     uint64 _timeDifference = uint64(block.timestamp) - interest.lastTime;
@@ -766,18 +778,16 @@ contract VaultController is
     return _e18FactorIncrease;
   }
 
-  /**
-   * @notice Deploys a new Vault
-   * @param _id The id of the vault
-   * @param _minter The address of the minter of the vault
-   * @return _vault The vault that was created
-   */
+  /// @notice Deploys a new Vault
+  /// @param _id The id of the vault
+  /// @param _minter The address of the minter of the vault
+  /// @return _vault The vault that was created
   function _createVault(uint96 _id, address _minter) internal virtual returns (address _vault) {
     _vault = address(VAULT_DEPLOYER.deployVault(_id, _minter));
   }
 
-  /// special view only function to help liquidators
   /// @notice Returns the status of a range of vaults
+  /// @dev Special view only function to help liquidators
   /// @param _start The id of the vault to start looping
   /// @param _stop The id of vault to stop looping
   /// @return _vaultSummaries An array of vault information
@@ -807,8 +817,8 @@ contract VaultController is
       _increase ? _collateral.totalDeposited + _amount : _collateral.totalDeposited - _amount;
   }
 
-  /// @notice external function used by vaults to increase or decrease the `totalDeposited`.
-  /// Should only be called by a valid vault
+  /// @notice External function used by vaults to increase or decrease the `totalDeposited`.
+  /// @dev Should only be called by a valid vault
   /// @param _vaultID The id of vault which is calling (used to verify)
   /// @param _amount The amount to modify
   /// @param _token The token address which should modify the total

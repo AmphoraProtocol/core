@@ -6,6 +6,7 @@ import {AggregatorInterface} from '@chainlink/interfaces/AggregatorInterface.sol
 import {ICurvePool} from '@interfaces/utils/ICurvePool.sol';
 import {Math} from '@openzeppelin/contracts/utils/math/Math.sol';
 
+/// @notice Oracle Relay for the Tree Curve Pool (DAI/USDC/USDT)
 contract ThreeCrvOracle is OracleRelay {
   ICurvePool public constant THREE_CRV = ICurvePool(0x52EA46506B9CC5Ef470C5bf89f17Dc28bB35D85C);
   AggregatorInterface public constant DAI = AggregatorInterface(0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9);
@@ -14,15 +15,15 @@ contract ThreeCrvOracle is OracleRelay {
 
   constructor() OracleRelay(OracleType.Chainlink) {}
 
-  /// @notice the current reported value of the oracle
-  /// @return _value the current value
-  /// @dev implementation in getLastSecond
+  /// @notice The current reported value of the oracle
+  /// @dev Implementation in _get()
+  /// @return _value The current value
   function currentValue() external view override returns (uint256 _value) {
     _value = _get();
   }
 
-  // Calculates the lastest exchange rate
-  // Uses both divide and multiply only for tokens not supported directly by Chainlink, for example MKR/USD
+  /// @notice Calculates the lastest exchange rate
+  /// @dev Uses both divide and multiply only for tokens not supported directly by Chainlink, for example MKR/USD
   function _get() internal view returns (uint256 _value) {
     // As the price should never be negative, the unchecked conversion is acceptable
     uint256 _minStable =
