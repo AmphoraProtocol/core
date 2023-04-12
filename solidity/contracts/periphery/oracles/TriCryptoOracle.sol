@@ -47,15 +47,7 @@ contract TriCryptoOracle is OracleRelay {
     uint256 _basePrices = (_minWbtcPrice * _ethPrice * _usdtPrice);
 
     _maxPrice = (3 * _vp * FixedPointMathLib.cbrt(_basePrices)) / 1 ether;
-
-    // ((A/A0) * (gamma/gamma0)**2) ** (1/3)
-    uint256 _g = TRI_CRYPTO.gamma() * 1 ether / GAMMA0;
-    uint256 _a = TRI_CRYPTO.A() * 1 ether / A0;
-    uint256 _discount = Math.max(_g ** 2 / 1 ether * _a, 1e34); // handle qbrt nonconvergence
-    // if discount is small, we take an upper bound
-    _discount = FixedPointMathLib.sqrt(_discount) * DISCOUNT0 / 1 ether;
-
-    _maxPrice -= _maxPrice * _discount / 1 ether;
+    // removed discount since the % is so small that it doesn't make a difference
   }
 
   /*///////////////////////////////////////////////////////////////

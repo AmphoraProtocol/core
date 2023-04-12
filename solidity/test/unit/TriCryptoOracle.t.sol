@@ -81,7 +81,7 @@ contract UnitCurrentValue is Base {
 
     uint256 _maxPrice = (3 * _vp * FixedPointMathLib.cbrt(_basePrices)) / 1 ether;
 
-    assertApproxEqRel(triCryptoOracle.currentValue(), _maxPrice, POINT_ONE_PERCENT * 2);
+    assertEq(triCryptoOracle.currentValue(), _maxPrice);
   }
 
   function testCurrentValueWbtcDepegDown(uint32 _btcPrice, uint32 _wbtcPrice) public {
@@ -118,7 +118,7 @@ contract UnitCurrentValue is Base {
 
     uint256 _maxPrice = (3 * _vp * FixedPointMathLib.cbrt(_basePrices)) / 1 ether;
 
-    assertApproxEqRel(triCryptoOracle.currentValue(), _maxPrice, POINT_ONE_PERCENT * 2);
+    assertEq(triCryptoOracle.currentValue(), _maxPrice);
   }
 
   function testCurrentValueWbtcDepegUp(uint32 _btcPrice, uint32 _wbtcPrice) public {
@@ -152,6 +152,6 @@ contract UnitCurrentValue is Base {
 
     uint256 _maxPrice = (3 * _vp * FixedPointMathLib.cbrt(_basePrices)) / 1 ether;
 
-    assertApproxEqRel(triCryptoOracle.currentValue(), _maxPrice, POINT_ONE_PERCENT * 2);
+    assertEq(triCryptoOracle.currentValue(), _maxPrice);
   }
 }

@@ -41,6 +41,5 @@ contract E2ETriCryptoOracle is CommonE2EBase {
     // Calculate the value of 1 lp token
     uint256 _lpValue = _poolValue / _totalSupply;
     assertApproxEqRel(_currentValue, _lpValue, POINT_ONE_PERCENT);
-    assertGt(_lpValue, _currentValue);
   }
 }
