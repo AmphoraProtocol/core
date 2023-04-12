@@ -24,7 +24,7 @@ verbosity = 0
 fuzz_runs = 1000
 
 [profile.docs]
-src = './solidity/interfaces/'
+src = './solidity/contracts/'
 
 [rpc_endpoints]
 mainnet = "${MAINNET_RPC}"

@@ -62,6 +62,15 @@ Following the steps above will create the summary of the code coverage. If you w
 
     `genhtml -o report lcov.info`
 
+## Build and run docs
+
+1. Generate and build docs, uses `forge doc`
+
+`yarn docs:build`
+
+2. Run docs locally
+
+`yarn docs:run`
 
 ## Repository
 
