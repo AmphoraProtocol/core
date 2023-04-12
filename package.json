@@ -26,6 +26,7 @@
     "prepare": "husky install && wonderland-crypto-husky-checks install",
     "scripts:borrow": "forge script -vv --optimize --optimizer-runs 200 --slow --broadcast --fork-url http://localhost:8545 solidity/scripts/DepositAndBorrow.s.sol:Borrow",
     "scripts:deposit": "forge script -vv --optimize --optimizer-runs 200 --slow --broadcast --fork-url http://localhost:8545 solidity/scripts/DepositAndBorrow.s.sol:MintVaultAndDeposit",
+    "scripts:registerToken": "forge script -vv --optimize --optimizer-runs 200 --slow --broadcast --fork-url http://localhost:8545 solidity/scripts/RegisterToken.s.sol:RegisterToken",
     "test": "yarn test:unit && yarn test:e2e",
     "test:e2e": "forge test --match-contract E2E -vvv",
     "test:gas": "forge test --match-contract E2E -vvv --gas-report",
