@@ -120,8 +120,8 @@ contract UnitUSDAGetters is Base {
 }
 
 contract UnitUSDADeposit is BaseInit {
-  //TODO: This needs to be changed after we modify the decimals amount
-  //  The maximum amount of tokens to deposit is 72.057.594.037 sUSD at a time
+  // TODO: This needs to be changed after we modify the decimals amount
+  // The maximum amount of tokens to deposit is 72.057.594.037 sUSD at a time
   function testDepositCallsTransferFrom(uint56 _amount) public {
     vm.assume(_amount > 0);
     vm.expectCall(

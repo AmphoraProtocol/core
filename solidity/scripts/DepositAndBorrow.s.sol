@@ -13,7 +13,7 @@ import {TestConstants} from '@test/utils/TestConstants.sol';
 contract MintVaultAndDeposit is Script, TestConstants {
   address public user = vm.rememberKey(vm.envUint('USER_PRIVATE_KEY'));
   uint256 public depositAmount = 1 ether;
-  // TODO: Change to corrrect address
+  /// NOTE: Remember to set this address in the TestConstants.sol
   IVaultController public vaultController = IVaultController(VAULT_CONTROLLER_ADDRESS);
   /// @notice The user's vault
   IVault public vault;
@@ -34,7 +34,7 @@ contract MintVaultAndDeposit is Script, TestConstants {
 }
 
 contract Borrow is Script, TestConstants {
-  // TODO: Change to corrrect address
+  /// NOTE: Remember to set this address in the TestConstants.sol
   IVaultController public vaultController = IVaultController(VAULT_CONTROLLER_ADDRESS);
   IUSDA public usda = IUSDA(USDA_ADDRESS);
   IERC20 public susd = IERC20(SUSD_ADDRESS);

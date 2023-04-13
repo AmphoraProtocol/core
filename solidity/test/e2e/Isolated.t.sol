@@ -764,7 +764,7 @@ contract E2EwUSDAUniV3 is IsolatedBase {
 
     // bob does a small swap
     vm.startPrank(bob);
-    // uint256 _bobWETH = weth.balanceOf(bob);
+    uint256 _bobWETH = weth.balanceOf(bob);
     uint256 _swapAmount = 0.001 ether;
 
     weth.approve(address(swapRouter), type(uint256).max);
@@ -780,8 +780,7 @@ contract E2EwUSDAUniV3 is IsolatedBase {
     });
 
     swapRouter.exactInputSingle(_swapParams);
-    // uint256 _diff = _bobWETH - weth.balanceOf(bob);
-    // assert(_diff == _swapAmount); // TODO: fails
+    assertLt(weth.balanceOf(bob), _bobWETH);
 
     vm.stopPrank();
 

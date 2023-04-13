@@ -242,7 +242,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
       USDT_LP_ADDRESS, OTHER_LTV, address(threeCrvOracle), LIQUIDATION_INCENTIVE, type(uint256).max, 1
     );
 
-    /// TODO: change UNI_LTV  & anchoredViewUni
+    // TODO: change anchoredViewUni
     vaultController.registerErc20(
       BORING_DAO_LP_ADDRESS, OTHER_LTV, address(anchoredViewUni), LIQUIDATION_INCENTIVE, type(uint256).max, 20
     );
