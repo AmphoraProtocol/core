@@ -81,8 +81,7 @@ abstract contract Deploy is Script, TestConstants {
     usda.initialize(SUSD_ADDRESS);
 
     // Deploy curve
-    // TODO: check the values
-    threeLines = new ThreeLines0_100(2 ether, 0.05 ether, 0.045 ether, 0.5 ether, 0.55 ether);
+    threeLines = new ThreeLines0_100(2 ether, 0.1 ether, 0.005 ether, 0.25 ether, 0.5 ether);
     console.log('THREE_LINES_0_100: ', address(threeLines));
 
     // Deploy CurveMaster
@@ -90,14 +89,13 @@ abstract contract Deploy is Script, TestConstants {
     console.log('CURVE_MASTER: ', address(curveMaster));
 
     // Deploy uniswapRelayEthUsdc oracle relay
-    // TODO: check the values
-    uniswapRelayEthUsdc = new UniswapV3OracleRelay(60, USDC_WETH_POOL_ADDRESS, true, 1_000_000_000_000, 1);
+    uniswapRelayEthUsdc = new UniswapV3OracleRelay(7200, USDC_WETH_POOL_ADDRESS, true, 1_000_000_000_000, 1);
     console.log('UNISWAP_ETH_USDC_ORACLE: ', address(uniswapRelayEthUsdc));
     // Deploy chainlinkEth oracle relay
     chainlinkEth = new ChainlinkOracleRelay(CHAINLINK_ETH_FEED_ADDRESS, 10_000_000_000, 1);
     console.log('CHAINLINK_ETH_FEED: ', address(chainlinkEth));
     // Deploy anchoredViewEth relay
-    anchoredViewEth = new AnchoredViewRelay(address(uniswapRelayEthUsdc), address(chainlinkEth), 10, 100);
+    anchoredViewEth = new AnchoredViewRelay(address(uniswapRelayEthUsdc), address(chainlinkEth), 20, 100);
     console.log('ANCHORED_VIEW_RELAY: ', address(anchoredViewEth));
 
     // Add curveMaster to VaultController

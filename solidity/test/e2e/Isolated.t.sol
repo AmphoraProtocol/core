@@ -741,9 +741,13 @@ contract E2EwUSDAUniV3 is IsolatedBase {
     weth.approve(address(nfpManager), type(uint256).max);
     wusda.approve(address(nfpManager), type(uint256).max);
 
+    (address _token0, address _token1) =
+      WETH_ADDRESS < address(wusda) ? (WETH_ADDRESS, address(wusda)) : (address(wusda), WETH_ADDRESS);
+    if (_token0 == address(usdaToken)) (_startWETH, _startWUSDA) = (_startWUSDA, _startWETH);
+
     INonfungiblePositionManager.MintParams memory _params = INonfungiblePositionManager.MintParams({
-      token0: address(wusda),
-      token1: WETH_ADDRESS,
+      token0: _token0,
+      token1: _token1,
       fee: 10_000,
       tickLower: -76_000,
       tickUpper: -73_200,

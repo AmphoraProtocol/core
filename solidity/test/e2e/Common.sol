@@ -54,7 +54,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   // uniswapv3 oracles
   UniswapV3OracleRelay public uniswapRelayEthUsdc;
   UniswapV3OracleRelay public uniswapRelayUniUsdc;
-  UniswapV3OracleRelay public uniswapRelayDydxWeth;
+  UniswapV3TokenOracleRelay public uniswapRelayDydxWeth;
   UniswapV3TokenOracleRelay public uniswapRelayAaveWeth;
   UniswapV3OracleRelay public uniswapRelayWbtcUsdc;
   // Chainlink oracles
@@ -62,6 +62,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   ChainlinkOracleRelay public chainlinkEth;
   ChainlinkOracleRelay public chainlinkAave;
   ChainlinkOracleRelay public chainlinkBtc;
+  ChainlinkOracleRelay public chainlinkDydx;
   // AnchoredView relayers
   AnchoredViewRelay public anchoredViewEth;
   AnchoredViewRelay public anchoredViewUni;
@@ -176,7 +177,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     usdaToken.initialize(SUSD_ADDRESS);
 
     // Deploy curve
-    threeLines = new ThreeLines0_100(2 ether, 0.05 ether, 0.045 ether, 0.5 ether, 0.55 ether);
+    threeLines = new ThreeLines0_100(2 ether, 0.1 ether, 0.005 ether, 0.25 ether, 0.5 ether);
     label(address(threeLines), 'ThreeLines0_100');
 
     // Deploy CurveMaster
@@ -190,34 +191,35 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     usdaToken.addVaultController(address(vaultController));
 
     // Deploy uniswapRelayEthUsdc oracle relay
-    uniswapRelayEthUsdc = new UniswapV3OracleRelay(60, USDC_WETH_POOL_ADDRESS, true, 1_000_000_000_000, 1);
+    uniswapRelayEthUsdc = new UniswapV3OracleRelay(7200, USDC_WETH_POOL_ADDRESS, true, 1_000_000_000_000, 1);
     // Deploy uniswapRelayUniUsdc oracle relay
-    uniswapRelayUniUsdc = new UniswapV3OracleRelay(60, USDC_UNI_POOL_ADDRESS, false, 1_000_000_000_000, 1);
+    uniswapRelayUniUsdc = new UniswapV3OracleRelay(14400, USDC_UNI_POOL_ADDRESS, false, 1_000_000_000_000, 1);
     // Deploys uniswapRelayDydxWeth oracle relay
-    uniswapRelayDydxWeth = new UniswapV3OracleRelay(60, DYDX_WETH_POOL_ADDRESS, true, 1_000_000_000_000, 1);
+    uniswapRelayDydxWeth = new UniswapV3TokenOracleRelay(14400, DYDX_WETH_POOL_ADDRESS, false, 1, 1);
     // Deploy uniswapRelayAaveWeth oracle relay
-    uniswapRelayAaveWeth = new UniswapV3TokenOracleRelay(60, AAVE_WETH_POOL_ADDRESS, false, 1, 1);
+    uniswapRelayAaveWeth = new UniswapV3TokenOracleRelay(14400, AAVE_WETH_POOL_ADDRESS, false, 1, 1);
     // Deploy uniswapRelayUniUsdc oracle relay
-    uniswapRelayWbtcUsdc = new UniswapV3OracleRelay(60, USDC_WBTC_POOL_ADDRESS, false, 1_000_000_000_000, 1);
+    uniswapRelayWbtcUsdc = new UniswapV3OracleRelay(7200, USDC_WBTC_POOL_ADDRESS, false, 1_000_000_000_000, 1);
     // Deploy chainLinkUni oracle relay
     chainLinkUni = new ChainlinkOracleRelay(CHAINLINK_UNI_FEED_ADDRESS, 10_000_000_000, 1);
     // Deploy chainlinkEth oracle relay
     chainlinkEth = new ChainlinkOracleRelay(CHAINLINK_ETH_FEED_ADDRESS, 10_000_000_000, 1);
     // Deploy chainlinkAave oracle relay
     chainlinkAave = new ChainlinkOracleRelay(CHAINLINK_AAVE_FEED_ADDRESS, 10_000_000_000, 1);
+    // Deploy chainlinkAave oracle relay
+    chainlinkDydx = new ChainlinkOracleRelay(CHAINLINK_DYDX_FEED_ADDRESS, 10_000_000_000, 1);
     // Deploy chainlinkWbtc oracle relay
     chainlinkBtc = new ChainlinkOracleRelay(CHAINLINK_BTC_FEED_ADDRESS, 100_000_000_000_000_000_000, 1);
     // Deploy anchoredViewEth relay
-    anchoredViewEth = new AnchoredViewRelay(address(uniswapRelayEthUsdc), address(chainlinkEth), 10, 100);
+    anchoredViewEth = new AnchoredViewRelay(address(uniswapRelayEthUsdc), address(chainlinkEth), 20, 100);
     // Deploy anchoredViewUni relay
-    anchoredViewUni = new AnchoredViewRelay(address(uniswapRelayUniUsdc), address(chainLinkUni), 30, 100);
+    anchoredViewUni = new AnchoredViewRelay(address(uniswapRelayUniUsdc), address(chainLinkUni), 40, 100);
     // Deploy anchoredViewAave relay
-    anchoredViewAave = new AnchoredViewRelay(address(uniswapRelayAaveWeth), address(chainlinkAave), 10, 100);
+    anchoredViewAave = new AnchoredViewRelay(address(uniswapRelayAaveWeth), address(chainlinkAave), 25, 100);
     // Deploy anchoredViewDydx relay
-    // We use same oracle because chainlink doesnt support dydx/usd feed
-    anchoredViewDydx = new AnchoredViewRelay(address(uniswapRelayDydxWeth), address(uniswapRelayDydxWeth), 10, 100);
+    anchoredViewDydx = new AnchoredViewRelay(address(uniswapRelayDydxWeth), address(chainlinkDydx), 20, 100);
     // Deploy anchoredViewEth relay
-    anchoredViewBtc = new AnchoredViewRelay(address(uniswapRelayWbtcUsdc), address(chainlinkBtc), 30, 100);
+    anchoredViewBtc = new AnchoredViewRelay(address(uniswapRelayWbtcUsdc), address(chainlinkBtc), 20, 100);
     // Deploy the ThreeCrvOracle
     threeCrvOracle = new ThreeCrvOracle();
     // Deploy the triCryptoOracle

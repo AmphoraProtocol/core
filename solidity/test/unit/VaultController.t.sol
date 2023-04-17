@@ -74,7 +74,7 @@ abstract contract Base is DSTestPlus, TestConstants {
     vaultController.initialize(IVaultController(address(0)), _tokens, mockAmphClaimer, vaultDeployer);
 
     curveMaster = new CurveMaster();
-    threeLines = new ThreeLines0_100(2 ether, 0.05 ether, 0.045 ether, 0.5 ether, 0.55 ether);
+    threeLines = new ThreeLines0_100(2 ether, 0.1 ether, 0.005 ether, 0.25 ether, 0.5 ether);
 
     vaultController.registerCurveMaster(address(curveMaster));
     curveMaster.setCurve(address(0), address(threeLines));
@@ -88,16 +88,16 @@ abstract contract Base is DSTestPlus, TestConstants {
     usdaToken.addVaultController(address(vaultController));
 
     // Deploy uniswapRelayEthUsdc & uniswapRelayUniUsdc oracle relay
-    uniswapRelayEthUsdc = new UniswapV3OracleRelay(60, USDC_WETH_POOL_ADDRESS, true, 1_000_000_000_000, 1);
-    uniswapRelayUniUsdc = new UniswapV3OracleRelay(60, USDC_UNI_POOL_ADDRESS, false, 1_000_000_000_000, 1);
+    uniswapRelayEthUsdc = new UniswapV3OracleRelay(7200, USDC_WETH_POOL_ADDRESS, true, 1_000_000_000_000, 1);
+    uniswapRelayUniUsdc = new UniswapV3OracleRelay(14400, USDC_UNI_POOL_ADDRESS, false, 1_000_000_000_000, 1);
 
     // Deploy chainlinkEth oracle & chainLinkUni relay
     chainlinkEth = new ChainlinkOracleRelay(CHAINLINK_ETH_FEED_ADDRESS, 10_000_000_000, 1);
     chainLinkUni = new ChainlinkOracleRelay(CHAINLINK_UNI_FEED_ADDRESS, 10_000_000_000, 1);
 
     // Deploy anchoredViewEth & anchoredViewUni relay
-    anchoredViewEth = new AnchoredViewRelay(address(uniswapRelayEthUsdc), address(chainlinkEth), 10, 100);
-    anchoredViewUni = new AnchoredViewRelay(address(uniswapRelayUniUsdc), address(chainLinkUni), 30, 100);
+    anchoredViewEth = new AnchoredViewRelay(address(uniswapRelayEthUsdc), address(chainlinkEth), 20, 100);
+    anchoredViewUni = new AnchoredViewRelay(address(uniswapRelayUniUsdc), address(chainLinkUni), 40, 100);
 
     // Deploy the ThreeCrvOracle
     threeCrvOracle = new ThreeCrvOracle();
