@@ -1,17 +1,4 @@
-# Overview
-
-- [What is Amphora Protocol](content/what-is-amphora.md)
-- [Specs](content/specs.md)
-- [Why Amphora?](content/why-amphora.md)
-
-- [Concepts]()
-
-  - [Concept 1](content/concepts/concept.md)
-  - [Concept 2](content/concepts/concept.md)
-  - [Concept 3](content/concepts/concept.md)
-  - [Concept 4](content/concepts/concept.md)
-  - [Concept 5](content/concepts/concept.md)
-  - [Concept 6](content/concepts/concept.md)
+- [Overview](content/overview.md)
 
 - [Smart Contracts]()
 
