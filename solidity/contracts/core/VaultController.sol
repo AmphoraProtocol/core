@@ -795,6 +795,7 @@ contract VaultController is
     uint96 _start,
     uint96 _stop
   ) public view override returns (VaultSummary[] memory _vaultSummaries) {
+    if (_stop > vaultsMinted) _stop = vaultsMinted;
     _vaultSummaries = new VaultSummary[](_stop - _start + 1);
     for (uint96 _i = _start; _i <= _stop; _i++) {
       IVault _vault = _getVault(_i);

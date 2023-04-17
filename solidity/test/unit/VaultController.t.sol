@@ -43,6 +43,7 @@ abstract contract Base is DSTestPlus, TestConstants {
   address public governance = label(newAddress(), 'governance');
   address public alice = label(newAddress(), 'alice');
   address public vaultOwner = label(newAddress(), 'vaultOwner');
+  address public vaultOwner2 = label(newAddress(), 'vaultOwner2');
 
   IERC20 public mockToken = IERC20(mockContract(newAddress(), 'mockToken'));
   IERC20 public usdtLp = IERC20(mockContract(newAddress(), 'usdtLpAddress'));
@@ -109,8 +110,10 @@ abstract contract VaultBase is Base {
   event BorrowUSDA(uint256 _vaultId, address _vaultAddress, uint256 _borrowAmount);
 
   IVault internal _vault;
+  IVault internal _vault2;
   uint256 internal _vaultDeposit = 10 ether;
   uint96 internal _vaultId = 1;
+  uint96 internal _vaultId2 = 2;
   uint192 internal _borrowAmount = 5 ether;
 
   IBaseRewardPool internal _crvRewards = IBaseRewardPool(mockContract(newAddress(), 'crvRewards'));
@@ -126,14 +129,26 @@ abstract contract VaultBase is Base {
     vm.prank(vaultOwner);
     _vault = IVault(vaultController.mintVault());
 
+    vm.prank(vaultOwner2);
+    _vault2 = IVault(vaultController.mintVault());
+
     vm.mockCall(
       WETH_ADDRESS,
       abi.encode(IERC20.transferFrom.selector, vaultOwner, address(_vault), _vaultDeposit),
       abi.encode(true)
     );
 
+    vm.mockCall(
+      WETH_ADDRESS,
+      abi.encode(IERC20.transferFrom.selector, vaultOwner2, address(_vault2), _vaultDeposit * 2),
+      abi.encode(true)
+    );
+
     vm.prank(vaultOwner);
     _vault.depositERC20(WETH_ADDRESS, _vaultDeposit);
+
+    vm.prank(vaultOwner2);
+    _vault2.depositERC20(WETH_ADDRESS, _vaultDeposit * 2);
 
     vm.mockCall(
       address(vaultController.BOOSTER()),
@@ -542,7 +557,7 @@ contract UnitVaultControllerLiquidateVault is VaultBase, ExponentialNoError {
   }
 
   function testRevertIfVaultDoesNotExist(uint96 _id, uint256 _tokensToLiquidate) public {
-    vm.assume(_tokensToLiquidate != 0 && _id != _vaultId);
+    vm.assume(_tokensToLiquidate != 0 && _id != _vaultId && _id != _vaultId2);
     vm.expectRevert(IVaultController.VaultController_VaultDoesNotExist.selector);
     vaultController.liquidateVault(_id, WETH_ADDRESS, _tokensToLiquidate);
   }
@@ -650,7 +665,7 @@ contract UnitVaultControllerCheckVault is VaultBase {
   }
 
   function testRevertIfVaultNotFound(uint96 _id) public {
-    vm.assume(_id != _vaultId);
+    vm.assume(_id != _vaultId && _id != _vaultId2);
     vm.expectRevert(IVaultController.VaultController_VaultDoesNotExist.selector);
     vaultController.checkVault(_id);
   }
@@ -990,7 +1005,7 @@ contract UnitVaultControllerAmountToSolvency is VaultBase {
 
 contract UnitVaultControllerVaultLiability is VaultBase {
   function testRevertIfVaultDoesNotExist(uint96 _id) public {
-    vm.assume(_id != 1);
+    vm.assume(_id != 1 && _id != 2);
     vm.expectRevert(IVaultController.VaultController_VaultDoesNotExist.selector);
     vaultController.vaultLiability(_id);
   }
@@ -1111,6 +1126,40 @@ contract UnitVaultControllerVaultSummaries is VaultBase {
     assertEq(_summary[0].vaultLiability, vaultController.vaultLiability(_vaultId));
     assertEq(_summary[0].tokenAddresses[0], WETH_ADDRESS);
     assertEq(_summary[0].tokenBalances[0], _vaultDeposit);
+  }
+
+  function testVaultSummariesAll() public {
+    IVaultController.VaultSummary[] memory _summary = vaultController.vaultSummaries(1, 2);
+    assertEq(_summary.length, 2);
+
+    assertEq(_summary[0].id, _vaultId);
+    assertEq(_summary[0].borrowingPower, vaultController.vaultBorrowingPower(_vaultId));
+    assertEq(_summary[0].vaultLiability, vaultController.vaultLiability(_vaultId));
+    assertEq(_summary[0].tokenAddresses[0], WETH_ADDRESS);
+    assertEq(_summary[0].tokenBalances[0], _vaultDeposit);
+
+    assertEq(_summary[1].id, _vaultId2);
+    assertEq(_summary[1].borrowingPower, vaultController.vaultBorrowingPower(_vaultId2));
+    assertEq(_summary[1].vaultLiability, vaultController.vaultLiability(_vaultId2));
+    assertEq(_summary[1].tokenAddresses[0], WETH_ADDRESS);
+    assertEq(_summary[1].tokenBalances[0], _vaultDeposit * 2);
+  }
+
+  function testVaultSummariesBigEnd() public {
+    IVaultController.VaultSummary[] memory _summary = vaultController.vaultSummaries(1, 1_000_000);
+    assertEq(_summary.length, 2);
+
+    assertEq(_summary[0].id, _vaultId);
+    assertEq(_summary[0].borrowingPower, vaultController.vaultBorrowingPower(_vaultId));
+    assertEq(_summary[0].vaultLiability, vaultController.vaultLiability(_vaultId));
+    assertEq(_summary[0].tokenAddresses[0], WETH_ADDRESS);
+    assertEq(_summary[0].tokenBalances[0], _vaultDeposit);
+
+    assertEq(_summary[1].id, _vaultId2);
+    assertEq(_summary[1].borrowingPower, vaultController.vaultBorrowingPower(_vaultId2));
+    assertEq(_summary[1].vaultLiability, vaultController.vaultLiability(_vaultId2));
+    assertEq(_summary[1].tokenAddresses[0], WETH_ADDRESS);
+    assertEq(_summary[1].tokenBalances[0], _vaultDeposit * 2);
   }
 }
 
