@@ -2,7 +2,13 @@
 pragma solidity >=0.8.4 <0.9.0;
 
 import {
-  CommonE2EBase, IVault, IVaultController, VaultController, IVaultDeployer, VaultDeployer
+  CommonE2EBase,
+  IVault,
+  IVaultController,
+  VaultController,
+  IVaultDeployer,
+  VaultDeployer,
+  IERC20
 } from '@test/e2e/Common.sol';
 import {stdError} from 'forge-std/Test.sol';
 
@@ -100,9 +106,10 @@ contract E2EEdgeCases is CommonE2EBase {
 
     // disable vaultController A and enable vaultController B
     vm.startPrank(frank);
-    newVaultController = new VaultController();
+    newVaultController = new VaultController(BOOSTER);
 
-    newVaultDeployer = new VaultDeployer(IVaultController(address(newVaultController)));
+    newVaultDeployer =
+      new VaultDeployer(IVaultController(address(newVaultController)), IERC20(CVX_ADDRESS), IERC20(CRV_ADDRESS));
 
     address[] memory _tokens = new address[](3);
     _tokens[0] = WETH_ADDRESS;

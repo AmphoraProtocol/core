@@ -200,9 +200,9 @@ contract E2EUSDA is CommonE2EBase {
   }
 
   function testRevertIfDepositETH() public {
-    vm.expectRevert();
     vm.prank(dave);
-    address(usdaToken).call{value: 1 ether}('');
+    (bool success,) = address(usdaToken).call{value: 1 ether}('');
+    assertTrue(!success);
   }
 
   function testTransferSUSDtoUSDA() public {

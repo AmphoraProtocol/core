@@ -22,10 +22,10 @@ contract Vault is IVault, Context {
   using SafeERC20Upgradeable for IERC20;
 
   /// @dev The CVX token
-  IERC20 public constant CVX = IERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
+  IERC20 public immutable CVX;
 
   /// @dev The CRV token
-  IERC20 public constant CRV = IERC20(0xD533a949740bb3306d119CC777fa900bA034cd52);
+  IERC20 public immutable CRV;
 
   /// @dev The vault controller
   IVaultController public immutable CONTROLLER;
@@ -52,13 +52,17 @@ contract Vault is IVault, Context {
     _;
   }
 
-  /// @notice Must be called by VaultController, else it will not be registered as a vault in system
+  /// @dev Must be called by VaultController, else it will not be registered as a vault in system
   /// @param _id Unique id of the vault, ever increasing and tracked by VaultController
-  /// @param _minter The address of the person who created this vault
-  /// @param _controllerAddress The address of the VaultController
-  constructor(uint96 _id, address _minter, address _controllerAddress) {
+  /// @param _minter Address of the person who created this vault
+  /// @param _controllerAddress Address of the VaultController
+  /// @param _cvx Address of CVX token
+  /// @param _crv Address of CRV token
+  constructor(uint96 _id, address _minter, address _controllerAddress, IERC20 _cvx, IERC20 _crv) {
     vaultInfo = VaultInfo(_id, _minter);
     CONTROLLER = IVaultController(_controllerAddress);
+    CVX = _cvx;
+    CRV = _crv;
   }
 
   /// @notice Returns the minter of the vault

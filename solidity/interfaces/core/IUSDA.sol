@@ -4,6 +4,7 @@ pragma solidity ^0.8.9;
 import {IRoles} from '@interfaces/utils/IRoles.sol';
 
 import {IERC20Metadata} from '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
+import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 /// @title USDA Interface
 /// @notice extends IERC20Metadata
@@ -73,7 +74,8 @@ interface IUSDA is IERC20Metadata, IRoles {
     //////////////////////////////////////////////////////////////*/
 
   /// @notice initializer specifies the reserveAddress
-  function initialize(address _reserveAddress) external;
+  /// @param _reserveAddress The reserve address
+  function initialize(IERC20 _reserveAddress) external;
 
   function deposit(uint256 _susdAmount) external;
 

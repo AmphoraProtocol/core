@@ -16,6 +16,7 @@
     "deploy:goerli": "forge script -vv --optimize --optimizer-runs 200 --slow --broadcast --rpc-url $GOERLI_RPC solidity/scripts/Deploy.s.sol:DeployGoerli",
     "deploy:local": "forge script -vv --optimize --optimizer-runs 200 --slow --broadcast --fork-url http://localhost:8545 solidity/scripts/Deploy.s.sol:DeployLocal",
     "deploy:mainnet": "forge script -vv --optimize --optimizer-runs 200 --slow --broadcast --rpc-url $MAINNET_RPC solidity/scripts/Deploy.s.sol:DeployMainnet",
+    "deploy:sepolia": "forge script -vv --optimize --optimizer-runs 200 --slow --broadcast --rpc-url $SEPOLIA_RPC solidity/scripts/Deploy.s.sol:DeploySepolia",
     "docs:build": "./build-docs.sh",
     "docs:run": "mdbook serve docs",
     "postinstall": "husky install",

@@ -29,7 +29,8 @@ contract VaultController is
   OwnableUpgradeable
 {
   /// @dev The convex booster interface
-  IBooster public immutable BOOSTER = IBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
+  IBooster public immutable BOOSTER;
+
   // TODO: Change to immutable, can't initialize it in initializer
   /// @dev The vault deployer interface
   // solhint-disable-next-line defi-wonderland/wonder-var-name-mixedcase
@@ -78,6 +79,11 @@ contract VaultController is
   modifier onlyPauser() {
     if (_msgSender() != usda.pauser()) revert VaultController_OnlyPauser();
     _;
+  }
+
+  /// @param _booster The convex booster address
+  constructor(address _booster) {
+    BOOSTER = IBooster(_booster);
   }
 
   /// @notice Can initialize collaterals from an older vault controller

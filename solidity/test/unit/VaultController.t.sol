@@ -25,11 +25,14 @@ import {IBaseRewardPool} from '@interfaces/utils/IBaseRewardPool.sol';
 import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
 import {IVaultDeployer} from '@interfaces/core/IVaultDeployer.sol';
 
-import {IERC20} from 'isolmate/interfaces/tokens/IERC20.sol';
 import {DSTestPlus} from 'solidity-utils/test/DSTestPlus.sol';
 import {TestConstants} from '@test/utils/TestConstants.sol';
 
+import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+
 contract VaultControllerForTest is VaultController {
+  constructor(address _booster) VaultController(_booster) {}
+
   function migrateCollateralsFrom(IVaultController _oldVaultController, address[] memory _tokenAddresses) public {
     _migrateCollateralsFrom(_oldVaultController, _tokenAddresses);
   }
@@ -44,6 +47,9 @@ abstract contract Base is DSTestPlus, TestConstants {
   address public alice = label(newAddress(), 'alice');
   address public vaultOwner = label(newAddress(), 'vaultOwner');
   address public vaultOwner2 = label(newAddress(), 'vaultOwner2');
+  address public booster = (mockContract(newAddress(), 'booster'));
+  IERC20 public cvx = IERC20(mockContract(newAddress(), 'cvx'));
+  IERC20 public crv = IERC20(mockContract(newAddress(), 'crv'));
 
   IERC20 public mockToken = IERC20(mockContract(newAddress(), 'mockToken'));
   IERC20 public usdtLp = IERC20(mockContract(newAddress(), 'usdtLpAddress'));
@@ -69,8 +75,8 @@ abstract contract Base is DSTestPlus, TestConstants {
   function setUp() public virtual {
     address[] memory _tokens = new address[](1);
     vm.startPrank(governance);
-    vaultController = new VaultController();
-    vaultDeployer = new VaultDeployer(IVaultController(address(vaultController)));
+    vaultController = new VaultController(booster);
+    vaultDeployer = new VaultDeployer(IVaultController(address(vaultController)), cvx, crv);
     vaultController.initialize(IVaultController(address(0)), _tokens, mockAmphClaimer, vaultDeployer);
 
     curveMaster = new CurveMaster();
@@ -80,7 +86,7 @@ abstract contract Base is DSTestPlus, TestConstants {
     curveMaster.setCurve(address(0), address(threeLines));
 
     usdaToken = new USDA();
-    usdaToken.initialize(address(mockToken));
+    usdaToken.initialize(mockToken);
 
     vaultController.registerUSDA(address(usdaToken));
 
@@ -176,7 +182,7 @@ abstract contract VaultBase is Base {
 contract UnitVaultControllerInitialize is Base {
   function testInitializedCorrectly() public {
     address[] memory _tokens = new address[](1);
-    mockVaultController = new VaultControllerForTest();
+    mockVaultController = new VaultControllerForTest(booster);
     mockVaultController.initialize(IVaultController(address(0)), _tokens, mockAmphClaimer, vaultDeployer);
 
     assertEq(mockVaultController.owner(), address(this));
@@ -198,7 +204,7 @@ contract UnitVaultControllerInitialize is Base {
       WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE, type(uint256).max, 0
     );
     // Deploy the new vault controller
-    mockVaultController = new VaultControllerForTest();
+    mockVaultController = new VaultControllerForTest(booster);
     mockVaultController.initialize(IVaultController(address(vaultController)), _tokens, mockAmphClaimer, vaultDeployer);
     vm.stopPrank();
 
@@ -241,7 +247,7 @@ contract UnitVaultControllerMigrateCollateralsFrom is Base {
     _tokens[0] = WETH_ADDRESS;
     vm.startPrank(governance);
     // Deploy the new vault controller
-    mockVaultController = new VaultControllerForTest();
+    mockVaultController = new VaultControllerForTest(booster);
     vm.expectRevert(IVaultController.VaultController_WrongCollateralAddress.selector);
     mockVaultController.migrateCollateralsFrom(IVaultController(address(vaultController)), _tokens);
     vm.stopPrank();
@@ -256,7 +262,7 @@ contract UnitVaultControllerMigrateCollateralsFrom is Base {
       WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE, type(uint256).max, 0
     );
     // Deploy the new vault controller
-    mockVaultController = new VaultControllerForTest();
+    mockVaultController = new VaultControllerForTest(booster);
     mockVaultController.migrateCollateralsFrom(IVaultController(address(vaultController)), _tokens);
     vm.stopPrank();
 
@@ -354,8 +360,6 @@ contract UnitVaultControllerRegisterCurveMaster is Base {
 }
 
 contract UnitVaultControllerRegisterERC20 is Base {
-  IBooster public booster = IBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
-
   event RegisteredErc20(
     address _tokenAddress, uint256 _ltv, address _oracleAddress, uint256 _liquidationIncentive, uint256 _cap
   );
@@ -971,8 +975,8 @@ contract UnitVaultControllerGetVault is VaultBase {
   function setUp() public virtual override {
     super.setUp();
     address[] memory _tokens = new address[](1);
-    mockVaultController = new VaultControllerForTest();
-    _mockVaultDeployer = new VaultDeployer(IVaultController(address(mockVaultController)));
+    mockVaultController = new VaultControllerForTest(booster);
+    _mockVaultDeployer = new VaultDeployer(IVaultController(address(mockVaultController)), cvx, crv);
     mockVaultController.initialize(IVaultController(address(0)), _tokens, mockAmphClaimer, _mockVaultDeployer);
   }
 

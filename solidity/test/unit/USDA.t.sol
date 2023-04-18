@@ -56,7 +56,7 @@ abstract contract Base is DSTestPlus {
 contract BaseInit is Base {
   function setUp() public virtual override {
     super.setUp();
-    _usda.initialize(address(_mockToken));
+    _usda.initialize(_mockToken);
     _usda.addVaultController(_vaultController);
     _usda.setPauser(address(this));
   }
@@ -65,7 +65,7 @@ contract BaseInit is Base {
 contract UnitUSDAInit is BaseInit {
   function testRevertsWhenInitializingAgain() public {
     vm.expectRevert('Initializable: contract is already initialized');
-    _usda.initialize(address(_mockToken));
+    _usda.initialize(_mockToken);
   }
 
   function testRevertsWhenInitializingUFragmentsAgain() public {
@@ -81,7 +81,7 @@ contract UnitUSDAInit is BaseInit {
 
 contract UnitUSDAGetters is Base {
   function testOwnerReturnsThis() public {
-    _usda.initialize(address(_mockToken));
+    _usda.initialize(_mockToken);
     _usda.addVaultController(_vaultController);
     _usda.setPauser(address(this));
     assertEq(_usda.owner(), address(this));
@@ -89,7 +89,7 @@ contract UnitUSDAGetters is Base {
 
   function testNameReturnsName() public {
     assertEq(_usda.name(), '');
-    _usda.initialize(address(_mockToken));
+    _usda.initialize(_mockToken);
     _usda.addVaultController(_vaultController);
     _usda.setPauser(address(this));
     assertEq(_usda.name(), 'USDA Token');
@@ -97,14 +97,14 @@ contract UnitUSDAGetters is Base {
 
   function testSymbolReturnsSymbol() public {
     assertEq(_usda.symbol(), '');
-    _usda.initialize(address(_mockToken));
+    _usda.initialize(_mockToken);
     _usda.addVaultController(_vaultController);
     _usda.setPauser(address(this));
     assertEq(_usda.symbol(), 'USDA');
   }
 
   function testDecimalsReturnsDecimals() public {
-    _usda.initialize(address(_mockToken));
+    _usda.initialize(_mockToken);
     _usda.addVaultController(_vaultController);
     _usda.setPauser(address(this));
     assertEq(_usda.decimals(), 18);
@@ -112,7 +112,7 @@ contract UnitUSDAGetters is Base {
 
   function testReserveAddressReturnsToken() public {
     assertEq(_usda.reserveAddress(), address(0));
-    _usda.initialize(address(_mockToken));
+    _usda.initialize(_mockToken);
     _usda.addVaultController(_vaultController);
     _usda.setPauser(address(this));
     assertEq(_usda.reserveAddress(), address(_mockToken));

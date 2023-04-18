@@ -38,18 +38,18 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
 
   constructor(
     address _vaultController,
-    address _amph,
-    address _cvx,
-    address _crv,
+    IERC20 _amph,
+    IERC20 _cvx,
+    IERC20 _crv,
     uint256 _amphPerCvx,
     uint256 _amphPerCrv,
     uint256 _cvxRewardFee,
     uint256 _crvRewardFee
   ) {
     vaultController = IVaultController(_vaultController);
-    CVX = IERC20(_cvx);
-    CRV = IERC20(_crv);
-    AMPH = IERC20(_amph);
+    CVX = _cvx;
+    CRV = _crv;
+    AMPH = _amph;
 
     amphPerCvx = _amphPerCvx;
     amphPerCrv = _amphPerCrv;

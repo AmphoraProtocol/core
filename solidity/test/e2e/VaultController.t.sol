@@ -173,7 +173,7 @@ contract E2EVaultController is CommonE2EBase {
     _tokens[0] = WETH_ADDRESS;
     vm.startPrank(frank);
     // Deploy the new vault controller
-    vaultController2 = new VaultController();
+    vaultController2 = new VaultController(BOOSTER);
     vaultController2.initialize(
       IVaultController(address(vaultController)),
       _tokens,
@@ -219,9 +219,9 @@ contract E2EVaultController is CommonE2EBase {
   }
 
   function testRevertVaultDepositETH() public {
-    vm.expectRevert();
-    vm.prank(bob);
-    address(bobVault).call{value: 1 ether}('');
+    vm.prank(dave);
+    (bool success,) = address(bobVault).call{value: 1 ether}('');
+    assertTrue(!success);
   }
 
   function testRevertBorrowIfVaultInsolvent() public {

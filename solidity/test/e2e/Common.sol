@@ -2,7 +2,6 @@
 pragma solidity >=0.8.4 <0.9.0;
 
 import {console} from 'forge-std/console.sol';
-import {IERC20} from 'isolmate/interfaces/tokens/IERC20.sol';
 import {DSTestPlus} from 'solidity-utils/test/DSTestPlus.sol';
 
 import {VaultController} from '@contracts/core/VaultController.sol';
@@ -29,6 +28,7 @@ import {IVault} from '@interfaces/core/IVault.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
 
 import {TestConstants} from '@test/utils/TestConstants.sol';
+import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 // solhint-disable-next-line max-states-count
 contract CommonE2EBase is DSTestPlus, TestConstants {
@@ -149,6 +149,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     deal(address(uni), gus, gusUni);
     deal(address(usdtStableLP), bob, bobCurveLPBalance);
     deal(address(boringDaoLP), bob, bobCurveLPBalance);
+    deal(dave, 1000 ether);
 
     vm.startPrank(frank);
 
@@ -157,15 +158,16 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     amphToken.initialize(frank, initialAMPH);
 
     // Deploy VaultController
-    vaultController = new VaultController();
+    vaultController = new VaultController(BOOSTER);
     label(address(vaultController), 'VaultController');
 
     // Deploy claimer
     amphClaimer =
-    new AMPHClaimer(address(vaultController), address(amphToken), CVX_ADDRESS, CRV_ADDRESS, cvxRate, crvRate, cvxRewardFee, crvRewardFee);
+    new AMPHClaimer(address(vaultController), IERC20(address(amphToken)), IERC20(CVX_ADDRESS), IERC20(CRV_ADDRESS), cvxRate, crvRate, cvxRewardFee, crvRewardFee);
 
     // Deploy VaultDeployer
-    vaultDeployer = new VaultDeployer(IVaultController(address(vaultController)));
+    vaultDeployer =
+      new VaultDeployer(IVaultController(address(vaultController)), IERC20(CVX_ADDRESS), IERC20(CRV_ADDRESS));
     label(address(vaultDeployer), 'VaultDeployer');
 
     // Initialize VaultController
@@ -174,7 +176,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     // Deploy and initialize USDA
     usdaToken = new USDA();
     label(address(usdaToken), 'USDA');
-    usdaToken.initialize(SUSD_ADDRESS);
+    usdaToken.initialize(IERC20(SUSD_ADDRESS));
 
     // Deploy curve
     threeLines = new ThreeLines0_100(2 ether, 0.1 ether, 0.005 ether, 0.25 ether, 0.5 ether);

@@ -13,5 +13,4 @@ interface IBooster {
   function earmarkRewards(uint256 _pid) external returns (bool _claimed);
   function earmarkFees() external returns (bool _claimed);
   function deposit(uint256 _pid, uint256 _amount, bool _stake) external returns (bool _success);
-  function withdraw(uint256 _pid, uint256 _amount) external returns (bool _success);
 }

@@ -17,3 +17,4 @@ solady/=node_modules/solady/src
 @contracts/=solidity/contracts
 @interfaces/=solidity/interfaces
 @test/=solidity/test
+@scripts/=solidity/scripts

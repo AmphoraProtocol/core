@@ -11,7 +11,7 @@ import {AMPHClaimer} from '@contracts/core/AMPHClaimer.sol';
 import {DSTestPlus, console} from 'solidity-utils/test/DSTestPlus.sol';
 
 contract AMPHMath is AMPHClaimer {
-  constructor() AMPHClaimer(address(0), address(0), address(0), address(0), 0, 0, 0, 0) {}
+  constructor() AMPHClaimer(address(0), IERC20(address(0)), IERC20(address(0)), IERC20(address(0)), 0, 0, 0, 0) {}
 
   function tokenAmountToAmph(uint256 _tokenAmount, uint256 _tokenRate) public pure returns (uint256 _amph) {
     return _tokenAmountToAmph(_tokenAmount, _tokenRate);
@@ -43,7 +43,7 @@ abstract contract Base is DSTestPlus {
     // Deploy contract
     vm.prank(deployer);
     amphClaimer =
-    new AMPHClaimer(address(_mockVaultController), address(_mockAMPH), address(_mockCVX), address(_mockCRV), amphPerCvx, amphPerCrv, cvxRewardFee, crvRewardFee);
+    new AMPHClaimer(address(_mockVaultController), _mockAMPH, _mockCVX, _mockCRV, amphPerCvx, amphPerCrv, cvxRewardFee, crvRewardFee);
 
     amphMath = new AMPHMath();
 
@@ -61,9 +61,9 @@ abstract contract Base is DSTestPlus {
 contract UnitAMPHClaimerConstructor is Base {
   function testDeploy(
     address _vaultController,
-    address _amph,
-    address _cvx,
-    address _crv,
+    IERC20 _amph,
+    IERC20 _cvx,
+    IERC20 _crv,
     uint256 _amphPerCvx,
     uint256 _amphPerCrv,
     uint256 _cvxRewardFee,
@@ -74,9 +74,9 @@ contract UnitAMPHClaimerConstructor is Base {
       new AMPHClaimer(_vaultController, _amph,  _cvx,  _crv,  _amphPerCvx,  _amphPerCrv, _cvxRewardFee, _crvRewardFee);
 
     assert(address(amphClaimer.vaultController()) == _vaultController);
-    assert(address(amphClaimer.AMPH()) == _amph);
-    assert(address(amphClaimer.CVX()) == _cvx);
-    assert(address(amphClaimer.CRV()) == _crv);
+    assert(address(amphClaimer.AMPH()) == address(_amph));
+    assert(address(amphClaimer.CVX()) == address(_cvx));
+    assert(address(amphClaimer.CRV()) == address(_crv));
     assert(amphClaimer.amphPerCvx() == _amphPerCvx);
     assert(amphClaimer.amphPerCrv() == _amphPerCrv);
     assert(amphClaimer.cvxRewardFee() == _cvxRewardFee);

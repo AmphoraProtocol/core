@@ -117,6 +117,14 @@ interface IVault {
    */
   function CONTROLLER() external view returns (IVaultController _vaultController);
 
+  /// @notice Returns the CRV token address
+  /// @return _crv The CRV token address
+  function CRV() external view returns (IERC20 _crv);
+
+  /// @notice Returns the CVX token address
+  /// @return _cvx The CVX token address
+  function CVX() external view returns (IERC20 _cvx);
+
   /*///////////////////////////////////////////////////////////////
                               LOGIC
     //////////////////////////////////////////////////////////////*/

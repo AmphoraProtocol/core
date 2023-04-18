@@ -4,10 +4,10 @@ pragma experimental ABIEncoderV2;
 
 import {IAmphoraProtocolToken} from '@interfaces/governance/IAmphoraProtocolToken.sol';
 import {Context} from '@openzeppelin/contracts/utils/Context.sol';
+import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 
-/// @notice The Amphora protocol token
-contract AmphoraProtocolToken is IAmphoraProtocolToken, Context {
-  /// @dev The EIP-712 typehash for the contract's domain
+contract AmphoraProtocolToken is IAmphoraProtocolToken, Context, Ownable {
+  /// @notice The EIP-712 typehash for the contract's domain
   bytes32 public constant DOMAIN_TYPEHASH =
     keccak256('EIP712Domain(string name,uint256 chainId,address verifyingContract)');
 
@@ -34,9 +34,6 @@ contract AmphoraProtocolToken is IAmphoraProtocolToken, Context {
   /// @dev Total number of tokens in circulation
   uint256 public totalSupply;
 
-  /// @dev The owner address
-  address public owner;
-
   /// @dev Allowance amounts on behalf of others
   mapping(address => mapping(address => uint96)) internal _allowances;
 
@@ -54,12 +51,6 @@ contract AmphoraProtocolToken is IAmphoraProtocolToken, Context {
 
   /// @dev A record of states for signing / validating signatures
   mapping(address => uint256) public nonces;
-
-  /// @notice The onlyOwner modifier checks if sender is owner
-  modifier onlyOwner() {
-    require(owner == _msgSender(), 'onlyOwner: sender not owner');
-    _;
-  }
 
   /// @notice Used to initialize the contract during delegator constructor
   /// @param _account The address to recieve initial suppply
@@ -423,7 +414,6 @@ contract AmphoraProtocolToken is IAmphoraProtocolToken, Context {
   /// @notice Returns the current chain id
   /// @return _chainId The current chain id
   function _getChainId() internal view returns (uint256 _chainId) {
-    uint256 _chainId;
     //solhint-disable-next-line no-inline-assembly
     assembly {
       _chainId := chainid()

@@ -61,10 +61,10 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
 
   /// @notice Initializer for contract
   /// @param _reserveAddr The address of sUSD
-  function initialize(address _reserveAddr) public override initializer {
+  function initialize(IERC20 _reserveAddr) public override initializer {
     _UFragments_init('USDA Token', 'USDA');
     __Pausable_init();
-    reserve = IERC20(_reserveAddr);
+    reserve = _reserveAddr;
   }
 
   /// @notice Sets the pauser for both USDA and VaultController
