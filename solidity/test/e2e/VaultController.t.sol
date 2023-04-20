@@ -9,6 +9,7 @@ import {IVault} from '@interfaces/core/IVault.sol';
 import {IAnchoredViewRelay} from '@interfaces/periphery/IAnchoredViewRelay.sol';
 import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
 import {IVaultDeployer} from '@interfaces/core/IVaultDeployer.sol';
+import {ChainlinkStalePriceLib} from '@contracts/periphery/oracles/ChainlinkStalePriceLib.sol';
 
 contract E2EVaultController is CommonE2EBase {
   uint256 public borrowAmount = 500 ether;
@@ -220,8 +221,8 @@ contract E2EVaultController is CommonE2EBase {
 
   function testRevertVaultDepositETH() public {
     vm.prank(dave);
-    (bool success,) = address(bobVault).call{value: 1 ether}('');
-    assertTrue(!success);
+    (bool _success,) = address(bobVault).call{value: 1 ether}('');
+    assertTrue(!_success);
   }
 
   function testRevertBorrowIfVaultInsolvent() public {
@@ -528,5 +529,30 @@ contract E2EVaultController is CommonE2EBase {
     );
     _tokensToLiquidate = vaultController.tokensToLiquidate(bobsVaultId, WETH_ADDRESS);
     assertEq(_tokensToLiquidate, bobWETH);
+  }
+
+  function testLiquidateVaultRevertsWhenPriceIsStale() public {
+    uint192 _accountBorrowingPower = vaultController.vaultBorrowingPower(bobsVaultId);
+    uint256 _vaultInitialWethBalance = bobVault.tokenBalance(WETH_ADDRESS);
+
+    // Borrow the maximum amount
+    vm.prank(bob);
+    vaultController.borrowUSDA(bobsVaultId, _accountBorrowingPower);
+
+    // Let time pass so the vault becomes liquidatable because of interest
+    uint256 _tenYears = 10 * (365 days + 6 hours);
+    vm.warp(block.timestamp + _tenYears);
+
+    // Calculate interest to update the protocol, vault should now be liquidatable
+    vaultController.calculateInterest();
+
+    // Advance time so the price is stale
+    vm.warp(block.timestamp + staleTime + 1);
+
+    // Liquidate vault
+    vm.startPrank(dave);
+    vm.expectRevert(ChainlinkStalePriceLib.Chainlink_StalePrice.selector);
+    vaultController.liquidateVault(bobsVaultId, WETH_ADDRESS, _vaultInitialWethBalance);
+    vm.stopPrank();
   }
 }

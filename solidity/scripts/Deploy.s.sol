@@ -113,7 +113,7 @@ abstract contract Deploy is Script, TestConstants {
       uniswapRelayEthUsdc = new UniswapV3OracleRelay(7200, USDC_WETH_POOL_ADDRESS, true, 1_000_000_000_000, 1);
       console.log('UNISWAP_ETH_USDC_ORACLE: ', address(uniswapRelayEthUsdc));
       // Deploy chainlinkEth oracle relay
-      chainlinkEth = new ChainlinkOracleRelay(CHAINLINK_ETH_FEED_ADDRESS, 10_000_000_000, 1);
+      chainlinkEth = new ChainlinkOracleRelay(CHAINLINK_ETH_FEED_ADDRESS, 10_000_000_000, 1, 1 hours);
       console.log('CHAINLINK_ETH_FEED: ', address(chainlinkEth));
       // Deploy anchoredViewEth relay
       anchoredViewEth = new AnchoredViewRelay(address(uniswapRelayEthUsdc), address(chainlinkEth), 20, 100);

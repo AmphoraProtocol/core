@@ -2,24 +2,37 @@
 pragma solidity ^0.8.9;
 
 import {IOracleRelay, OracleRelay} from '@contracts/periphery/oracles/OracleRelay.sol';
-import {AggregatorInterface} from '@chainlink/interfaces/AggregatorInterface.sol';
+import {AggregatorV2V3Interface} from '@chainlink/interfaces/AggregatorV2V3Interface.sol';
 import {ICurvePool} from '@interfaces/utils/ICurvePool.sol';
 import {Math} from '@openzeppelin/contracts/utils/math/Math.sol';
 import {FixedPointMathLib} from 'solady/utils/FixedPointMathLib.sol';
+import {ChainlinkStalePriceLib} from '@contracts/periphery/oracles/ChainlinkStalePriceLib.sol';
+import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 
 /// @notice Oracle Relay for the TriCrypto pool (USDT/WBTC/WETH)
-contract TriCryptoOracle is OracleRelay {
+contract TriCryptoOracle is OracleRelay, Ownable {
+  /// @notice Emitted when the amount is zero
+  error TriCryptoOracle_ZeroAmount();
+
   address public constant POOL = 0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
-  AggregatorInterface public constant BTC_FEED = AggregatorInterface(0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c);
-  AggregatorInterface public constant ETH_FEED = AggregatorInterface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419);
-  AggregatorInterface public constant USDT_FEED = AggregatorInterface(0x3E7d1eAB13ad0104d2750B8863b489D65364e32D);
-  AggregatorInterface public constant WBTC_FEED = AggregatorInterface(0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23);
+  AggregatorV2V3Interface public constant BTC_FEED = AggregatorV2V3Interface(0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c);
+
+  AggregatorV2V3Interface public constant ETH_FEED = AggregatorV2V3Interface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419);
+  AggregatorV2V3Interface public constant USDT_FEED =
+    AggregatorV2V3Interface(0x3E7d1eAB13ad0104d2750B8863b489D65364e32D);
+  AggregatorV2V3Interface public constant WBTC_FEED =
+    AggregatorV2V3Interface(0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23);
 
   uint256 public constant GAMMA0 = 28_000_000_000_000; // 2.8e-5
   uint256 public constant A0 = 2 * 3 ** 3 * 10_000;
   uint256 public constant DISCOUNT0 = 1_087_460_000_000_000; // 0.00108..
 
   ICurvePool public constant TRI_CRYPTO = ICurvePool(POOL);
+
+  uint256 public btcStaleDelay = 1 hours;
+  uint256 public ethStaleDelay = 1 hours;
+  uint256 public usdtStaleDelay = 1 days;
+  uint256 public wbtcStaleDelay = 1 days;
 
   constructor() OracleRelay(OracleType.Chainlink) {}
 
@@ -30,6 +43,34 @@ contract TriCryptoOracle is OracleRelay {
     _value = _get();
   }
 
+  /// @notice Sets the stale delay for the BTC feed
+  /// @param _delay The new delay
+  function setBtcStaleDelay(uint256 _delay) external onlyOwner {
+    if (_delay == 0) revert TriCryptoOracle_ZeroAmount();
+    btcStaleDelay = _delay;
+  }
+
+  /// @notice Sets the stale delay for the ETH feed
+  /// @param _delay The new delay
+  function setEthStaleDelay(uint256 _delay) external onlyOwner {
+    if (_delay == 0) revert TriCryptoOracle_ZeroAmount();
+    ethStaleDelay = _delay;
+  }
+
+  /// @notice Sets the stale delay for the USDT feed
+  /// @param _delay The new delay
+  function setUsdtStaleDelay(uint256 _delay) external onlyOwner {
+    if (_delay == 0) revert TriCryptoOracle_ZeroAmount();
+    usdtStaleDelay = _delay;
+  }
+
+  /// @notice Sets the stale delay for the WBTC feed
+  /// @param _delay The new delay
+  function setWbtcStaleDelay(uint256 _delay) external onlyOwner {
+    if (_delay == 0) revert TriCryptoOracle_ZeroAmount();
+    wbtcStaleDelay = _delay;
+  }
+
   /// @notice Calculated the price of 1 LP token
   /// @dev This function comes from the implementation in vyper that is on the bottom
   /// @return _maxPrice The current value
@@ -37,10 +78,10 @@ contract TriCryptoOracle is OracleRelay {
     uint256 _vp = TRI_CRYPTO.get_virtual_price();
 
     // Get the prices from chainlink and add 10 decimals
-    uint256 _btcPrice = uint256(BTC_FEED.latestAnswer()) * 1e10;
-    uint256 _wbtcPrice = uint256(WBTC_FEED.latestAnswer()) * 1e10;
-    uint256 _ethPrice = uint256(ETH_FEED.latestAnswer()) * 1e10;
-    uint256 _usdtPrice = uint256(USDT_FEED.latestAnswer()) * 1e10;
+    uint256 _btcPrice = (ChainlinkStalePriceLib.getCurrentPrice(BTC_FEED, btcStaleDelay)) * 1e10;
+    uint256 _wbtcPrice = (ChainlinkStalePriceLib.getCurrentPrice(WBTC_FEED, wbtcStaleDelay)) * 1e10;
+    uint256 _ethPrice = (ChainlinkStalePriceLib.getCurrentPrice(ETH_FEED, ethStaleDelay)) * 1e10;
+    uint256 _usdtPrice = (ChainlinkStalePriceLib.getCurrentPrice(USDT_FEED, usdtStaleDelay)) * 1e10;
 
     uint256 _minWbtcPrice = (_wbtcPrice < 1e18) ? (_wbtcPrice * _btcPrice) / 1e18 : _btcPrice;
 

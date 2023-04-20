@@ -98,8 +98,8 @@ abstract contract Base is DSTestPlus, TestConstants {
     uniswapRelayUniUsdc = new UniswapV3OracleRelay(14400, USDC_UNI_POOL_ADDRESS, false, 1_000_000_000_000, 1);
 
     // Deploy chainlinkEth oracle & chainLinkUni relay
-    chainlinkEth = new ChainlinkOracleRelay(CHAINLINK_ETH_FEED_ADDRESS, 10_000_000_000, 1);
-    chainLinkUni = new ChainlinkOracleRelay(CHAINLINK_UNI_FEED_ADDRESS, 10_000_000_000, 1);
+    chainlinkEth = new ChainlinkOracleRelay(CHAINLINK_ETH_FEED_ADDRESS, 10_000_000_000, 1, 1 hours);
+    chainLinkUni = new ChainlinkOracleRelay(CHAINLINK_UNI_FEED_ADDRESS, 10_000_000_000, 1, 1 hours);
 
     // Deploy anchoredViewEth & anchoredViewUni relay
     anchoredViewEth = new AnchoredViewRelay(address(uniswapRelayEthUsdc), address(chainlinkEth), 20, 100);

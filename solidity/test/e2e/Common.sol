@@ -132,6 +132,8 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   uint256 public cvxRewardFee = 0.02e18;
   uint256 public crvRewardFee = 0.01e18;
 
+  uint256 public staleTime = 20 * 365 days; // 20 years stale time so we can advance time in tests
+
   function setUp() public virtual {
     vm.createSelectFork(vm.rpcUrl('mainnet'), FORK_BLOCK);
 
@@ -203,15 +205,15 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     // Deploy uniswapRelayUniUsdc oracle relay
     uniswapRelayWbtcUsdc = new UniswapV3OracleRelay(7200, USDC_WBTC_POOL_ADDRESS, false, 1_000_000_000_000, 1);
     // Deploy chainLinkUni oracle relay
-    chainLinkUni = new ChainlinkOracleRelay(CHAINLINK_UNI_FEED_ADDRESS, 10_000_000_000, 1);
+    chainLinkUni = new ChainlinkOracleRelay(CHAINLINK_UNI_FEED_ADDRESS, 10_000_000_000, 1, staleTime);
     // Deploy chainlinkEth oracle relay
-    chainlinkEth = new ChainlinkOracleRelay(CHAINLINK_ETH_FEED_ADDRESS, 10_000_000_000, 1);
+    chainlinkEth = new ChainlinkOracleRelay(CHAINLINK_ETH_FEED_ADDRESS, 10_000_000_000, 1, staleTime);
     // Deploy chainlinkAave oracle relay
-    chainlinkAave = new ChainlinkOracleRelay(CHAINLINK_AAVE_FEED_ADDRESS, 10_000_000_000, 1);
+    chainlinkAave = new ChainlinkOracleRelay(CHAINLINK_AAVE_FEED_ADDRESS, 10_000_000_000, 1, staleTime);
     // Deploy chainlinkAave oracle relay
-    chainlinkDydx = new ChainlinkOracleRelay(CHAINLINK_DYDX_FEED_ADDRESS, 10_000_000_000, 1);
+    chainlinkDydx = new ChainlinkOracleRelay(CHAINLINK_DYDX_FEED_ADDRESS, 10_000_000_000, 1, staleTime);
     // Deploy chainlinkWbtc oracle relay
-    chainlinkBtc = new ChainlinkOracleRelay(CHAINLINK_BTC_FEED_ADDRESS, 100_000_000_000_000_000_000, 1);
+    chainlinkBtc = new ChainlinkOracleRelay(CHAINLINK_BTC_FEED_ADDRESS, 100_000_000_000_000_000_000, 1, staleTime);
     // Deploy anchoredViewEth relay
     anchoredViewEth = new AnchoredViewRelay(address(uniswapRelayEthUsdc), address(chainlinkEth), 20, 100);
     // Deploy anchoredViewUni relay
