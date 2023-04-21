@@ -27,8 +27,7 @@ import {FakeVirtualRewardsPool} from '@scripts/fakes/FakeVirtualRewardsPool.sol'
 import {FakeWethOracle} from '@scripts/fakes/FakeWethOracle.sol';
 import {MintableToken} from '@scripts/fakes/MintableToken.sol';
 
-import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import {ERC20} from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
+import {ERC20, IERC20} from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import '@openzeppelin/contracts/utils/Strings.sol';
 
 abstract contract Deploy is Script, TestConstants {

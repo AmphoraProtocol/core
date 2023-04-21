@@ -28,7 +28,7 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
   EnumerableSet.AddressSet internal _vaultControllers;
 
   /// @dev The reserve token
-  IERC20 public reserve;
+  IERC20 public sUSD;
 
   /// @dev The address of the pauser
   address public pauser;
@@ -60,11 +60,11 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
   }
 
   /// @notice Initializer for contract
-  /// @param _reserveAddr The address of sUSD
-  function initialize(IERC20 _reserveAddr) public override initializer {
+  /// @param _sUSDAddr The address of sUSD
+  function initialize(IERC20 _sUSDAddr) public override initializer {
     _UFragments_init('USDA Token', 'USDA');
     __Pausable_init();
-    reserve = _reserveAddr;
+    sUSD = _sUSDAddr;
   }
 
   /// @notice Sets the pauser for both USDA and VaultController
@@ -112,7 +112,7 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
   /// @notice Returns the address of the reserve currency, or susd
   /// @return _reserveAddress The reserve address
   function reserveAddress() public view override returns (address _reserveAddress) {
-    return address(reserve);
+    return address(sUSD);
   }
 
   /// @notice Deposit sUSD to mint USDA
@@ -137,10 +137,10 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
   /// @notice Business logic to deposit sUSD and mint USDA for the caller
   function _deposit(uint256 _susdAmount, address _target) internal paysInterest whenNotPaused {
     if (_susdAmount == 0) revert USDA_ZeroAmount();
+    sUSD.transferFrom(_msgSender(), address(this), _susdAmount);
+    _mint(_target, _susdAmount);
     // Account for the susd received
     reserveAmount += _susdAmount;
-    if (!reserve.transferFrom(_msgSender(), address(this), _susdAmount)) revert USDA_TransferFailed();
-    _mint(_target, _susdAmount);
 
     emit Deposit(_target, _susdAmount);
   }
@@ -185,7 +185,7 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
     if (_susdAmount > this.balanceOf(_msgSender())) revert USDA_InsufficientFunds();
     // Account for the susd withdrawn
     reserveAmount -= _susdAmount;
-    if (!reserve.transfer(_target, _susdAmount)) revert USDA_TransferFailed();
+    sUSD.transfer(_target, _susdAmount);
     _burn(_msgSender(), _susdAmount);
 
     emit Withdraw(_target, _susdAmount);
@@ -199,12 +199,13 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
   }
 
   function _mint(address _target, uint256 _amount) internal {
+    uint256 __gonsPerFragment = _gonsPerFragment;
     // the gonbalances of the sender is in gons, therefore we must multiply the deposit amount, which is in fragments, by gonsperfragment
-    _gonBalances[_target] = _gonBalances[_target] + _amount * _gonsPerFragment;
+    _gonBalances[_target] += _amount * __gonsPerFragment;
     // total supply is in fragments, and so we add amount
     _totalSupply = _totalSupply + _amount;
     // and totalgons of course is in gons, and so we multiply amount by gonsperfragment to get the amount of gons we must add to totalGons
-    _totalGons = _totalGons + _amount * _gonsPerFragment;
+    _totalGons += _amount * __gonsPerFragment;
     // emit both a mint and transfer event
     emit Transfer(address(0), _target, _amount);
     emit Mint(_target, _amount);
@@ -218,11 +219,12 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
   }
 
   function _burn(address _target, uint256 _amount) internal {
+    uint256 __gonsPerFragment = _gonsPerFragment;
     // modify the gonbalances of the sender, subtracting the amount of gons, therefore amount * gonsperfragment
-    _gonBalances[_target] = _gonBalances[_target] - (_amount * _gonsPerFragment);
+    _gonBalances[_target] -= (_amount * __gonsPerFragment);
     // modify totalSupply and totalGons
     _totalSupply = _totalSupply - _amount;
-    _totalGons = _totalGons - (_amount * _gonsPerFragment);
+    _totalGons -= (_amount * __gonsPerFragment);
     // emit both a burn and transfer event
     emit Transfer(_target, address(0), _amount);
     emit Burn(_target, _amount);
@@ -234,7 +236,7 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
     if (_susdAmount == 0) revert USDA_ZeroAmount();
     // Account for the susd received
     reserveAmount += _susdAmount;
-    if (!reserve.transferFrom(_msgSender(), address(this), _susdAmount)) revert USDA_TransferFailed();
+    sUSD.transferFrom(_msgSender(), address(this), _susdAmount);
     _donation(_susdAmount);
   }
 
@@ -243,8 +245,8 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
   function recoverDust(address _to) external onlyOwner {
     // All sUSD sent directly to the contract is not accounted into the reserveAmount
     // This function allows governance to recover it
-    uint256 _amount = reserve.balanceOf(address(this)) - reserveAmount;
-    reserve.transfer(_to, _amount);
+    uint256 _amount = sUSD.balanceOf(address(this)) - reserveAmount;
+    sUSD.transfer(_to, _amount);
   }
 
   /// @notice Function for the vaultController to mint
@@ -272,7 +274,7 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
     // Account for the susd withdrawn
     reserveAmount -= _susdAmount;
     // ensure transfer success
-    if (!reserve.transfer(_target, _susdAmount)) revert USDA_TransferFailed();
+    sUSD.transfer(_target, _susdAmount);
   }
 
   /// @notice Function for the vaultController to scale all USDA balances

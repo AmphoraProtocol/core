@@ -86,7 +86,7 @@ contract UnitAMPHClaimerConstructor is Base {
 }
 
 contract UnitAMPHClaimerClaimAMPH is Base {
-  event ClaimedAmph(address _vaultClaimer, uint256 _cvxAmount, uint256 _crvAmount, uint256 _amphAmount);
+  event ClaimedAmph(address indexed _vaultClaimer, uint256 _cvxAmount, uint256 _crvAmount, uint256 _amphAmount);
 
   function testClaimAMPHWithInvalidVault(address _caller) public {
     vm.assume(_caller != bobVault);
@@ -261,10 +261,10 @@ contract UnitAMPHClaimerClaimable is Base {
 }
 
 contract UnitAMPHClaimerGovernanceFunctions is Base {
-  event ChangedVaultController(address _newVaultController);
+  event ChangedVaultController(address indexed _newVaultController);
   event ChangedCvxRate(uint256 _newCvxRate);
   event ChangedCrvRate(uint256 _newCrvRate);
-  event RecoveredDust(address _token, address _receiver, uint256 _amount);
+  event RecoveredDust(address indexed _token, address _receiver, uint256 _amount);
   event ChangedCvxRewardFee(uint256 _newCvxReward);
   event ChangedCrvRewardFee(uint256 _newCrvReward);
 

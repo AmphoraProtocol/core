@@ -175,17 +175,6 @@ contract UnitUSDADeposit is BaseInit {
     vm.expectRevert('Pausable: paused');
     _usda.deposit(_amount);
   }
-
-  function testRevertIfTransactionFails(uint56 _amount) public {
-    vm.assume(_amount > 0);
-    vm.mockCall(
-      address(_mockToken),
-      abi.encodeWithSelector(IERC20.transferFrom.selector, address(this), address(_usda), _amount),
-      abi.encode(false)
-    );
-    vm.expectRevert(IUSDA.USDA_TransferFailed.selector);
-    _usda.deposit(_amount);
-  }
 }
 
 contract UnitUSDADepositTo is BaseInit {
@@ -256,16 +245,6 @@ contract UnitUSDAWithdraw is BaseInit {
     _usda.withdraw(_depositAmount);
   }
 
-  function testRevertIfTransactionFails(uint256 _amount) public {
-    vm.assume(_amount <= _depositAmount);
-    vm.assume(_amount > 0);
-    vm.mockCall(
-      address(_mockToken), abi.encodeWithSelector(IERC20.transfer.selector, address(this), _amount), abi.encode(false)
-    );
-    vm.expectRevert(IUSDA.USDA_TransferFailed.selector);
-    _usda.withdraw(_amount);
-  }
-
   function testWithdrawSubstractsFromReserveAmount(uint256 _amount) public {
     vm.assume(_amount <= _depositAmount);
     vm.assume(_amount > 0);
@@ -332,16 +311,6 @@ contract UnitUSDAWithdrawAll is BaseInit {
     // Make reserve amount 0
     _usda.withdrawAll();
     vm.expectRevert(IUSDA.USDA_EmptyReserve.selector);
-    _usda.withdrawAll();
-  }
-
-  function testRevertIfTransactionFails() public {
-    vm.mockCall(
-      address(_mockToken),
-      abi.encodeWithSelector(IERC20.transfer.selector, address(this), _depositAmount),
-      abi.encode(false)
-    );
-    vm.expectRevert(IUSDA.USDA_TransferFailed.selector);
     _usda.withdrawAll();
   }
 
@@ -414,16 +383,6 @@ contract UnitUSDAWithdrawTo is BaseInit {
     _usda.withdrawTo(_depositAmount, _receiver);
   }
 
-  function testRevertIfTransactionFails(uint256 _amount) public {
-    vm.assume(_amount <= _depositAmount);
-    vm.assume(_amount > 0);
-    vm.mockCall(
-      address(_mockToken), abi.encodeWithSelector(IERC20.transfer.selector, _receiver, _amount), abi.encode(false)
-    );
-    vm.expectRevert(IUSDA.USDA_TransferFailed.selector);
-    _usda.withdrawTo(_amount, _receiver);
-  }
-
   function testWithdrawToSubstractsFromReserveAmount(uint256 _amount) public {
     vm.assume(_amount <= _depositAmount);
     vm.assume(_amount > 0);
@@ -491,16 +450,6 @@ contract UnitUSDAWithdrawAllTo is BaseInit {
     // Make reserve amount 0
     _usda.withdrawAllTo(_receiver);
     vm.expectRevert(IUSDA.USDA_EmptyReserve.selector);
-    _usda.withdrawAllTo(_receiver);
-  }
-
-  function testRevertIfTransactionFails() public {
-    vm.mockCall(
-      address(_mockToken),
-      abi.encodeWithSelector(IERC20.transfer.selector, _receiver, _depositAmount),
-      abi.encode(false)
-    );
-    vm.expectRevert(IUSDA.USDA_TransferFailed.selector);
     _usda.withdrawAllTo(_receiver);
   }
 
@@ -657,18 +606,6 @@ contract UnitUSDADonate is BaseInit {
   function testRevertsIfAmountIsZero() public {
     vm.expectRevert(IUSDA.USDA_ZeroAmount.selector);
     _usda.donate(0);
-  }
-
-  function testRevertIfTransactionFails(uint256 _amount) public {
-    vm.assume(_amount <= _donateAmount);
-    vm.assume(_amount > 0);
-    vm.mockCall(
-      address(_mockToken),
-      abi.encodeWithSelector(IERC20.transferFrom.selector, address(this), address(_usda), _amount),
-      abi.encode(false)
-    );
-    vm.expectRevert(IUSDA.USDA_TransferFailed.selector);
-    _usda.donate(_amount);
   }
 
   function testCallsPaysInterest() public {
@@ -866,17 +803,6 @@ contract UnitUSDAVaultControllerTransfer is BaseInit {
     vm.expectRevert('Pausable: paused');
     vm.prank(_vaultController);
     _usda.vaultControllerTransfer(address(this), _amountToTransfer);
-  }
-
-  function testRevertIfTransactionFails(uint56 _amount) public {
-    vm.assume(_amount > 0);
-    _usda.deposit(_amount);
-    vm.mockCall(
-      address(_mockToken), abi.encodeWithSelector(IERC20.transfer.selector, address(this), _amount), abi.encode(false)
-    );
-    vm.prank(_vaultController);
-    vm.expectRevert(IUSDA.USDA_TransferFailed.selector);
-    _usda.vaultControllerTransfer(address(this), _amount);
   }
 
   function testSubstractFromReserveAmount(uint56 _amount) public {

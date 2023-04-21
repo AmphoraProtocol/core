@@ -17,13 +17,15 @@ interface IAMPHClaimer {
    * @param _crvTotalRewards The amount of CRV sent in exchange of AMPH
    * @param _amphAmount The amount of AMPH received
    */
-  event ClaimedAmph(address _vaultClaimer, uint256 _cvxTotalRewards, uint256 _crvTotalRewards, uint256 _amphAmount);
+  event ClaimedAmph(
+    address indexed _vaultClaimer, uint256 _cvxTotalRewards, uint256 _crvTotalRewards, uint256 _amphAmount
+  );
 
   /**
    * @notice Emited when governance changes the vault controller
    * @param _newVaultController The address of the new vault controller
    */
-  event ChangedVaultController(address _newVaultController);
+  event ChangedVaultController(address indexed _newVaultController);
 
   /**
    * @notice Emited when governance changes the CVX rate
@@ -43,7 +45,7 @@ interface IAMPHClaimer {
    * @param _receiver the receiver of the tokens
    * @param _amount the amount recovered
    */
-  event RecoveredDust(address _token, address _receiver, uint256 _amount);
+  event RecoveredDust(address indexed _token, address _receiver, uint256 _amount);
 
   /**
    * @notice Emited when governance changes the CVX reward fee
