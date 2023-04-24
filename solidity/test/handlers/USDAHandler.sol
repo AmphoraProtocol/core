@@ -4,7 +4,7 @@ pragma solidity >=0.8.4 <0.9.0;
 import {USDA} from '@contracts/core/USDA.sol';
 import {BaseHandler, MockSUSD} from '@test/handlers/BaseHandler.sol';
 
-import {IERC20} from 'isolmate/interfaces/tokens/IERC20.sol';
+import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 import {console} from 'solidity-utils/test/DSTestPlus.sol';
 
@@ -38,10 +38,10 @@ contract USDAHandler is BaseHandler {
 
   constructor(USDA _usda) {
     usda = _usda;
-    susd = new MockSUSD('sUSD', 'sUSD', 18);
+    susd = new MockSUSD('sUSD', 'sUSD');
 
     // initialize
-    usda.initialize(address(susd));
+    usda.initialize(susd);
 
     // save initial supply
     initialFragmentsSupply = usda.totalSupply();

@@ -23,6 +23,13 @@ contract CurveLpLiquidation is CommonE2EBase {
     bobVault.depositERC20(address(usdtStableLP), depositAmount);
     vm.stopPrank();
 
+    // set stale
+    vm.startPrank(threeCrvOracle.owner());
+    threeCrvOracle.setDaiStaleDelay(staleTime);
+    threeCrvOracle.setUsdtStaleDelay(staleTime);
+    threeCrvOracle.setUsdcStaleDelay(staleTime);
+    vm.stopPrank();
+
     // start some liability
     vm.startPrank(bob);
     uint256 _maxBorrow = vaultController.vaultBorrowingPower(bobVaultId);
