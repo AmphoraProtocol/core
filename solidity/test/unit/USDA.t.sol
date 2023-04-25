@@ -356,6 +356,13 @@ contract UnitUSDAWithdrawAll is BaseInit {
     );
     _usda.withdrawAll();
   }
+
+  function testWithdrawAllReturnsCorrectAmount() public {
+    uint256 _reserveBefore = _usda.reserveAmount();
+    uint256 _withdrawn = _usda.withdrawAll();
+    uint256 _reserveAfter = _usda.reserveAmount();
+    assertEq(_reserveBefore - _reserveAfter, _withdrawn);
+  }
 }
 
 contract UnitUSDAWithdrawTo is BaseInit {
@@ -492,6 +499,13 @@ contract UnitUSDAWithdrawAllTo is BaseInit {
       address(_mockToken), abi.encodeWithSelector(_mockToken.transfer.selector, _receiver, _depositAmount / 2)
     );
     _usda.withdrawAllTo(_receiver);
+  }
+
+  function testWithdrawAllToReturnsCorrectAmount() public {
+    uint256 _reserveBefore = _usda.reserveAmount();
+    uint256 _withdrawn = _usda.withdrawAllTo(_receiver);
+    uint256 _reserveAfter = _usda.reserveAmount();
+    assertEq(_reserveBefore - _reserveAfter, _withdrawn);
   }
 }
 

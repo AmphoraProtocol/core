@@ -163,19 +163,23 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
   /// @notice Withdraw sUSD by burning USDA
   /// @dev The caller should obtain 1 sUSD for every 1 USDA
   /// @dev This function is effectively just withdraw, but we calculate the amount for the sender
-  function withdrawAll() external override {
+  /// @param _susdWithdrawn The amount os sUSD withdrawn
+  function withdrawAll() external override returns (uint256 _susdWithdrawn) {
     uint256 _balance = this.balanceOf(_msgSender());
     uint256 _amount = _balance > reserveAmount ? reserveAmount : _balance;
     _withdraw(_amount, _msgSender());
+    _susdWithdrawn = _amount;
   }
 
   /// @notice Withdraw sUSD by burning USDA
   /// @dev This function is effectively just withdraw, but we calculate the amount for the _target
   /// @param _target should obtain 1 sUSD for every 1 USDA burned from caller
-  function withdrawAllTo(address _target) external override {
+  /// @param _susdWithdrawn The amount os sUSD withdrawn
+  function withdrawAllTo(address _target) external override returns (uint256 _susdWithdrawn) {
     uint256 _balance = this.balanceOf(_msgSender());
     uint256 _amount = _balance > reserveAmount ? reserveAmount : _balance;
     _withdraw(_amount, _target);
+    _susdWithdrawn = _amount;
   }
 
   /// @notice business logic to withdraw sUSD and burn USDA from the caller

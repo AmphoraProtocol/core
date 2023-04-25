@@ -85,9 +85,9 @@ interface IUSDA is IERC20Metadata, IRoles {
 
   function withdrawTo(uint256 _susdAmount, address _target) external;
 
-  function withdrawAll() external;
+  function withdrawAll() external returns (uint256 _susdWithdrawn);
 
-  function withdrawAllTo(address _target) external;
+  function withdrawAllTo(address _target) external returns (uint256 _susdWithdrawn);
 
   function donate(uint256 _susdAmount) external;
 
