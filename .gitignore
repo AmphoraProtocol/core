@@ -23,3 +23,6 @@ report
 # Docs build files
 docs/book
 docs/src/solidity/*
+
+# Npm generated files
+npm

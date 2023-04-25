@@ -1,5 +1,5 @@
 {
-  "name": "amphora-protocol",
+  "name": "@amphora-protocol/core",
   "version": "1.0.0",
   "private": true,
   "description": "",
@@ -8,10 +8,10 @@
     "type": "git",
     "url": "git+https://github.com/defi-wonderland/amphora-private.git"
   },
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "author": "Wonderland",
   "scripts": {
-    "build": "forge build",
+    "build": "forge build && node interfaces-exporter.js",
     "coverage": "forge coverage --match-contract Unit",
     "deploy:goerli": "forge script -vv --optimize --optimizer-runs 200 --slow --broadcast --rpc-url $GOERLI_RPC solidity/scripts/Deploy.s.sol:DeployGoerli",
     "deploy:local": "forge script -vv --optimize --optimizer-runs 200 --slow --broadcast --fork-url http://localhost:8545 solidity/scripts/Deploy.s.sol:DeployLocal",
@@ -55,11 +55,15 @@
     "@commitlint/cli": "17.0.3",
     "@commitlint/config-conventional": "17.0.3",
     "@defi-wonderland/crypto-husky-checks": "0.0.0-29a10090",
+    "@typechain/ethers-v5": "10.2.0",
+    "@typechain/truffle-v5": "8.0.2",
+    "@typechain/web3-v1": "6.0.2",
     "cross-env": "7.0.3",
     "husky": "8.0.2",
     "lint-staged": "10",
     "solhint": "3.3.6",
     "solhint-plugin-defi-wonderland": "1.1.0",
-    "sort-package-json": "2.4.1"
+    "sort-package-json": "2.4.1",
+    "typechain": "8.1.1"
   }
 }
