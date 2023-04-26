@@ -128,12 +128,14 @@ contract UnitVaultDepositERC20 is Base {
   }
 
   function testRevertIfNotVaultOwner(address _token, uint256 _amount) public {
+    vm.assume(_token != address(vm));
     vm.expectRevert(IVault.Vault_NotMinter.selector);
     vm.prank(newAddress());
     vault.depositERC20(_token, _amount);
   }
 
   function testRevertIfTokenNotRegistered(address _token, uint256 _amount) public {
+    vm.assume(_token != address(vm));
     vm.expectRevert(IVault.Vault_TokenNotRegistered.selector);
     vm.mockCall(
       address(mockVaultController),
@@ -310,12 +312,14 @@ contract UnitVaultWithdrawERC20 is Base {
   }
 
   function testRevertIfNotVaultOwner(address _token, uint256 _amount) public {
+    vm.assume(_token != address(vm));
     vm.expectRevert(IVault.Vault_NotMinter.selector);
     vm.prank(newAddress());
     vault.withdrawERC20(_token, _amount);
   }
 
   function testRevertIfTokenNotRegistered(address _token, uint256 _amount) public {
+    vm.assume(_token != address(vm));
     vm.expectRevert(IVault.Vault_TokenNotRegistered.selector);
     vm.mockCall(
       address(mockVaultController),
@@ -566,6 +570,7 @@ contract UnitVaultClaimRewards is Base {
   }
 
   function testRevertIfNotVaultOwner(address _token) public {
+    vm.assume(_token != address(vm));
     address[] memory _tokens = new address[](1);
     _tokens[0] = _token;
     vm.expectRevert(IVault.Vault_NotMinter.selector);
@@ -574,6 +579,7 @@ contract UnitVaultClaimRewards is Base {
   }
 
   function testRevertIfTokenNotRegistered(address _token) public {
+    vm.assume(_token != address(vm));
     address[] memory _tokens = new address[](1);
     _tokens[0] = _token;
     collateralInfo.tokenId = 0;
@@ -879,6 +885,7 @@ contract UnitVaultClaimableRewards is Base {
   }
 
   function testRevertIfTokenNotRegistered(address _token) public {
+    vm.assume(_token != address(vm));
     vm.expectRevert(IVault.Vault_TokenNotRegistered.selector);
     vm.mockCall(
       address(mockVaultController),
@@ -1031,6 +1038,7 @@ contract UnitVaultStakeCrvLPCollateral is Base {
   event Staked(address _token, uint256 _amount);
 
   function testRevertIfPoolIdZero(address _token) public {
+    vm.assume(_token != address(vm));
     vm.mockCall(
       address(mockVaultController),
       abi.encodeWithSelector(IVaultController.tokenPoolId.selector, address(_token)),
@@ -1048,6 +1056,7 @@ contract UnitVaultStakeCrvLPCollateral is Base {
   }
 
   function testRevertIfBalanceZero(address _token) public {
+    vm.assume(_token != address(vm));
     vm.mockCall(
       address(mockVaultController),
       abi.encodeWithSelector(IVaultController.tokenPoolId.selector, address(_token)),
@@ -1065,6 +1074,7 @@ contract UnitVaultStakeCrvLPCollateral is Base {
   }
 
   function testRevertIfStakeFails(address _token) public {
+    vm.assume(_token != address(vm));
     /// deposit
     depositCurveLpTokenMockCalls(1 ether, _token, 0, IVaultController.CollateralType.Single);
 
@@ -1090,6 +1100,7 @@ contract UnitVaultStakeCrvLPCollateral is Base {
   }
 
   function testRevertIfTokenIsStaked(address _token) public {
+    vm.assume(_token != address(vm));
     depositCurveLpTokenMockCalls(1 ether, _token, 0, IVaultController.CollateralType.Single);
 
     vm.mockCall(
@@ -1117,6 +1128,7 @@ contract UnitVaultStakeCrvLPCollateral is Base {
   }
 
   function testStakeCurveLP(address _token) public {
+    vm.assume(_token != address(vm));
     /// deposit
     depositCurveLpTokenMockCalls(1 ether, _token, 0, IVaultController.CollateralType.Single);
 
