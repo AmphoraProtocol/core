@@ -39,6 +39,13 @@ interface IVault {
    */
   event ClaimedReward(address _token, uint256 _amount);
 
+  /**
+   * Emited when staking a crvLP token on convex manually
+   * @param _token The address of the token to stake
+   * @param _amount The amount to stake
+   */
+  event Staked(address _token, uint256 _amount);
+
   /*///////////////////////////////////////////////////////////////
                               ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -70,8 +77,17 @@ interface IVault {
   /// @notice Thrown when trying to withdraw and unstake from convex
   error Vault_WithdrawAndUnstakeOnConvexFailed();
 
-  /// @notice Thrown when trying to claim rewards with a non CurveLP token
+  /// @notice Thrown when trying to claim rewards with a non CurveLPStakedOnConvex token
   error Vault_TokenNotCurveLP();
+
+  /// @notice Thrown when trying to stake with 0 balance
+  error Vault_TokenZeroBalance();
+
+  /// @notice Thrown when a crvLP token can not be staked
+  error Vault_TokenCanNotBeStaked();
+
+  /// @notice Thrown when a token is already staked and trying to stake again
+  error Vault_TokenAlreadyStaked();
 
   /*///////////////////////////////////////////////////////////////
                               STRUCTS
@@ -135,6 +151,8 @@ interface IVault {
    */
   function tokenBalance(address _token) external view returns (uint256 _balance);
 
+  function isStaked(address _token) external view returns (bool _isStaked);
+
   /**
    * @notice Used to deposit a token to the vault
    * @param _token The address of the token to deposit
@@ -149,6 +167,17 @@ interface IVault {
    * @param _amount The amount of the token to withdraw
    */
   function withdrawERC20(address _token, uint256 _amount) external;
+
+  /// @notice Let's the user manually stake their crvLP
+  /// @dev    This can be called if the convex pool didn't exist when the token was registered
+  ///         and was later updated
+  /// @param _tokenAddress The address of erc20 crvLP token
+  function stakeCrvLPCollateral(address _tokenAddress) external;
+
+  /// @notice Returns true when user can manually stake their token balance
+  /// @param _token The address of the token to check
+  /// @return _canStake Returns true if the token can be staked manually
+  function canStake(address _token) external view returns (bool _canStake);
 
   /// @notice Claims available rewards from multiple tokens
   /// @dev    Transfers a percentage of the crv and cvx rewards to claim AMPH tokens

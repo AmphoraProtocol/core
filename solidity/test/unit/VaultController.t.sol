@@ -435,7 +435,9 @@ contract UnitVaultControllerRegisterERC20 is Base {
     assertEq(vaultController.tokenLTV(address(_token)), _ltv);
     assertEq(vaultController.tokenLiquidationIncentive(address(_token)), LIQUIDATION_INCENTIVE);
     assertEq(vaultController.tokenCap(address(_token)), _cap);
-    assertTrue(vaultController.tokenCollateralType(address(_token)) == IVaultController.CollateralType.CurveLP);
+    assertTrue(
+      vaultController.tokenCollateralType(address(_token)) == IVaultController.CollateralType.CurveLPStakedOnConvex
+    );
     assertEq(address(vaultController.tokenCrvRewardsContract(address(_token))), _mockCrvRewards);
     assertEq(vaultController.tokenPoolId(address(_token)), 15);
   }
@@ -457,7 +459,12 @@ contract UnitVaultControllerRegisterERC20 is Base {
 
 contract UnitVaultControllerUpdateRegisteredERC20 is Base {
   event UpdateRegisteredErc20(
-    address _tokenAddress, uint256 _ltv, address _oracleAddress, uint256 _liquidationIncentive, uint256 _cap
+    address _tokenAddress,
+    uint256 _ltv,
+    address _oracleAddress,
+    uint256 _liquidationIncentive,
+    uint256 _cap,
+    uint256 _poolId
   );
 
   function setUp() public virtual override {
@@ -472,39 +479,97 @@ contract UnitVaultControllerUpdateRegisteredERC20 is Base {
     IERC20 _token,
     address _oracle,
     uint64 _ltv,
-    uint256 _liquidationIncentive
+    uint256 _liquidationIncentive,
+    uint256 _poolId
   ) public {
     vm.expectRevert('Ownable: caller is not the owner');
     vm.prank(alice);
-    vaultController.updateRegisteredErc20(address(_token), _ltv, _oracle, _liquidationIncentive, type(uint256).max);
+    vaultController.updateRegisteredErc20(
+      address(_token), _ltv, _oracle, _liquidationIncentive, type(uint256).max, _poolId
+    );
   }
 
-  function testRevertIfTokenNotRegistered(IERC20 _token, address _oracle, uint64 _ltv) public {
+  function testRevertIfTokenNotRegistered(IERC20 _token, address _oracle, uint64 _ltv, uint256 _poolId) public {
     vm.assume(_ltv < 0.95 ether && address(_token) != WETH_ADDRESS);
     vm.expectRevert(IVaultController.VaultController_TokenNotRegistered.selector);
     // Try to update a non registered token
     vm.prank(governance);
-    vaultController.updateRegisteredErc20(address(_token), _ltv, _oracle, LIQUIDATION_INCENTIVE, type(uint256).max);
+    vaultController.updateRegisteredErc20(
+      address(_token), _ltv, _oracle, LIQUIDATION_INCENTIVE, type(uint256).max, _poolId
+    );
   }
 
-  function testRevertIfIncompatibleLTV(address _oracle, uint64 _liquidationIncentive) public {
+  function testRevertIfIncompatibleLTV(address _oracle, uint64 _liquidationIncentive, uint256 _poolId) public {
     vm.assume(_liquidationIncentive < 1 ether && _liquidationIncentive > 0.2 ether);
     vm.expectRevert(IVaultController.VaultController_LTVIncompatible.selector);
     vm.prank(governance);
-    vaultController.updateRegisteredErc20(WETH_ADDRESS, WETH_LTV, _oracle, _liquidationIncentive, type(uint256).max);
+    vaultController.updateRegisteredErc20(
+      WETH_ADDRESS, WETH_LTV, _oracle, _liquidationIncentive, type(uint256).max, _poolId
+    );
+  }
+
+  function testRevertIfUpdatingPoolIdAndLpTokenDoesNotMatch(
+    address _oracle,
+    uint256 _ltv,
+    uint256 _cap,
+    uint256 _poolId
+  ) public {
+    vm.assume(_ltv < 0.95 ether);
+    vm.assume(_poolId != 0);
+
+    address _mockCrvRewards = newAddress();
+
+    vm.mockCall(
+      address(vaultController.BOOSTER()),
+      abi.encodeWithSelector(IBooster.poolInfo.selector),
+      abi.encode(newAddress(), address(0), address(0), _mockCrvRewards, address(0), false)
+    );
+
+    vm.expectRevert(IVaultController.VaultController_TokenAddressDoesNotMatchLpAddress.selector);
+    vm.prank(governance);
+    vaultController.updateRegisteredErc20(WETH_ADDRESS, _ltv, _oracle, LIQUIDATION_INCENTIVE, _cap, _poolId);
   }
 
   function testUpdateRegisteredERC20(address _oracle, uint256 _ltv, uint256 _cap) public {
     vm.assume(_ltv < 0.95 ether);
     vm.expectEmit(false, false, false, true);
-    emit UpdateRegisteredErc20(WETH_ADDRESS, _ltv, _oracle, LIQUIDATION_INCENTIVE, _cap);
+    emit UpdateRegisteredErc20(WETH_ADDRESS, _ltv, _oracle, LIQUIDATION_INCENTIVE, _cap, 0);
 
     vm.prank(governance);
-    vaultController.updateRegisteredErc20(WETH_ADDRESS, _ltv, _oracle, LIQUIDATION_INCENTIVE, _cap);
+    vaultController.updateRegisteredErc20(WETH_ADDRESS, _ltv, _oracle, LIQUIDATION_INCENTIVE, _cap, 0);
     assertEq(address(vaultController.tokensOracle(WETH_ADDRESS)), _oracle);
     assertEq(vaultController.tokenLTV(WETH_ADDRESS), _ltv);
     assertEq(vaultController.tokenLiquidationIncentive(WETH_ADDRESS), LIQUIDATION_INCENTIVE);
     assertEq(vaultController.tokenCap(WETH_ADDRESS), _cap);
+  }
+
+  function testUpdateRegisteredSingleToCurveLPStakedOnConvex(
+    address _oracle,
+    uint256 _ltv,
+    uint256 _cap,
+    uint256 _poolId
+  ) public {
+    vm.assume(_ltv < 0.95 ether);
+    vm.assume(_poolId != 0);
+
+    address _mockCrvRewards = newAddress();
+
+    vm.mockCall(
+      address(vaultController.BOOSTER()),
+      abi.encodeWithSelector(IBooster.poolInfo.selector),
+      abi.encode(WETH_ADDRESS, address(0), address(0), _mockCrvRewards, address(0), false)
+    );
+
+    vm.prank(governance);
+    vaultController.updateRegisteredErc20(WETH_ADDRESS, _ltv, _oracle, LIQUIDATION_INCENTIVE, _cap, _poolId);
+
+    assertEq(address(vaultController.tokensOracle(WETH_ADDRESS)), _oracle);
+    assertEq(vaultController.tokenLTV(WETH_ADDRESS), _ltv);
+    assertEq(vaultController.tokenLiquidationIncentive(WETH_ADDRESS), LIQUIDATION_INCENTIVE);
+    assertEq(vaultController.tokenCap(WETH_ADDRESS), _cap);
+    assertEq(vaultController.tokenPoolId(WETH_ADDRESS), _poolId);
+    assertEq(address(vaultController.tokenCrvRewardsContract(WETH_ADDRESS)), _mockCrvRewards);
+    assert(vaultController.tokenCollateralType(WETH_ADDRESS) == IVaultController.CollateralType.CurveLPStakedOnConvex);
   }
 }
 

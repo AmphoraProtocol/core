@@ -12,6 +12,7 @@ contract TestConstants {
   address public constant WBTC_ADDRESS = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
   address public constant USDT_LP_ADDRESS = 0x9fC689CCaDa600B6DF723D9E47D84d76664a1F23;
   address public constant BOR_DAO_ADDRESS = 0x3c9d6c1C73b31c837832c72E04D3152f051fc1A9;
+  address public constant THREE_CRV_LP_ADDRESS = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
   address public constant BORING_DAO_ADDRESS = 0xBC19712FEB3a26080eBf6f2F7849b417FdD792CA;
   address public constant BORING_DAO_LP_ADDRESS = 0x2fE94ea3d5d4a175184081439753DE15AeF9d614;
   address public constant CVX_ADDRESS = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
@@ -36,6 +37,7 @@ contract TestConstants {
   // Curve rewards contract addresses
   address public constant USDT_LP_REWARDS_ADDRESS = 0x8B55351ea358e5Eda371575B031ee24F462d503e;
   address public constant BORING_DAO_LP_REWARDS_ADDRESS = 0xeeeCE77e0bc5e59c77fc408789A9A172A504bD2f;
+  address public constant THREE_CRV_LP_REWARDS_ADDRESS = 0x689440f2Ff927E1f24c72F1087E1FAF471eCe1c8;
 
   // CONVEX BOOSTER
   address public constant BOOSTER = 0xF403C135812408BFbE8713b5A23a04b3D48AAE31;
@@ -47,6 +49,7 @@ contract TestConstants {
   // STAKED CONTRACT
   address public constant USDT_LP_STAKED_CONTRACT = 0xBC89cd85491d81C6AD2954E6d0362Ee29fCa8F53;
   address public constant BORING_DAO_LP_STAKED_CONTRACT = 0x11137B10C210b579405c21A07489e28F3c040AB1;
+  address public constant THREE_CRV_LP_STAKED_CONTRACT = 0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A;
 
   // LTV
   uint256 public constant WETH_LTV = 0.85 ether;

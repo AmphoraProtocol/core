@@ -40,6 +40,8 @@ contract Vault is IVault, Context {
 
   mapping(address => uint256) public balances;
 
+  mapping(address => bool) public isTokenStaked;
+
   /// @notice Checks if _msgSender is the controller of the vault
   modifier onlyVaultController() {
     if (_msgSender() != address(CONTROLLER)) revert Vault_NotVaultController();
@@ -84,19 +86,33 @@ contract Vault is IVault, Context {
     return balances[_token];
   }
 
+  /// @notice Returns true if the token is staked on convex
+  /// @param _token The address of the erc20 token
+  /// @return _isStaked True if the token is staked on convex
+  function isStaked(address _token) external view override returns (bool _isStaked) {
+    return isTokenStaked[_token];
+  }
+
   /// @notice Used to deposit a token to the vault
-  /// @dev    Deposits and stakes on convex if token is of type CurveLP
+  /// @dev    Deposits and stakes on convex if token is of type CurveLPStakedOnConvex
   /// @param _token The address of the token to deposit
   /// @param _amount The amount of the token to deposit
   function depositERC20(address _token, uint256 _amount) external override onlyMinter {
     if (CONTROLLER.tokenId(_token) == 0) revert Vault_TokenNotRegistered();
     if (_amount == 0) revert Vault_AmountZero();
     SafeERC20Upgradeable.safeTransferFrom(IERC20Upgradeable(_token), _msgSender(), address(this), _amount);
-    if (CONTROLLER.tokenCollateralType(_token) == IVaultController.CollateralType.CurveLP) {
+    if (CONTROLLER.tokenCollateralType(_token) == IVaultController.CollateralType.CurveLPStakedOnConvex) {
       uint256 _poolId = CONTROLLER.tokenPoolId(_token);
+      /// If it's type CurveLPStakedOnConvex then pool id can't be 0
       IBooster _booster = CONTROLLER.booster();
-      IERC20(_token).approve(address(_booster), _amount);
-      if (!_booster.deposit(_poolId, _amount, true)) revert Vault_DepositAndStakeOnConvexFailed();
+      if (isTokenStaked[_token]) {
+        /// In this case the user's balance is already staked so we only stake the newly deposited amount
+        _depositAndStakeOnConvex(_token, _booster, _amount, _poolId);
+      } else {
+        /// In this case the user's balance isn't staked so we stake the amount + his balance for the specific tokenv
+        isTokenStaked[_token] = true;
+        _depositAndStakeOnConvex(_token, _booster, balances[_token] + _amount, _poolId);
+      }
     }
     balances[_token] += _amount;
     CONTROLLER.modifyTotalDeposited(vaultInfo.id, _amount, _token, true);
@@ -106,12 +122,12 @@ contract Vault is IVault, Context {
   /// @notice Withdraws an erc20 token from the vault
   /// @dev    This can only be called by the minter
   ///         The withdraw will be denied if ones vault would become insolvent
-  ///         If the withdraw token is of CurveLP then unstake and withdraw directly to user
+  ///         If the withdraw token is of CurveLPStakedOnConvex then unstake and withdraw directly to user
   /// @param _tokenAddress The address of erc20 token
   /// @param _amount The amount of erc20 token to withdraw
   function withdrawERC20(address _tokenAddress, uint256 _amount) external override onlyMinter {
     if (CONTROLLER.tokenId(_tokenAddress) == 0) revert Vault_TokenNotRegistered();
-    if (CONTROLLER.tokenCollateralType(_tokenAddress) == IVaultController.CollateralType.CurveLP) {
+    if (isTokenStaked[_tokenAddress]) {
       if (!CONTROLLER.tokenCrvRewardsContract(_tokenAddress).withdrawAndUnwrap(_amount, false)) {
         revert Vault_WithdrawAndUnstakeOnConvexFailed();
       }
@@ -127,6 +143,33 @@ contract Vault is IVault, Context {
     emit Withdraw(_tokenAddress, _amount);
   }
 
+  /// @notice Let's the user manually stake their crvLP
+  /// @dev    This can be called if the convex pool didn't exist when the token was registered
+  ///         and was later updated
+  /// @param _tokenAddress The address of erc20 crvLP token
+  function stakeCrvLPCollateral(address _tokenAddress) external override onlyMinter {
+    uint256 _poolId = CONTROLLER.tokenPoolId(_tokenAddress);
+    if (_poolId == 0) revert Vault_TokenCanNotBeStaked();
+    if (balances[_tokenAddress] == 0) revert Vault_TokenZeroBalance();
+    if (isTokenStaked[_tokenAddress]) revert Vault_TokenAlreadyStaked();
+
+    isTokenStaked[_tokenAddress] = true;
+
+    IBooster _booster = CONTROLLER.booster();
+    _depositAndStakeOnConvex(_tokenAddress, _booster, balances[_tokenAddress], _poolId);
+
+    emit Staked(_tokenAddress, balances[_tokenAddress]);
+  }
+
+  /// @notice Returns true when user can manually stake their token balance
+  /// @param _token The address of the token to check
+  /// @return _canStake Returns true if the token can be staked manually
+  function canStake(address _token) external view override returns (bool _canStake) {
+    uint256 _poolId = CONTROLLER.tokenPoolId(_token);
+    if (_poolId == 0 || balances[_token] == 0 || isTokenStaked[_token]) return false;
+    _canStake = true;
+  }
+
   /// @notice Claims available rewards from multiple tokens
   /// @dev    Transfers a percentage of the crv and cvx rewards to claim AMPH tokens
   /// @param _tokenAddresses The addresses of the erc20 tokens
@@ -139,7 +182,9 @@ contract Vault is IVault, Context {
     for (uint256 _i; _i < _tokensToClaim;) {
       IVaultController.CollateralInfo memory _collateralInfo = CONTROLLER.tokenCollateralInfo(_tokenAddresses[_i]);
       if (_collateralInfo.tokenId == 0) revert Vault_TokenNotRegistered();
-      if (_collateralInfo.collateralType != IVaultController.CollateralType.CurveLP) revert Vault_TokenNotCurveLP();
+      if (_collateralInfo.collateralType != IVaultController.CollateralType.CurveLPStakedOnConvex) {
+        revert Vault_TokenNotCurveLP();
+      }
 
       IBaseRewardPool _rewardsContract = _collateralInfo.crvRewardsContract;
       uint256 _crvReward = _rewardsContract.earned(address(this));
@@ -208,7 +253,7 @@ contract Vault is IVault, Context {
   /// @return _rewards The array of all the available rewards
   function claimableRewards(address _tokenAddress) external view override returns (Reward[] memory _rewards) {
     if (CONTROLLER.tokenId(_tokenAddress) == 0) revert Vault_TokenNotRegistered();
-    if (CONTROLLER.tokenCollateralType(_tokenAddress) != IVaultController.CollateralType.CurveLP) {
+    if (CONTROLLER.tokenCollateralType(_tokenAddress) != IVaultController.CollateralType.CurveLPStakedOnConvex) {
       revert Vault_TokenNotCurveLP();
     }
 
@@ -305,5 +350,10 @@ contract Vault is IVault, Context {
       baseLiability = baseLiability - _baseAmount;
     }
     return baseLiability;
+  }
+
+  function _depositAndStakeOnConvex(address _token, IBooster _booster, uint256 _amount, uint256 _poolId) internal {
+    IERC20(_token).approve(address(_booster), _amount);
+    if (!_booster.deposit(_poolId, _amount, true)) revert Vault_DepositAndStakeOnConvexFailed();
   }
 }

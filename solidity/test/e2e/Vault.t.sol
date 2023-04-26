@@ -245,4 +245,71 @@ contract E2EVault is CommonE2EBase {
     assertEq(IERC20(BOR_DAO_ADDRESS).balanceOf(bob), _balanceVirtualBefore + _rewards2[1].amount);
     assertEq(IERC20(BORING_DAO_ADDRESS).balanceOf(bob), _balanceOtherVirtualBefore + _rewards2[2].amount);
   }
+
+  function testDepositCrvLpAfterPoolIdUpdate() public {
+    uint256 _depositAmount = 0.1 ether;
+
+    vm.prank(address(governor));
+    // make pool id of a crvlp 0
+    vaultController.registerErc20(
+      THREE_CRV_LP_ADDRESS, OTHER_LTV, address(threeCrvOracle), LIQUIDATION_INCENTIVE, type(uint256).max, 0
+    );
+
+    vm.startPrank(bob);
+    threeCrvLP.approve(address(bobVault), _depositAmount);
+    bobVault.depositERC20(address(threeCrvLP), _depositAmount);
+    vm.stopPrank();
+
+    assertEq(threeCrvLP.balanceOf(address(bobVault)), _depositAmount);
+
+    vm.prank(address(governor));
+    // make pool id back to normal
+    vaultController.updateRegisteredErc20(
+      THREE_CRV_LP_ADDRESS, OTHER_LTV, address(threeCrvOracle), LIQUIDATION_INCENTIVE, type(uint256).max, 9
+    );
+
+    uint256 _stakedAmountInContract = threeCrvLP.balanceOf(THREE_CRV_LP_STAKED_CONTRACT);
+    // deposite should stake all balance
+    vm.startPrank(bob);
+    threeCrvLP.approve(address(bobVault), _depositAmount);
+    bobVault.depositERC20(address(threeCrvLP), _depositAmount);
+    vm.stopPrank();
+
+    assertEq(threeCrvLP.balanceOf(address(bobVault)), 0);
+    assertEq(bobVault.tokenBalance(THREE_CRV_LP_ADDRESS), _depositAmount * 2);
+    assertEq(threeCrvLP.balanceOf(THREE_CRV_LP_STAKED_CONTRACT), _stakedAmountInContract + _depositAmount * 2);
+  }
+
+  function testStakeCrvLpAfterPoolIdUpdate() public {
+    uint256 _depositAmount = 0.1 ether;
+
+    vm.prank(address(governor));
+    // make pool id of a crvlp 0
+    vaultController.registerErc20(
+      THREE_CRV_LP_ADDRESS, OTHER_LTV, address(threeCrvOracle), LIQUIDATION_INCENTIVE, type(uint256).max, 0
+    );
+
+    vm.startPrank(bob);
+    threeCrvLP.approve(address(bobVault), _depositAmount);
+    bobVault.depositERC20(address(threeCrvLP), _depositAmount);
+    vm.stopPrank();
+
+    assertEq(threeCrvLP.balanceOf(address(bobVault)), _depositAmount);
+
+    vm.prank(address(governor));
+    // make pool id back to normal
+    vaultController.updateRegisteredErc20(
+      THREE_CRV_LP_ADDRESS, OTHER_LTV, address(threeCrvOracle), LIQUIDATION_INCENTIVE, type(uint256).max, 9
+    );
+
+    uint256 _stakedAmountInContract = threeCrvLP.balanceOf(THREE_CRV_LP_STAKED_CONTRACT);
+    // deposite should stake all balance
+    vm.startPrank(bob);
+    bobVault.stakeCrvLPCollateral(address(threeCrvLP));
+    vm.stopPrank();
+
+    assertEq(threeCrvLP.balanceOf(address(bobVault)), 0);
+    assertEq(bobVault.tokenBalance(THREE_CRV_LP_ADDRESS), _depositAmount);
+    assertEq(threeCrvLP.balanceOf(THREE_CRV_LP_STAKED_CONTRACT), _stakedAmountInContract + _depositAmount);
+  }
 }

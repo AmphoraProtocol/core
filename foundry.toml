@@ -32,6 +32,9 @@ fail_on_revert = true
 [profile.docs]
 src = './solidity/contracts/'
 
+[profile.coverage]
+test = './solidity/test/unit'
+
 [rpc_endpoints]
 mainnet = "${MAINNET_RPC}"
 goerli = "${GOERLI_RPC}"

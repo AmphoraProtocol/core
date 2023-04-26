@@ -210,7 +210,7 @@ contract VaultController is
   }
 
   /// @notice Returns the pool id of a curve LP type token
-  /// @dev    If the token is not of type CurveLP then it returns 0
+  /// @dev    If the token is not of type CurveLPStakedOnConvex then it returns 0
   /// @param _tokenAddress The address of the token
   /// @return _poolId The pool id of a curve LP type token
   function tokenPoolId(address _tokenAddress) external view override returns (uint256 _poolId) {
@@ -342,7 +342,7 @@ contract VaultController is
     if (_poolId != 0) {
       (address _lpToken,,, address _crvRewards,,) = BOOSTER.poolInfo(_poolId);
       if (_lpToken != _tokenAddress) revert VaultController_TokenAddressDoesNotMatchLpAddress();
-      _collateral.collateralType = CollateralType.CurveLP;
+      _collateral.collateralType = CollateralType.CurveLPStakedOnConvex;
       _collateral.crvRewardsContract = IBaseRewardPool(_crvRewards);
       _collateral.poolId = _poolId;
     } else {
@@ -377,17 +377,26 @@ contract VaultController is
   /// @param _oracleAddress The address of oracle to modify for the price of the token
   /// @param _liquidationIncentive The new liquidation penalty for the token, 1e18=100%
   /// @param _cap The maximum amount to be deposited
+  /// @param _poolId The convex pool id of a crv lp token
   function updateRegisteredErc20(
     address _tokenAddress,
     uint256 _ltv,
     address _oracleAddress,
     uint256 _liquidationIncentive,
-    uint256 _cap
+    uint256 _cap,
+    uint256 _poolId
   ) external override onlyOwner {
     CollateralInfo memory _collateral = tokenAddressCollateralInfo[_tokenAddress];
     if (_collateral.tokenId == 0) revert VaultController_TokenNotRegistered();
     //_ltv must be compatible with liquidation incentive
     if (_ltv >= (EXP_SCALE - _liquidationIncentive)) revert VaultController_LTVIncompatible();
+    if (_poolId != 0) {
+      (address _lpToken,,, address _crvRewards,,) = BOOSTER.poolInfo(_poolId);
+      if (_lpToken != _tokenAddress) revert VaultController_TokenAddressDoesNotMatchLpAddress();
+      _collateral.collateralType = CollateralType.CurveLPStakedOnConvex;
+      _collateral.crvRewardsContract = IBaseRewardPool(_crvRewards);
+      _collateral.poolId = _poolId;
+    }
     // set the oracle of the token
     _collateral.oracle = IOracleRelay(_oracleAddress);
     // set the ltv of the token
@@ -399,7 +408,7 @@ contract VaultController is
     // finally save in mapping
     tokenAddressCollateralInfo[_tokenAddress] = _collateral;
 
-    emit UpdateRegisteredErc20(_tokenAddress, _ltv, _oracleAddress, _liquidationIncentive, _cap);
+    emit UpdateRegisteredErc20(_tokenAddress, _ltv, _oracleAddress, _liquidationIncentive, _cap, _poolId);
   }
 
   /// @notice Change the claimer contract, used to exchange a fee from curve lp rewards for AMPH tokens
@@ -571,7 +580,7 @@ contract VaultController is
 
     // withdraw from convex
     CollateralInfo memory _assetInfo = tokenAddressCollateralInfo[_assetAddress];
-    if (_assetInfo.collateralType == IVaultController.CollateralType.CurveLP) {
+    if (_vault.isStaked(_assetAddress)) {
       _vault.controllerWithdrawAndUnwrap(_assetInfo.crvRewardsContract, _tokensToLiquidate);
     }
 

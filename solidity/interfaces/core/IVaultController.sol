@@ -41,14 +41,20 @@ interface IVaultController {
 
   /**
    * @notice Emited when the information about an acceptable erc20 token is being update
-   *  @param _tokenAddress The addres of the erc20 token to update
-   *  @param _ltv The new loan to value amount of the erc20
-   *  @param _oracleAddress The new address of the oracle to use to fetch the price
-   *  @param _liquidationIncentive The new liquidation penalty for the token
-   *  @param _cap The maximum amount that can be deposited
+   * @param _tokenAddress The addres of the erc20 token to update
+   * @param _ltv The new loan to value amount of the erc20
+   * @param _oracleAddress The new address of the oracle to use to fetch the price
+   * @param _liquidationIncentive The new liquidation penalty for the token
+   * @param _cap The maximum amount that can be deposited
+   * @param _poolId The convex pool id of a crv lp token
    */
   event UpdateRegisteredErc20(
-    address _tokenAddress, uint256 _ltv, address _oracleAddress, uint256 _liquidationIncentive, uint256 _cap
+    address _tokenAddress,
+    uint256 _ltv,
+    address _oracleAddress,
+    uint256 _liquidationIncentive,
+    uint256 _cap,
+    uint256 _poolId
   );
 
   /**
@@ -157,7 +163,7 @@ interface IVaultController {
 
   enum CollateralType {
     Single,
-    CurveLP
+    CurveLPStakedOnConvex
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -318,7 +324,8 @@ interface IVaultController {
     uint256 _ltv,
     address _oracleAddress,
     uint256 _liquidationIncentive,
-    uint256 _cap
+    uint256 _cap,
+    uint256 _poolId
   ) external;
 
   function changeClaimerContract(IAMPHClaimer _newClaimerContract) external;

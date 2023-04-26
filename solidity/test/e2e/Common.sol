@@ -82,6 +82,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
   IERC20 public aave = IERC20(label(AAVE_ADDRESS, 'AAVE'));
   IERC20 public dydx = IERC20(label(DYDX_ADDRESS, 'DYDX'));
   IERC20 public usdtStableLP = IERC20(label(USDT_LP_ADDRESS, 'USDT_LP'));
+  IERC20 public threeCrvLP = IERC20(label(THREE_CRV_LP_ADDRESS, 'THREE_CRV_LP'));
   /// boringDaoLP is a curveLP token that provides extra rewards compared to usdtLP
   IERC20 public boringDaoLP = IERC20(label(BORING_DAO_LP_ADDRESS, 'BORING_DAO_LP'));
   // frank is the Frank and master of USDA, and symbolizes the power of governance
@@ -151,6 +152,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     deal(address(uni), gus, gusUni);
     deal(address(usdtStableLP), bob, bobCurveLPBalance);
     deal(address(boringDaoLP), bob, bobCurveLPBalance);
+    deal(address(threeCrvLP), bob, 1000 ether);
     deal(dave, 1000 ether);
 
     vm.startPrank(frank);
