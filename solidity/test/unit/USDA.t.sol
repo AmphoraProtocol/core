@@ -10,14 +10,7 @@ import {DSTestPlus} from 'solidity-utils/test/DSTestPlus.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 contract USDAForTest is USDA {
-  /// Overriding this functions to test that the methods can't be called again afterwards
-  function erc20DetailedInitForTest(string memory __name, string memory __symbol, uint8 __decimals) public {
-    _erc20DetailedInit(__name, __symbol, __decimals);
-  }
-
-  function uFragmentsInitForTest(string memory __name, string memory __symbol) public {
-    _UFragments_init(__name, __symbol);
-  }
+  constructor(IERC20 _sUSD) USDA(_sUSD) {}
 
   function getMsgData(uint256) public view returns (bytes memory _data) {
     return _msgData();
@@ -49,77 +42,35 @@ abstract contract Base is DSTestPlus {
       abi.encode(1 ether)
     );
     // solhint-disable-next-line reentrancy
-    _usda = new USDAForTest();
-  }
-}
-
-contract BaseInit is Base {
-  function setUp() public virtual override {
-    super.setUp();
-    _usda.initialize(_mockToken);
+    _usda = new USDAForTest(_mockToken);
     _usda.addVaultController(_vaultController);
     _usda.setPauser(address(this));
-  }
-}
-
-contract UnitUSDAInit is BaseInit {
-  function testRevertsWhenInitializingAgain() public {
-    vm.expectRevert('Initializable: contract is already initialized');
-    _usda.initialize(_mockToken);
-  }
-
-  function testRevertsWhenInitializingUFragmentsAgain() public {
-    vm.expectRevert('Initializable: contract is not initializing');
-    _usda.uFragmentsInitForTest('NAME', 'SYMBOL');
-  }
-
-  function testRevertsWhenInitializingOwnableAgain() public {
-    vm.expectRevert('Initializable: contract is not initializing');
-    _usda.erc20DetailedInitForTest('name', 'symbol', 18);
   }
 }
 
 contract UnitUSDAGetters is Base {
   function testOwnerReturnsThis() public {
-    _usda.initialize(_mockToken);
-    _usda.addVaultController(_vaultController);
-    _usda.setPauser(address(this));
     assertEq(_usda.owner(), address(this));
   }
 
   function testNameReturnsName() public {
-    assertEq(_usda.name(), '');
-    _usda.initialize(_mockToken);
-    _usda.addVaultController(_vaultController);
-    _usda.setPauser(address(this));
     assertEq(_usda.name(), 'USDA Token');
   }
 
   function testSymbolReturnsSymbol() public {
-    assertEq(_usda.symbol(), '');
-    _usda.initialize(_mockToken);
-    _usda.addVaultController(_vaultController);
-    _usda.setPauser(address(this));
     assertEq(_usda.symbol(), 'USDA');
   }
 
   function testDecimalsReturnsDecimals() public {
-    _usda.initialize(_mockToken);
-    _usda.addVaultController(_vaultController);
-    _usda.setPauser(address(this));
     assertEq(_usda.decimals(), 18);
   }
 
   function testReserveAddressReturnsToken() public {
-    assertEq(_usda.reserveAddress(), address(0));
-    _usda.initialize(_mockToken);
-    _usda.addVaultController(_vaultController);
-    _usda.setPauser(address(this));
     assertEq(_usda.reserveAddress(), address(_mockToken));
   }
 }
 
-contract UnitUSDADeposit is BaseInit {
+contract UnitUSDADeposit is Base {
   // TODO: This needs to be changed after we modify the decimals amount
   // The maximum amount of tokens to deposit is 72.057.594.037 sUSD at a time
   function testDepositCallsTransferFrom(uint56 _amount) public {
@@ -177,7 +128,7 @@ contract UnitUSDADeposit is BaseInit {
   }
 }
 
-contract UnitUSDADepositTo is BaseInit {
+contract UnitUSDADepositTo is Base {
   address internal _otherUser = newAddress();
 
   function testDepositCallsTransferFrom(uint56 _amount) public {
@@ -221,7 +172,7 @@ contract UnitUSDADepositTo is BaseInit {
   }
 }
 
-contract UnitUSDAWithdraw is BaseInit {
+contract UnitUSDAWithdraw is Base {
   uint256 internal _depositAmount = 100 * 1e6;
 
   function setUp() public virtual override {
@@ -293,7 +244,7 @@ contract UnitUSDAWithdraw is BaseInit {
   }
 }
 
-contract UnitUSDAWithdrawAll is BaseInit {
+contract UnitUSDAWithdrawAll is Base {
   uint256 internal _depositAmount = 100 * 1e6;
 
   function setUp() public virtual override {
@@ -365,7 +316,7 @@ contract UnitUSDAWithdrawAll is BaseInit {
   }
 }
 
-contract UnitUSDAWithdrawTo is BaseInit {
+contract UnitUSDAWithdrawTo is Base {
   uint256 internal _depositAmount = 100 * 1e6;
   address internal _receiver = newAddress();
 
@@ -438,7 +389,7 @@ contract UnitUSDAWithdrawTo is BaseInit {
   }
 }
 
-contract UnitUSDAWithdrawAllTo is BaseInit {
+contract UnitUSDAWithdrawAllTo is Base {
   uint256 internal _depositAmount = 100 * 1e6;
   address internal _receiver = newAddress();
 
@@ -509,7 +460,7 @@ contract UnitUSDAWithdrawAllTo is BaseInit {
   }
 }
 
-contract UnitUSDAMint is BaseInit {
+contract UnitUSDAMint is Base {
   uint256 internal _mintAmount = 100 * 1e6;
 
   function testRevertsIfCalledByNonOwner() public {
@@ -553,7 +504,7 @@ contract UnitUSDAMint is BaseInit {
   }
 }
 
-contract UnitUSDABurn is BaseInit {
+contract UnitUSDABurn is Base {
   uint256 internal _burnAmount = 100 * 1e6;
 
   function setUp() public virtual override {
@@ -606,7 +557,7 @@ contract UnitUSDABurn is BaseInit {
   }
 }
 
-contract UnitUSDADonate is BaseInit {
+contract UnitUSDADonate is Base {
   uint256 internal _donateAmount = 10_000 * 1e6;
   address internal _otherUser = newAddress();
 
@@ -687,7 +638,7 @@ contract UnitUSDADonate is BaseInit {
   }
 }
 
-contract UnitUSDARecoverDust is BaseInit {
+contract UnitUSDARecoverDust is Base {
   uint256 internal _amountToRecover = 100 ether;
   uint256 internal _depositAmount = 100_000 ether;
 
@@ -730,7 +681,7 @@ contract UnitUSDARecoverDust is BaseInit {
   }
 }
 
-contract UnitUSDAVaultControllerMint is BaseInit {
+contract UnitUSDAVaultControllerMint is Base {
   uint256 internal _amountToMint = 100 ether;
 
   function testRevertsIfCalledByNonVault() public {
@@ -767,7 +718,7 @@ contract UnitUSDAVaultControllerMint is BaseInit {
   }
 }
 
-contract UnitUSDAVaultControllerBurn is BaseInit {
+contract UnitUSDAVaultControllerBurn is Base {
   uint256 internal _mintAmount = 10 ether;
 
   function setUp() public virtual override {
@@ -810,7 +761,7 @@ contract UnitUSDAVaultControllerBurn is BaseInit {
   }
 }
 
-contract UnitUSDAVaultControllerTransfer is BaseInit {
+contract UnitUSDAVaultControllerTransfer is Base {
   uint256 internal _amountToTransfer = 100 ether;
 
   event VaultControllerTransfer(address _target, uint256 _susdAmount);
@@ -852,7 +803,7 @@ contract UnitUSDAVaultControllerTransfer is BaseInit {
   }
 }
 
-contract UnitVaultControllerDonate is BaseInit {
+contract UnitVaultControllerDonate is Base {
   uint256 internal _donateAmount = 10_000 * 1e6;
 
   function testRevertsIfCalledByNonVault(uint56 _amount) public {
@@ -886,7 +837,7 @@ contract UnitVaultControllerDonate is BaseInit {
   }
 }
 
-contract UnitUSDAAddVaultController is BaseInit {
+contract UnitUSDAAddVaultController is Base {
   event VaultControllerAdded(address indexed _vaultController);
 
   function testRevertsIfCalledByNonOwner() public {
@@ -921,7 +872,7 @@ contract UnitUSDAAddVaultController is BaseInit {
   }
 }
 
-contract UnitUSDARemoveVaultController is BaseInit {
+contract UnitUSDARemoveVaultController is Base {
   event VaultControllerRemoved(address indexed _vaultController);
 
   function setUp() public virtual override {
@@ -954,7 +905,7 @@ contract UnitUSDARemoveVaultController is BaseInit {
   }
 }
 
-contract UnitUSDARemoveVaultControllerFromList is BaseInit {
+contract UnitUSDARemoveVaultControllerFromList is Base {
   event VaultControllerRemovedFromList(address indexed _vaultController);
 
   function setUp() public virtual override {
@@ -987,7 +938,7 @@ contract UnitUSDARemoveVaultControllerFromList is BaseInit {
   }
 }
 
-contract UnitUSDAReserveRatio is BaseInit {
+contract UnitUSDAReserveRatio is Base {
   uint256 internal _depositAmount = 100 ether;
   uint256 internal _initialSupply = 1 ether;
 
@@ -1021,7 +972,7 @@ contract UnitUSDAReserveRatio is BaseInit {
   }
 }
 
-contract UnitUSDASetPauser is BaseInit {
+contract UnitUSDASetPauser is Base {
   event PauserSet(address indexed _pauser);
 
   function testSetPauser() public {
@@ -1047,7 +998,7 @@ contract UnitUSDASetPauser is BaseInit {
   }
 }
 
-contract UnitUSDAUnPause is BaseInit {
+contract UnitUSDAUnPause is Base {
   function testUnPause() public {
     _usda.pause();
     assert(_usda.paused());
@@ -1064,7 +1015,7 @@ contract UnitUSDAUnPause is BaseInit {
   }
 }
 
-contract UnitUSDAGetMsgData is BaseInit {
+contract UnitUSDAGetMsgData is Base {
   function testGetMsgData(uint256 _n) public {
     assertEq(_usda.getMsgData(_n), abi.encodeWithSelector(USDAForTest.getMsgData.selector, _n));
   }

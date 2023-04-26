@@ -159,8 +159,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError {
     vm.startPrank(frank);
 
     // Deploy AMPH token
-    amphToken = new AmphoraProtocolToken();
-    amphToken.initialize(frank, initialAMPH);
+    amphToken = new AmphoraProtocolToken(frank, initialAMPH);
 
     // Deploy VaultController
     vaultController = new VaultController(BOOSTER);
@@ -179,9 +178,8 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError {
     vaultController.initialize(IVaultController(address(0)), _tokens, amphClaimer, vaultDeployer, 0.01e18);
 
     // Deploy and initialize USDA
-    usdaToken = new USDA();
+    usdaToken = new USDA(IERC20(SUSD_ADDRESS));
     label(address(usdaToken), 'USDA');
-    usdaToken.initialize(IERC20(SUSD_ADDRESS));
 
     // Deploy curve
     threeLines = new ThreeLines0_100(2 ether, 0.1 ether, 0.005 ether, 0.25 ether, 0.5 ether);

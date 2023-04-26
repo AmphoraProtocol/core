@@ -4,6 +4,7 @@ pragma solidity ^0.8.9;
 
 import {ERC20Detailed} from '@contracts/utils/ERC20Detailed.sol';
 import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
+import {IERC20Metadata} from '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 
 /**
  * @title uFragments ERC20 token
@@ -17,7 +18,7 @@ import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
  *      We support splitting the currency in expansion and combining the currency on contraction by
  *      changing the exchange rate between the hidden 'gons' and the public 'fragments'.
  */
-contract UFragments is Ownable, ERC20Detailed {
+contract UFragments is Ownable, IERC20Metadata {
   // PLEASE READ BEFORE CHANGING ANY ACCOUNTING OR MATH
   // Anytime there is division, there is a risk of numerical instability from rounding errors. In
   // order to minimize this risk, we adhere to the following guidelines:
@@ -73,6 +74,10 @@ contract UFragments is Ownable, ERC20Detailed {
   uint256 public _gonsPerFragment;
   mapping(address => uint256) public _gonBalances;
 
+  string public name;
+  string public symbol;
+  uint8 public constant decimals = uint8(DECIMALS);
+
   // This is denominated in Fragments, because the gons-fragments conversion might change before
   // it's fully paid.
   mapping(address => mapping(address => uint256)) private _allowedFragments;
@@ -88,8 +93,10 @@ contract UFragments is Ownable, ERC20Detailed {
   // EIP-2612: keeps track of number of permits per address
   mapping(address => uint256) private _nonces;
 
-  function _UFragments_init(string memory _name, string memory _symbol) internal onlyInitializing {
-    _erc20DetailedInit(_name, _symbol, uint8(DECIMALS));
+  constructor(string memory _name, string memory _symbol) {
+    name = _name;
+    symbol = _symbol;
+
     //set og initial values
     _totalGons = INITIAL_FRAGMENTS_SUPPLY * 10 ** 48;
     MAX_SUPPLY = 2 ** 128 - 1;
@@ -160,7 +167,7 @@ contract UFragments is Ownable, ERC20Detailed {
       _chainId := chainid()
     }
     return keccak256(
-      abi.encode(EIP712_DOMAIN, keccak256(bytes(name())), keccak256(bytes(EIP712_REVISION)), _chainId, address(this))
+      abi.encode(EIP712_DOMAIN, keccak256(bytes(name)), keccak256(bytes(EIP712_REVISION)), _chainId, address(this))
     );
   }
 

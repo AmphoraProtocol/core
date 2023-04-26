@@ -3,15 +3,18 @@ pragma solidity >=0.8.4 <0.9.0;
 
 import {BaseInvariant} from '@test/invariant/BaseInvariant.sol';
 import {USDA} from '@contracts/core/USDA.sol';
-import {USDAHandler} from '@test/handlers/USDAHandler.sol';
+import {USDAHandler, MockSUSD} from '@test/handlers/USDAHandler.sol';
+import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 contract InvariantUSDA is BaseInvariant {
   USDA public usda;
+  IERC20 public susd;
   USDAHandler public usdaHandler;
 
   function setUp() public {
-    usda = new USDA();
-    usdaHandler = new USDAHandler(usda);
+    susd = new MockSUSD('sUSD', 'sUSD');
+    usda = new USDA(susd);
+    usdaHandler = new USDAHandler(usda, susd);
 
     bytes4[] memory _selectors = new bytes4[](12);
     _selectors[0] = USDAHandler.deposit.selector;

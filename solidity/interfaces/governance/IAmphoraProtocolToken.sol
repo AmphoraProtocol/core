@@ -56,8 +56,6 @@ interface IAmphoraProtocolToken is ITokenEvents {
                             LOGIC
     //////////////////////////////////////////////////////////////*/
 
-  function initialize(address _account, uint256 _initialSupply) external;
-
   function changeName(string calldata _name) external;
 
   function changeSymbol(string calldata _symbol) external;

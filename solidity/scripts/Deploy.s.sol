@@ -73,9 +73,8 @@ abstract contract Deploy is Script, TestConstants {
     vm.startBroadcast(_deployer);
 
     // Deploy governance and amph token
-    amphToken = new AmphoraProtocolToken();
+    amphToken = new AmphoraProtocolToken(_deployer, initialAmphSupply);
     console.log('AMPHORA_TOKEN: ', address(amphToken));
-    amphToken.initialize(_deployer, initialAmphSupply);
     governor = new GovernorCharlie(address(amphToken));
     console.log('GOVERNOR: ', address(governor));
 
@@ -95,9 +94,8 @@ abstract contract Deploy is Script, TestConstants {
     vaultController.initialize(IVaultController(address(0)), _tokens, amphClaimer, vaultDeployer, 0.01e18);
 
     // Deploy and initialize USDA
-    usda = new USDA();
+    usda = new USDA(_sUSDAddress);
     console.log('USDA: ', address(usda));
-    usda.initialize(_sUSDAddress);
 
     // Deploy curve
     threeLines = new ThreeLines0_100(2 ether, 0.1 ether, 0.005 ether, 0.25 ether, 0.5 ether);

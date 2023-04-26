@@ -128,10 +128,6 @@ interface IUSDA is IERC20Metadata, IRoles {
                               LOGIC
     //////////////////////////////////////////////////////////////*/
 
-  /// @notice initializer specifies the reserveAddress
-  /// @param _reserveAddress The reserve address
-  function initialize(IERC20 _reserveAddress) external;
-
   function deposit(uint256 _susdAmount) external;
 
   function depositTo(uint256 _susdAmount, address _target) external;

@@ -52,11 +52,10 @@ contract AmphoraProtocolToken is IAmphoraProtocolToken, Context, Ownable {
   /// @dev A record of states for signing / validating signatures
   mapping(address => uint256) public nonces;
 
-  /// @notice Used to initialize the contract during delegator constructor
+  /// @notice Used to initialize the contract
   /// @param _account The address to recieve initial suppply
   /// @param _initialSupply The initial supply
-  function initialize(address _account, uint256 _initialSupply) public override {
-    if (totalSupply != 0) revert TokenDelegate_AlreadyInitialized();
+  constructor(address _account, uint256 _initialSupply) {
     if (_account == address(0)) revert TokenDelegate_InvalidAddress();
     if (_initialSupply <= 0) revert TokenDelegate_InvalidSupply();
 

@@ -57,10 +57,7 @@ contract USDA is Initializable, Pausable, UFragments, IUSDA, ExponentialNoError,
     _;
   }
 
-  /// @notice Initializer for contract
-  /// @param _sUSDAddr The address of sUSD
-  function initialize(IERC20 _sUSDAddr) public override initializer {
-    _UFragments_init('USDA Token', 'USDA');
+  constructor(IERC20 _sUSDAddr) UFragments('USDA Token', 'USDA') {
     sUSD = _sUSDAddr;
   }
 
@@ -82,24 +79,6 @@ contract USDA is Initializable, Pausable, UFragments, IUSDA, ExponentialNoError,
   /// @dev Can only be called by the pauser
   function unpause() external override onlyPauser {
     _unpause();
-  }
-
-  /// @notice Returns the name of the token
-  /// @return _name The name of the token
-  function name() public view override(IERC20Metadata, ERC20Detailed) returns (string memory _name) {
-    return super.name();
-  }
-
-  /// @notice Returns the symbol of the token
-  /// @return _symbol The symbol of the token
-  function symbol() public view override(IERC20Metadata, ERC20Detailed) returns (string memory _symbol) {
-    return super.symbol();
-  }
-
-  /// @notice Returns the decimals of the token
-  /// @return _decimals The decimals of the token
-  function decimals() public view override(IERC20Metadata, ERC20Detailed) returns (uint8 _decimals) {
-    return super.decimals();
   }
 
   /// @notice Returns the address of the reserve currency, or susd

@@ -85,8 +85,7 @@ abstract contract Base is DSTestPlus, TestConstants {
     vaultController.registerCurveMaster(address(curveMaster));
     curveMaster.setCurve(address(0), address(threeLines));
 
-    usdaToken = new USDA();
-    usdaToken.initialize(mockToken);
+    usdaToken = new USDA(mockToken);
 
     vaultController.registerUSDA(address(usdaToken));
 

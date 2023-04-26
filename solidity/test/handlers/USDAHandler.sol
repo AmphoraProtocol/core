@@ -36,12 +36,9 @@ contract USDAHandler is BaseHandler {
 
   address public owner;
 
-  constructor(USDA _usda) {
+  constructor(USDA _usda, IERC20 _sUSD) {
     usda = _usda;
-    susd = new MockSUSD('sUSD', 'sUSD');
-
-    // initialize
-    usda.initialize(susd);
+    susd = _sUSD;
 
     // save initial supply
     initialFragmentsSupply = usda.totalSupply();
