@@ -91,7 +91,7 @@ abstract contract Deploy is Script, TestConstants {
     amphToken.mint(address(amphClaimer), 1_000_000 ether); // Mint amph to start LM program
 
     // Initialize vault controller
-    vaultController.initialize(IVaultController(address(0)), _tokens, amphClaimer, vaultDeployer);
+    vaultController.initialize(IVaultController(address(0)), _tokens, amphClaimer, vaultDeployer, 0.01e18);
 
     // Deploy and initialize USDA
     usda = new USDA();

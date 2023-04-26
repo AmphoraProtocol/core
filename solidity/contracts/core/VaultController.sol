@@ -28,6 +28,9 @@ contract VaultController is
   ExponentialNoError,
   OwnableUpgradeable
 {
+  /// @dev The max allowed to be set as borrowing fee
+  uint192 public constant MAX_INIT_BORROWING_FEE = 0.05e18;
+
   /// @dev The convex booster interface
   IBooster public immutable BOOSTER;
 
@@ -68,6 +71,8 @@ contract VaultController is
   uint192 public totalBaseLiability;
   /// @dev The protocol's fee
   uint192 public protocolFee;
+  /// @dev The initial borrowing fee (1e18 == 100%)
+  uint192 public initialBorrowingFee;
 
   /// @notice Any function with this modifier will call the _payInterest() function before
   modifier paysInterest() {
@@ -94,13 +99,15 @@ contract VaultController is
     IVaultController _oldVaultController,
     address[] memory _tokenAddresses,
     IAMPHClaimer _claimerContract,
-    IVaultDeployer _vaultDeployer
+    IVaultDeployer _vaultDeployer,
+    uint192 _initialBorrowingFee
   ) external override initializer {
     __Ownable_init();
     __Pausable_init();
     VAULT_DEPLOYER = _vaultDeployer;
     interest = Interest(uint64(block.timestamp), 1 ether);
     protocolFee = 1e14;
+    initialBorrowingFee = _initialBorrowingFee;
 
     claimerContract = _claimerContract;
 
@@ -420,6 +427,16 @@ contract VaultController is
     emit ChangedClaimerContract(_oldClaimerContract, _newClaimerContract);
   }
 
+  /// @notice Change the initial borrowing fee
+  /// @param _newBorrowingFee The new borrowing fee
+  function changeInitialBorrowingFee(uint192 _newBorrowingFee) external override onlyOwner {
+    if (_newBorrowingFee >= MAX_INIT_BORROWING_FEE) revert VaultController_FeeTooLarge();
+    uint192 _oldBorrowingFee = initialBorrowingFee;
+    initialBorrowingFee = _newBorrowingFee;
+
+    emit ChangedInitialBorrowingFee(_oldBorrowingFee, _newBorrowingFee);
+  }
+
   /// @notice Check a vault for over-collateralization
   /// @param _id The id of vault we want to target
   /// @return _overCollateralized Returns true if vault over-collateralized; false if vault under-collaterlized
@@ -457,6 +474,18 @@ contract VaultController is
     _borrow(_id, _susdAmount, _target, false);
   }
 
+  function _getBorrowingFee(uint192 _amount) internal view returns (uint192 _fee) {
+    // _amount * (100% + initialBorrowingFee)
+    _fee = _safeu192(_truncate(uint256(_amount * (1e18 + initialBorrowingFee)))) - _amount;
+  }
+
+  /// @notice Returns the initial borrowing fee
+  /// @param _amount The base amount
+  /// @return _fee The fee calculated based on a base amount
+  function getBorrowingFee(uint192 _amount) public view override returns (uint192 _fee) {
+    _fee = _getBorrowingFee(_amount);
+  }
+
   /// @notice Business logic to perform the USDA loan
   /// @dev Pays interest
   /// @param _id The vault's id to borrow against
@@ -468,8 +497,10 @@ contract VaultController is
     IVault _vault = _getVault(_id);
     // only the minter of the vault may borrow from their vault
     if (_msgSender() != _vault.minter()) revert VaultController_OnlyMinter();
-    // the base amount is the amount of USDA they wish to borrow divided by the interest factor
-    uint192 _baseAmount = _safeu192(uint256(_amount * EXP_SCALE) / uint256(interest.factor));
+    // add the fee
+    uint192 _fee = _getBorrowingFee(_amount);
+    // the base amount is the amount of USDA they wish to borrow divided by the interest factor, accounting for the fee
+    uint192 _baseAmount = _safeu192(uint256((_amount + _fee) * EXP_SCALE) / uint256(interest.factor));
     // _baseLiability should contain the vault's new liability, in terms of base units
     // true indicates that we are adding to the liability
     uint256 _baseLiability = _vault.modifyLiability(true, _baseAmount);
@@ -491,8 +522,11 @@ contract VaultController is
       usda.vaultControllerTransfer(_target, _amount);
     }
 
+    // also send the fee to the treasury
+    if (_fee > 0) usda.vaultControllerMint(owner(), _fee);
+
     // emit the event
-    emit BorrowUSDA(_id, address(_vault), _amount);
+    emit BorrowUSDA(_id, address(_vault), _amount, _fee);
   }
 
   /// @notice Repays a vault's USDA loan. Anyone may repay
@@ -707,7 +741,8 @@ contract VaultController is
   /// @param _id The id of vault we want to target
   /// @return _borrowPower The amount of USDA the vault can borrow
   function vaultBorrowingPower(uint96 _id) external view override returns (uint192 _borrowPower) {
-    return _getVaultBorrowingPower(_getVault(_id));
+    uint192 _bp = _getVaultBorrowingPower(_getVault(_id));
+    _borrowPower = _bp - _getBorrowingFee(_bp);
   }
 
   /// @notice Returns the borrowing power of a vault
@@ -820,7 +855,7 @@ contract VaultController is
         _tokenBalances[_j] = _vault.tokenBalance(enabledTokens[_j]);
       }
       _vaultSummaries[_i - _start] =
-        VaultSummary(_i, this.vaultBorrowingPower(_i), this.vaultLiability(_i), enabledTokens, _tokenBalances);
+        VaultSummary(_i, _getVaultBorrowingPower(_vault), this.vaultLiability(_i), enabledTokens, _tokenBalances);
     }
   }
 

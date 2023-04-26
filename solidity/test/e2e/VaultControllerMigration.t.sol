@@ -39,7 +39,7 @@ contract E2EVaultControllerMigration is CommonE2EBase {
     _tokens[0] = WETH_ADDRESS;
     _tokens[1] = UNI_ADDRESS;
     _tokens[2] = AAVE_ADDRESS;
-    newVaultController.initialize(vaultController, _tokens, amphClaimer, newVaultDeployer);
+    newVaultController.initialize(vaultController, _tokens, amphClaimer, newVaultDeployer, 0.01e18);
 
     newVaultController.transferOwnership(address(governor));
     vm.stopPrank();
@@ -81,7 +81,7 @@ contract E2EVaultControllerMigration is CommonE2EBase {
     carolVault.depositERC20(UNI_ADDRESS, uni.balanceOf(carol));
     vaultController.borrowUSDA(uint96(carolVaultId), vaultController.vaultBorrowingPower(uint96(carolVaultId)));
 
-    vm.warp(block.timestamp + 7 days);
+    vm.warp(block.timestamp + 2 weeks);
     vaultController.calculateInterest();
 
     assert(vaultController.checkVault(uint96(carolVaultId)) == false);
@@ -97,7 +97,7 @@ contract E2EVaultControllerMigration is CommonE2EBase {
     newVaultController.repayUSDA(uint96(bobVaultId), 1);
     vm.stopPrank();
 
-    vm.warp(block.timestamp + 7 days);
+    vm.warp(block.timestamp + 2 weeks);
     newVaultController.calculateInterest();
 
     vm.startPrank(dave);

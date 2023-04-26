@@ -75,8 +75,9 @@ interface IVaultController {
    * @param _vaultId The id of the vault that borrowed against
    * @param _vaultAddress The address of the vault that borrowed against
    * @param _borrowAmount The amounnt that was borrowed
+   * @param _fee The fee assigned to the treasury
    */
-  event BorrowUSDA(uint256 _vaultId, address _vaultAddress, uint256 _borrowAmount);
+  event BorrowUSDA(uint256 _vaultId, address _vaultAddress, uint256 _borrowAmount, uint256 _fee);
 
   /**
    * @notice Emited when someone successfully repayed a vault's loan
@@ -101,6 +102,13 @@ interface IVaultController {
    *  @param _newClaimerContract The new claimer contract
    */
   event ChangedClaimerContract(IAMPHClaimer _oldClaimerContract, IAMPHClaimer _newClaimerContract);
+
+  /**
+   * @notice Emited when governance changes the initial borrowing fee
+   *  @param _oldBorrowingFee The old borrowing fee
+   *  @param _newBorrowingFee The new borrowing fee
+   */
+  event ChangedInitialBorrowingFee(uint192 _oldBorrowingFee, uint192 _newBorrowingFee);
 
   /*///////////////////////////////////////////////////////////////
                             ERRORS
@@ -211,6 +219,10 @@ interface IVaultController {
 
   function protocolFee() external view returns (uint192 _protocolFee);
 
+  function MAX_INIT_BORROWING_FEE() external view returns (uint192 _maxInitBorrowingFee);
+
+  function initialBorrowingFee() external view returns (uint192 _initialBorrowingFee);
+
   function vaultAddress(uint96 _id) external view returns (address _vaultAddress);
 
   function vaultIDs(address _wallet) external view returns (uint96[] memory _vaultIDs);
@@ -260,7 +272,8 @@ interface IVaultController {
     IVaultController _oldVaultController,
     address[] memory _tokenAddresses,
     IAMPHClaimer _claimerContract,
-    IVaultDeployer _vaultDeployer
+    IVaultDeployer _vaultDeployer,
+    uint192 _initialBorrowingFee
   ) external;
 
   function amountToSolvency(uint96 _id) external view returns (uint256 _amountToSolvency);
@@ -274,6 +287,8 @@ interface IVaultController {
   function checkVault(uint96 _id) external view returns (bool _overCollateralized);
 
   function vaultSummaries(uint96 _start, uint96 _stop) external view returns (VaultSummary[] memory _vaultSummaries);
+
+  function getBorrowingFee(uint192 _amount) external view returns (uint192 _fee);
 
   // interest calculations
   function calculateInterest() external returns (uint256 _interest);
@@ -329,4 +344,6 @@ interface IVaultController {
   ) external;
 
   function changeClaimerContract(IAMPHClaimer _newClaimerContract) external;
+
+  function changeInitialBorrowingFee(uint192 _newBorrowingFee) external;
 }

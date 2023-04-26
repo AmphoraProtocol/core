@@ -10,7 +10,6 @@ import {IUniswapV3Factory} from '@uniswap/v3-core/contracts/interfaces/IUniswapV
 import {IUniswapV3Pool} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
 import {IUniswapV3Pool} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
 import {ISwapRouter} from '@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol';
-import {ExponentialNoError} from '@contracts/utils/ExponentialNoError.sol';
 
 interface INonfungiblePositionManager {
   struct MintParams {
@@ -101,7 +100,7 @@ abstract contract IsolatedBase is CommonE2EBase {
   }
 }
 
-contract E2EBorrowSUSD is IsolatedBase, ExponentialNoError {
+contract E2EBorrowSUSD is IsolatedBase {
   uint256 public depositAmount = daveSUSD - 500 ether;
   uint192 public sUSDBorrow = 1000 ether;
   uint256 public wethDepositAmount = 1 ether;
@@ -136,9 +135,8 @@ contract E2EBorrowSUSD is IsolatedBase, ExponentialNoError {
 
     // check borrow power
     uint256 _borrowPower = vaultController.vaultBorrowingPower(bobVaultId);
-    assert(
-      _borrowPower == _safeu192(_truncate(_truncate(WETH_LTV * wethDepositAmount * anchoredViewEth.currentValue())))
-    );
+    uint192 _bp = _safeu192(_truncate(_truncate(WETH_LTV * wethDepositAmount * anchoredViewEth.currentValue())));
+    assert(_borrowPower == _bp - vaultController.getBorrowingFee(_bp));
     uint256 _liability = vaultController.vaultLiability(bobVaultId);
     assert(_liability == 0);
 
@@ -152,7 +150,8 @@ contract E2EBorrowSUSD is IsolatedBase, ExponentialNoError {
 
     // checks liability
     _liability = vaultController.vaultLiability(bobVaultId);
-    assertApproxEqAbs(_liability / 1 ether, sUSDBorrow / 1 ether, 1);
+    uint256 _liabilityWithFee = sUSDBorrow + vaultController.getBorrowingFee(uint192(sUSDBorrow));
+    assertApproxEqAbs(_liability / 1 ether, _liabilityWithFee / 1 ether, 1);
 
     // withdraw all reserves
     vm.prank(dave);
@@ -206,12 +205,16 @@ contract E2EMultiAssetLoan is IsolatedBase {
     uint256 _wbtcBalance = wbtc.balanceOf(address(gusVault));
     uint256 _wbtcValue = (_wbtcBalance * _wbtcPrice) / 1 ether;
     uint256 _expectedWbtcBorrowPower = (_wbtcValue * WBTC_LTV) / 1 ether;
-    assert(_expectedWbtcBorrowPower == _wbtcBorrowPower);
+    assert(
+      _expectedWbtcBorrowPower - vaultController.getBorrowingFee(uint192(_expectedWbtcBorrowPower)) == _wbtcBorrowPower
+    );
     uint256 _uniPrice = anchoredViewUni.currentValue();
     uint256 _uniBalance = uni.balanceOf(address(gusVault));
     uint256 _uniValue = (_uniBalance * _uniPrice) / 1 ether;
     uint256 _expectedUniBorrowPower = (_uniValue * UNI_LTV) / 1 ether;
-    assert(_expectedUniBorrowPower == _uniBorrowPower);
+    assert(
+      _expectedUniBorrowPower - vaultController.getBorrowingFee(uint192(_expectedUniBorrowPower)) == _uniBorrowPower
+    );
 
     // borrow max USDA
     vm.startPrank(gus);
@@ -221,7 +224,7 @@ contract E2EMultiAssetLoan is IsolatedBase {
     assert(_maxBorrow == usdaToken.balanceOf(gus));
 
     // put vault underwater
-    vm.warp(block.timestamp + 1 weeks);
+    vm.warp(block.timestamp + 2 weeks);
     vaultController.calculateInterest();
     assert(vaultController.checkVault(gusVaultId) == false);
 
@@ -239,6 +242,13 @@ contract E2EMultiAssetLoan is IsolatedBase {
     assert(uni.balanceOf(dave) == _uniToLiq);
     vm.stopPrank();
     assertApproxEqAbs(vaultController.amountToSolvency(gusVaultId), 0, 5);
+
+    // mint some USDA
+    uint256 _toMint = gusVault.baseLiability() * 2;
+    vm.startPrank(address(governor));
+    usdaToken.mint(_toMint);
+    usdaToken.transfer(gus, _toMint);
+    vm.stopPrank();
 
     // repay all
     vm.startPrank(gus);
@@ -883,7 +893,9 @@ contract E2EWBtcLoan is IsolatedBase {
     uint256 _wbtcBalance = wbtc.balanceOf(address(gusVault));
     uint256 _wbtcValue = (_wbtcBalance * _wbtcPrice) / 1 ether;
     uint256 _expectedWbtcBorrowPower = (_wbtcValue * WBTC_LTV) / 1 ether;
-    assert(_expectedWbtcBorrowPower == _wbtcBorrowPower);
+    assert(
+      _expectedWbtcBorrowPower - vaultController.getBorrowingFee(uint192(_expectedWbtcBorrowPower)) == _wbtcBorrowPower
+    );
 
     // borrow max USDA
     vm.startPrank(gus);
@@ -893,7 +905,7 @@ contract E2EWBtcLoan is IsolatedBase {
     assert(_maxBorrow == usdaToken.balanceOf(gus));
 
     // put vault underwater
-    vm.warp(block.timestamp + 1 weeks);
+    vm.warp(block.timestamp + 2 weeks);
     vaultController.calculateInterest();
     assert(vaultController.checkVault(gusVaultId) == false);
 
@@ -902,6 +914,13 @@ contract E2EWBtcLoan is IsolatedBase {
     uint256 _wbtcToLiq = vaultController.tokensToLiquidate(gusVaultId, WBTC_ADDRESS);
     vaultController.liquidateVault(gusVaultId, WBTC_ADDRESS, _wbtcToLiq);
     assert(wbtc.balanceOf(dave) == _wbtcToLiq);
+    vm.stopPrank();
+
+    // mint some USDA
+    uint256 _toMint = gusVault.baseLiability() * 2;
+    vm.startPrank(address(governor));
+    usdaToken.mint(_toMint);
+    usdaToken.transfer(gus, _toMint);
     vm.stopPrank();
 
     // repay all

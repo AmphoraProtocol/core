@@ -17,7 +17,7 @@ contract E2EVaultController is CommonE2EBase {
   uint96 public carolsVaultId = 2;
 
   event Liquidate(uint256 _vaultId, address _assetAddress, uint256 _usdaToRepurchase, uint256 _tokensToLiquidate);
-  event BorrowUSDA(uint256 _vaultId, address _vaultAddress, uint256 _borrowAmount);
+  event BorrowUSDA(uint256 _vaultId, address _vaultAddress, uint256 _borrowAmount, uint256 _fee);
 
   function setUp() public override {
     super.setUp();
@@ -179,7 +179,8 @@ contract E2EVaultController is CommonE2EBase {
       IVaultController(address(vaultController)),
       _tokens,
       IAMPHClaimer(address(amphClaimer)),
-      IVaultDeployer(address(vaultDeployer))
+      IVaultDeployer(address(vaultDeployer)),
+      0.01e18
     );
     vm.stopPrank();
 
@@ -226,9 +227,10 @@ contract E2EVaultController is CommonE2EBase {
   }
 
   function testRevertBorrowIfVaultInsolvent() public {
+    uint192 _foo = vaultController.vaultBorrowingPower(1);
     vm.expectRevert(IVaultController.VaultController_VaultInsolvent.selector);
     vm.prank(bob);
-    vaultController.borrowUSDA(1, uint192(bobWETH * 1 ether * 1_000_000));
+    vaultController.borrowUSDA(1, _foo * 2);
   }
 
   function testRegisterCurveLP() public {
@@ -246,7 +248,7 @@ contract E2EVaultController is CommonE2EBase {
     uint256 _liability = _calculateAccountLiability(borrowAmount, _interestFactor, _interestFactor);
 
     vm.expectEmit(false, false, false, true);
-    emit BorrowUSDA(1, address(bobVault), borrowAmount);
+    emit BorrowUSDA(1, address(bobVault), borrowAmount, vaultController.getBorrowingFee(uint192(borrowAmount)));
 
     vm.prank(bob);
     vaultController.borrowUSDA(1, uint192(borrowAmount));
@@ -257,7 +259,7 @@ contract E2EVaultController is CommonE2EBase {
     vaultController.calculateInterest();
     vm.prank(bob);
     uint256 _trueLiability = vaultController.vaultLiability(1);
-    assertEq(_trueLiability, _liability);
+    assertEq(_trueLiability, _liability + vaultController.getBorrowingFee(uint192(_liability)));
 
     uint256 _usdaBalanceAfter = usdaToken.balanceOf(bob);
     assertEq(_usdaBalanceAfter, borrowAmount);
@@ -286,7 +288,7 @@ contract E2EVaultController is CommonE2EBase {
     vm.prank(bob);
     uint192 _realLiability = vaultController.vaultLiability(1);
     assertGt(_realLiability, borrowAmount);
-    assertEq(_realLiability, _liability);
+    assertEq(_realLiability, _liability + vaultController.getBorrowingFee(uint192(_liability)));
   }
 
   function testInterestGeneration() public {

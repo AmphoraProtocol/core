@@ -115,7 +115,7 @@ contract E2EEdgeCases is CommonE2EBase {
     _tokens[0] = WETH_ADDRESS;
     _tokens[1] = UNI_ADDRESS;
     _tokens[2] = AAVE_ADDRESS;
-    newVaultController.initialize(vaultController, _tokens, amphClaimer, newVaultDeployer);
+    newVaultController.initialize(vaultController, _tokens, amphClaimer, newVaultDeployer, 0.01e18);
     vm.stopPrank();
 
     vm.prank(address(governor));
@@ -168,6 +168,13 @@ contract E2EEdgeCases is CommonE2EBase {
     // more deposit should pass
     vm.startPrank(gus);
     gusVault.depositERC20(WBTC_ADDRESS, gusWBTC / 2);
+    vm.stopPrank();
+
+    // mint some USDA
+    uint256 _toMint = gusVault.baseLiability() * 2;
+    vm.startPrank(address(governor));
+    usdaToken.mint(_toMint);
+    usdaToken.transfer(gus, _toMint);
     vm.stopPrank();
 
     // repay debt should pass

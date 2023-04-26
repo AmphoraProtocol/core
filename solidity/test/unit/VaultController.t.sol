@@ -25,7 +25,7 @@ import {IBaseRewardPool} from '@interfaces/utils/IBaseRewardPool.sol';
 import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
 import {IVaultDeployer} from '@interfaces/core/IVaultDeployer.sol';
 
-import {DSTestPlus} from 'solidity-utils/test/DSTestPlus.sol';
+import {DSTestPlus, console} from 'solidity-utils/test/DSTestPlus.sol';
 import {TestConstants} from '@test/utils/TestConstants.sol';
 
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
@@ -77,7 +77,7 @@ abstract contract Base is DSTestPlus, TestConstants {
     vm.startPrank(governance);
     vaultController = new VaultController(booster);
     vaultDeployer = new VaultDeployer(IVaultController(address(vaultController)), cvx, crv);
-    vaultController.initialize(IVaultController(address(0)), _tokens, mockAmphClaimer, vaultDeployer);
+    vaultController.initialize(IVaultController(address(0)), _tokens, mockAmphClaimer, vaultDeployer, 0.01e18);
 
     curveMaster = new CurveMaster();
     threeLines = new ThreeLines0_100(2 ether, 0.1 ether, 0.005 ether, 0.25 ether, 0.5 ether);
@@ -113,7 +113,7 @@ abstract contract Base is DSTestPlus, TestConstants {
 }
 
 abstract contract VaultBase is Base {
-  event BorrowUSDA(uint256 _vaultId, address _vaultAddress, uint256 _borrowAmount);
+  event BorrowUSDA(uint256 _vaultId, address _vaultAddress, uint256 _borrowAmount, uint256 _fee);
 
   IVault internal _vault;
   IVault internal _vault2;
@@ -183,7 +183,7 @@ contract UnitVaultControllerInitialize is Base {
   function testInitializedCorrectly() public {
     address[] memory _tokens = new address[](1);
     mockVaultController = new VaultControllerForTest(booster);
-    mockVaultController.initialize(IVaultController(address(0)), _tokens, mockAmphClaimer, vaultDeployer);
+    mockVaultController.initialize(IVaultController(address(0)), _tokens, mockAmphClaimer, vaultDeployer, 0.01e18);
 
     assertEq(mockVaultController.owner(), address(this));
     assertEq(mockVaultController.lastInterestTime(), block.timestamp);
@@ -192,6 +192,7 @@ contract UnitVaultControllerInitialize is Base {
     assertEq(mockVaultController.vaultsMinted(), 0);
     assertEq(mockVaultController.tokensRegistered(), 0);
     assertEq(mockVaultController.totalBaseLiability(), 0);
+    assertEq(mockVaultController.initialBorrowingFee(), 10_000_000_000_000_000);
     assertEq(address(mockVaultController.claimerContract()), address(mockAmphClaimer));
   }
 
@@ -205,7 +206,9 @@ contract UnitVaultControllerInitialize is Base {
     );
     // Deploy the new vault controller
     mockVaultController = new VaultControllerForTest(booster);
-    mockVaultController.initialize(IVaultController(address(vaultController)), _tokens, mockAmphClaimer, vaultDeployer);
+    mockVaultController.initialize(
+      IVaultController(address(vaultController)), _tokens, mockAmphClaimer, vaultDeployer, 0.01e18
+    );
     vm.stopPrank();
 
     assertEq(address(mockVaultController.tokensOracle(WETH_ADDRESS)), address(anchoredViewEth));
@@ -330,6 +333,43 @@ contract UnitVaultControllerChangeProtocolFee is Base {
     vm.prank(governance);
     vaultController.changeProtocolFee(_protocolFee);
     assertEq(vaultController.protocolFee(), _protocolFee);
+  }
+}
+
+contract UnitVaultControllerChangeInitialBorrowingFee is Base {
+  event ChangedInitialBorrowingFee(uint192 _oldBorrowingFee, uint192 _newBorrowingFee);
+
+  function testRevertIfChangeFromNonOwner(uint192 _newFee) public {
+    vm.expectRevert('Ownable: caller is not the owner');
+    vm.prank(alice);
+    vaultController.changeInitialBorrowingFee(_newFee);
+  }
+
+  function testRevertIfFeeIsTooHigh(uint192 _newFee) public {
+    vm.assume(_newFee > vaultController.MAX_INIT_BORROWING_FEE());
+    vm.expectRevert(IVaultController.VaultController_FeeTooLarge.selector);
+    vm.prank(governance);
+    vaultController.changeInitialBorrowingFee(_newFee);
+  }
+
+  function testChangeInitialBorrowingFee(uint192 _fee) public {
+    vm.assume(_fee < vaultController.MAX_INIT_BORROWING_FEE());
+    vm.expectEmit(false, false, false, true);
+    emit ChangedInitialBorrowingFee(vaultController.initialBorrowingFee(), _fee);
+
+    vm.prank(governance);
+    vaultController.changeInitialBorrowingFee(_fee);
+    assertEq(vaultController.initialBorrowingFee(), _fee);
+  }
+}
+
+contract UnitVaultControllerGetBorrowingFee is Base {
+  function testGetBorrowingFee(uint192 _baseAmount) public {
+    vm.assume(_baseAmount < type(uint192).max / vaultController.initialBorrowingFee());
+    vm.assume(_baseAmount < type(uint192).max / (vaultController.initialBorrowingFee() + 1e18));
+    vm.assume(_baseAmount * vaultController.initialBorrowingFee() >= 1e18);
+
+    assertEq(vaultController.getBorrowingFee(_baseAmount), (_baseAmount * vaultController.initialBorrowingFee()) / 1e18);
   }
 }
 
@@ -659,7 +699,7 @@ contract UnitVaultControllerLiquidateVault is VaultBase, ExponentialNoError {
     vm.stopPrank();
 
     // make vault insolvent
-    vm.warp(block.timestamp + 7 days);
+    vm.warp(block.timestamp + 2 weeks);
     vaultController.calculateInterest();
 
     uint256 _tokensToLiquidate = vaultController.tokensToLiquidate(_vaultId, address(usdtLp));
@@ -687,7 +727,7 @@ contract UnitVaultControllerLiquidateVault is VaultBase, ExponentialNoError {
     vaultController.borrowUSDA(_vaultId, vaultController.vaultBorrowingPower(_vaultId));
     vm.stopPrank();
     // make vault insolvent
-    vm.warp(block.timestamp + 7 days);
+    vm.warp(block.timestamp + 2 weeks);
     vaultController.calculateInterest();
 
     uint256 _tokensToLiquidate = vaultController.tokensToLiquidate(_vaultId, WETH_ADDRESS);
@@ -716,7 +756,7 @@ contract UnitVaultControllerLiquidateVault is VaultBase, ExponentialNoError {
     vaultController.borrowUSDA(_vaultId, vaultController.vaultBorrowingPower(_vaultId));
     vm.stopPrank();
     // make vault insolvent
-    vm.warp(block.timestamp + 7 days);
+    vm.warp(block.timestamp + 2 weeks);
     vaultController.calculateInterest();
 
     uint256 _tokensToLiquidate = vaultController.tokensToLiquidate(_vaultId, WETH_ADDRESS);
@@ -784,7 +824,7 @@ contract UnitVaultControllerBorrow is VaultBase {
   function testBorrowUSDA() public {
     uint256 _usdaBalanceBefore = usdaToken.balanceOf(vaultOwner);
     vm.expectEmit(true, true, true, true);
-    emit BorrowUSDA(_vaultId, address(_vault), _borrowAmount);
+    emit BorrowUSDA(_vaultId, address(_vault), _borrowAmount, vaultController.getBorrowingFee(uint192(_borrowAmount)));
 
     vm.prank(vaultOwner);
     vaultController.borrowUSDA(_vaultId, _borrowAmount);
@@ -794,11 +834,40 @@ contract UnitVaultControllerBorrow is VaultBase {
   function testBorrowUSDATo() public {
     uint256 _usdaBalanceBefore = usdaToken.balanceOf(vaultOwner);
     vm.expectEmit(true, true, true, true);
-    emit BorrowUSDA(_vaultId, address(_vault), _borrowAmount);
+    emit BorrowUSDA(_vaultId, address(_vault), _borrowAmount, vaultController.getBorrowingFee(uint192(_borrowAmount)));
 
     vm.prank(vaultOwner);
     vaultController.borrowUSDAto(_vaultId, _borrowAmount, vaultOwner);
     assertEq(usdaToken.balanceOf(vaultOwner), _usdaBalanceBefore + _borrowAmount);
+  }
+
+  function testBorrowUSDATreasuryReceivesFee() public {
+    uint256 _usdaBalanceBefore = usdaToken.balanceOf(vaultController.owner());
+
+    vm.prank(vaultOwner);
+    vaultController.borrowUSDA(_vaultId, _borrowAmount);
+    assertEq(
+      usdaToken.balanceOf(vaultController.owner()),
+      _usdaBalanceBefore + vaultController.getBorrowingFee(uint192(_borrowAmount))
+    );
+  }
+
+  function testBorrowUSDAWithFeeInZero() public {
+    uint256 _usdaBalanceTreasuryBefore = usdaToken.balanceOf(vaultController.owner());
+    uint256 _usdaBalanceBefore = usdaToken.balanceOf(vaultOwner);
+
+    // set fee to 0
+    vm.prank(vaultController.owner());
+    vaultController.changeInitialBorrowingFee(0);
+
+    vm.expectEmit(true, true, true, true);
+    emit BorrowUSDA(_vaultId, address(_vault), _borrowAmount, 0);
+
+    vm.prank(vaultOwner);
+    vaultController.borrowUSDA(_vaultId, _borrowAmount);
+
+    assertEq(usdaToken.balanceOf(vaultOwner), _usdaBalanceBefore + _borrowAmount);
+    assertEq(usdaToken.balanceOf(vaultController.owner()), _usdaBalanceTreasuryBefore);
   }
 }
 
@@ -831,7 +900,12 @@ contract UnitVaultControllerBorrowSUSDto is VaultBase {
   }
 
   function testCallModifyLiability(address _receiver) public {
-    vm.expectCall(address(_vault), abi.encodeWithSelector(IVault.modifyLiability.selector, true, _borrowAmount));
+    vm.expectCall(
+      address(_vault),
+      abi.encodeWithSelector(
+        IVault.modifyLiability.selector, true, _borrowAmount + vaultController.getBorrowingFee(uint192(_borrowAmount))
+      )
+    );
     vm.prank(vaultOwner);
     vaultController.borrowsUSDto(_vaultId, _borrowAmount, _receiver);
   }
@@ -846,7 +920,7 @@ contract UnitVaultControllerBorrowSUSDto is VaultBase {
 
   function testEmitEvent(address _receiver) public {
     vm.expectEmit(true, true, true, true);
-    emit BorrowUSDA(_vaultId, address(_vault), _borrowAmount);
+    emit BorrowUSDA(_vaultId, address(_vault), _borrowAmount, vaultController.getBorrowingFee(uint192(_borrowAmount)));
 
     vm.prank(vaultOwner);
     vaultController.borrowsUSDto(_vaultId, _borrowAmount, _receiver);
@@ -1042,7 +1116,7 @@ contract UnitVaultControllerGetVault is VaultBase {
     address[] memory _tokens = new address[](1);
     mockVaultController = new VaultControllerForTest(booster);
     _mockVaultDeployer = new VaultDeployer(IVaultController(address(mockVaultController)), cvx, crv);
-    mockVaultController.initialize(IVaultController(address(0)), _tokens, mockAmphClaimer, _mockVaultDeployer);
+    mockVaultController.initialize(IVaultController(address(0)), _tokens, mockAmphClaimer, _mockVaultDeployer, 0.01e18);
   }
 
   function testRevertIfVaultDoesNotExist(uint96 _id) public {
@@ -1057,18 +1131,21 @@ contract UnitVaultControllerGetVault is VaultBase {
   }
 }
 
-contract UnitVaultControllerAmountToSolvency is VaultBase {
+contract UnitVaultControllerAmountToSolvency is VaultBase, ExponentialNoError {
   function testRevertIfVaultIsSolvent() public {
     vm.expectRevert(IVaultController.VaultController_VaultSolvent.selector);
     vaultController.amountToSolvency(_vaultId);
   }
 
   function testAmountToSolvency() public {
-    uint256 _borrowingPower = vaultController.vaultBorrowingPower(_vaultId);
+    uint192 _rawPrice = _safeu192(anchoredViewEth.currentValue());
+    uint192 _borrowPowerWithoutDiscount = _safeu192(_truncate(_truncate(_rawPrice * _vaultDeposit * WETH_LTV)));
+
     vm.mockCall(
       address(_vault), abi.encodeWithSelector(IVault.baseLiability.selector), abi.encode(_vaultDeposit + 1 ether)
     );
-    assertEq(vaultController.amountToSolvency(_vaultId), 11 ether - _borrowingPower);
+
+    assertEq(vaultController.amountToSolvency(_vaultId), 11 ether - _borrowPowerWithoutDiscount);
   }
 }
 
@@ -1087,7 +1164,11 @@ contract UnitVaultControllerVaultLiability is VaultBase {
 
 contract UnitVaultControllerVaultBorrowingPower is VaultBase {
   function testVaultBorrowingPower() public {
-    assertEq(vaultController.vaultBorrowingPower(_vaultId), _vaultDeposit * WETH_LTV / 1 ether);
+    uint256 _borrowingPowerWithoutDiscount = _vaultDeposit * WETH_LTV / 1 ether;
+    assertEq(
+      vaultController.vaultBorrowingPower(_vaultId),
+      _borrowingPowerWithoutDiscount - vaultController.getBorrowingFee(uint192(_borrowingPowerWithoutDiscount))
+    );
   }
 
   function testVaultBorrowingPowerWhenOracleReturnsZero() public {
@@ -1118,8 +1199,11 @@ contract UnitVaultControllerVaultBorrowingPower is VaultBase {
     );
 
     // we calculate only for weth since uni borrowing power should be 0
-    uint256 _borrowingPower = _vaultDeposit * WETH_LTV;
-    assertEq(vaultController.vaultBorrowingPower(_vaultId), _borrowingPower / 1 ether);
+    uint256 _borrowingPower = (_vaultDeposit * WETH_LTV) / 1 ether;
+    assertEq(
+      vaultController.vaultBorrowingPower(_vaultId),
+      _borrowingPower - vaultController.getBorrowingFee(uint192(_borrowingPower))
+    );
   }
 
   function testVaultBorrowingPowerMultipleCollateral() public {
@@ -1144,8 +1228,11 @@ contract UnitVaultControllerVaultBorrowingPower is VaultBase {
       address(anchoredViewUni), abi.encodeWithSelector(IAnchoredViewRelay.currentValue.selector), abi.encode(1 ether)
     );
 
-    uint256 _borrowingPower = _vaultDeposit * WETH_LTV + _vaultDeposit * UNI_LTV;
-    assertEq(vaultController.vaultBorrowingPower(_vaultId), _borrowingPower / 1 ether);
+    uint256 _borrowingPower = (_vaultDeposit * WETH_LTV + _vaultDeposit * UNI_LTV) / 1 ether;
+    assertEq(
+      vaultController.vaultBorrowingPower(_vaultId),
+      _borrowingPower - vaultController.getBorrowingFee(uint192(_borrowingPower))
+    );
   }
 }
 
@@ -1165,6 +1252,7 @@ contract UnitVaultControllerCalculateInterest is VaultBase, ExponentialNoError {
   }
 
   function testCallExternalCalls() public {
+    _borrowAmount = _borrowAmount + vaultController.getBorrowingFee(uint192(_borrowAmount));
     vm.warp(block.timestamp + 1);
     uint256 _curveValue = uint256(curveMaster.getValueAt(address(0x00), 0));
     uint192 _e18FactorIncrease =
@@ -1186,12 +1274,15 @@ contract UnitVaultControllerCalculateInterest is VaultBase, ExponentialNoError {
   }
 }
 
-contract UnitVaultControllerVaultSummaries is VaultBase {
+contract UnitVaultControllerVaultSummaries is VaultBase, ExponentialNoError {
   function testVaultSummaries() public {
     IVaultController.VaultSummary[] memory _summary = vaultController.vaultSummaries(1, 1);
+
+    uint256 _borrowPowerWithoutDiscount0 =
+      _safeu192(_truncate(_truncate(_safeu192(anchoredViewEth.currentValue() * _vaultDeposit * WETH_LTV))));
     assertEq(_summary.length, 1);
     assertEq(_summary[0].id, _vaultId);
-    assertEq(_summary[0].borrowingPower, vaultController.vaultBorrowingPower(_vaultId));
+    assertEq(_summary[0].borrowingPower, _borrowPowerWithoutDiscount0);
     assertEq(_summary[0].vaultLiability, vaultController.vaultLiability(_vaultId));
     assertEq(_summary[0].tokenAddresses[0], WETH_ADDRESS);
     assertEq(_summary[0].tokenBalances[0], _vaultDeposit);
@@ -1201,14 +1292,18 @@ contract UnitVaultControllerVaultSummaries is VaultBase {
     IVaultController.VaultSummary[] memory _summary = vaultController.vaultSummaries(1, 2);
     assertEq(_summary.length, 2);
 
+    uint256 _borrowPowerWithoutDiscount0 =
+      _safeu192(_truncate(_truncate(_safeu192(anchoredViewEth.currentValue() * _vaultDeposit * WETH_LTV))));
     assertEq(_summary[0].id, _vaultId);
-    assertEq(_summary[0].borrowingPower, vaultController.vaultBorrowingPower(_vaultId));
+    assertEq(_summary[0].borrowingPower, _borrowPowerWithoutDiscount0);
     assertEq(_summary[0].vaultLiability, vaultController.vaultLiability(_vaultId));
     assertEq(_summary[0].tokenAddresses[0], WETH_ADDRESS);
     assertEq(_summary[0].tokenBalances[0], _vaultDeposit);
 
+    uint256 _borrowPowerWithoutDiscount1 =
+      _safeu192(_truncate(_truncate(_safeu192(anchoredViewEth.currentValue() * (_vaultDeposit * 2) * WETH_LTV))));
     assertEq(_summary[1].id, _vaultId2);
-    assertEq(_summary[1].borrowingPower, vaultController.vaultBorrowingPower(_vaultId2));
+    assertEq(_summary[1].borrowingPower, _borrowPowerWithoutDiscount1);
     assertEq(_summary[1].vaultLiability, vaultController.vaultLiability(_vaultId2));
     assertEq(_summary[1].tokenAddresses[0], WETH_ADDRESS);
     assertEq(_summary[1].tokenBalances[0], _vaultDeposit * 2);
@@ -1218,14 +1313,18 @@ contract UnitVaultControllerVaultSummaries is VaultBase {
     IVaultController.VaultSummary[] memory _summary = vaultController.vaultSummaries(1, 1_000_000);
     assertEq(_summary.length, 2);
 
+    uint256 _borrowPowerWithoutDiscount0 =
+      _safeu192(_truncate(_truncate(_safeu192(anchoredViewEth.currentValue() * _vaultDeposit * WETH_LTV))));
     assertEq(_summary[0].id, _vaultId);
-    assertEq(_summary[0].borrowingPower, vaultController.vaultBorrowingPower(_vaultId));
+    assertEq(_summary[0].borrowingPower, _borrowPowerWithoutDiscount0);
     assertEq(_summary[0].vaultLiability, vaultController.vaultLiability(_vaultId));
     assertEq(_summary[0].tokenAddresses[0], WETH_ADDRESS);
     assertEq(_summary[0].tokenBalances[0], _vaultDeposit);
 
+    uint256 _borrowPowerWithoutDiscount1 =
+      _safeu192(_truncate(_truncate(_safeu192(anchoredViewEth.currentValue() * (_vaultDeposit * 2) * WETH_LTV))));
     assertEq(_summary[1].id, _vaultId2);
-    assertEq(_summary[1].borrowingPower, vaultController.vaultBorrowingPower(_vaultId2));
+    assertEq(_summary[1].borrowingPower, _borrowPowerWithoutDiscount1);
     assertEq(_summary[1].vaultLiability, vaultController.vaultLiability(_vaultId2));
     assertEq(_summary[1].tokenAddresses[0], WETH_ADDRESS);
     assertEq(_summary[1].tokenBalances[0], _vaultDeposit * 2);

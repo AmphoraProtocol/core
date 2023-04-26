@@ -29,9 +29,10 @@ import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
 
 import {TestConstants} from '@test/utils/TestConstants.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import {ExponentialNoError} from '@contracts/utils/ExponentialNoError.sol';
 
 // solhint-disable-next-line max-states-count
-contract CommonE2EBase is DSTestPlus, TestConstants {
+contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError {
   uint256 public constant FORK_BLOCK = 15_452_788;
   /// 16442788;///;
   uint256 public constant DELTA = 100;
@@ -175,7 +176,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants {
     label(address(vaultDeployer), 'VaultDeployer');
 
     // Initialize VaultController
-    vaultController.initialize(IVaultController(address(0)), _tokens, amphClaimer, vaultDeployer);
+    vaultController.initialize(IVaultController(address(0)), _tokens, amphClaimer, vaultDeployer, 0.01e18);
 
     // Deploy and initialize USDA
     usdaToken = new USDA();
