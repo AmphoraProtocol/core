@@ -26,13 +26,6 @@ interface IVault {
   event Withdraw(address _token, uint256 _amount);
 
   /**
-   * @notice Emited after recovering dust from vault
-   * @param _token The address of the token to recover
-   * @param _amount The amount to recover
-   */
-  event Recover(address _token, uint256 _amount);
-
-  /**
    * @notice Emited when claiming a reward
    * @param _token The address of the token that was claimed
    * @param _amount The amount that was claimed
@@ -188,11 +181,6 @@ interface IVault {
   /// @param _tokenAddress The address of erc20 token
   /// @return _rewards The array of tokens and amount available for claim
   function claimableRewards(address _tokenAddress) external view returns (Reward[] memory _rewards);
-
-  /// @notice Recovers dust from vault
-  /// this can only be called by the minter
-  /// @param _tokenAddress address of erc20 token
-  function recoverDust(address _tokenAddress) external;
 
   /**
    * @notice Function used by the VaultController to transfer tokens
