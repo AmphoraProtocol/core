@@ -64,7 +64,8 @@ abstract contract Deploy is Script, TestConstants {
     IERC20 _sUSDAddress,
     IERC20 _wethAddress,
     address _booster,
-    address _wethOracle
+    address _wethOracle,
+    bool _giveOwnershipToGov
   ) internal {
     address[] memory _tokens = new address[](1);
 
@@ -135,6 +136,12 @@ abstract contract Deploy is Script, TestConstants {
     // Set pauser
     usda.setPauser(_deployer);
 
+    if (_giveOwnershipToGov) {
+      _changeOwnership(
+        _deployer, address(governor), amphToken, vaultController, amphClaimer, usda, curveMaster, chainlinkEth
+      );
+    }
+
     vm.stopBroadcast();
   }
 
@@ -189,6 +196,32 @@ abstract contract Deploy is Script, TestConstants {
       address(fakeLp1), WETH_LTV, address(fakeRewardsOracle1), LIQUIDATION_INCENTIVE, type(uint256).max, _pid
     );
   }
+
+  function _changeOwnership(
+    address _usdaPauser,
+    address _governor,
+    AmphoraProtocolToken _amphToken,
+    VaultController _vaultController,
+    AMPHClaimer _amphClaimer,
+    USDA _usda,
+    CurveMaster _curveMaster,
+    ChainlinkOracleRelay _chainlinkEth
+  ) internal {
+    //AMPH
+    _amphToken.transferOwnership(_governor);
+    //vault controller
+    _vaultController.transferOwnership(_governor);
+    //amph claimer
+    _amphClaimer.transferOwnership(_governor);
+    //usda
+    //TODO: Pauser powers should remain in a wallet controller by team for fast reaction but ownership is for gov
+    _usda.setPauser(_usdaPauser);
+    _usda.transferOwnership(_governor);
+    //curveMaster
+    _curveMaster.transferOwnership(_governor);
+    //chainlinkEth
+    if (address(_chainlinkEth) != address(0)) _chainlinkEth.transferOwnership(_governor);
+  }
 }
 
 contract DeployMainnet is Deploy {
@@ -202,7 +235,8 @@ contract DeployMainnet is Deploy {
       IERC20(SUSD_ADDRESS),
       IERC20(WETH_ADDRESS),
       BOOSTER,
-      address(0)
+      address(0),
+      true
     );
   }
 }
@@ -218,7 +252,8 @@ contract DeployGoerli is Deploy {
       IERC20(SUSD_ADDRESS),
       IERC20(WETH_ADDRESS),
       BOOSTER,
-      address(0)
+      address(0),
+      true
     );
   }
 }
@@ -243,7 +278,9 @@ contract DeploySepolia is Deploy {
     console.log('FAKE_WETH_ORACLE: ', address(fakeWethOracle));
     vm.stopBroadcast();
 
-    _deploy(deployer, cvx, crv, susdCopy, IERC20(address(wethSepolia)), address(fakeBooster), address(fakeWethOracle));
+    _deploy(
+      deployer, cvx, crv, susdCopy, IERC20(address(wethSepolia)), address(fakeBooster), address(fakeWethOracle), false
+    );
 
     vm.startBroadcast(deployer);
     _addFakeCurveLP(cvx, crv, fakeBooster, deployer);
@@ -262,7 +299,8 @@ contract DeployLocal is Deploy {
       IERC20(SUSD_ADDRESS),
       IERC20(WETH_ADDRESS),
       BOOSTER,
-      address(0)
+      address(0),
+      true
     );
   }
 }

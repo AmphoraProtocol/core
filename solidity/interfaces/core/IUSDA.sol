@@ -65,10 +65,6 @@ interface IUSDA is IERC20Metadata, IRoles {
   /// @return _reserveAmount The reserve amount
   function reserveAmount() external view returns (uint256 _reserveAmount);
 
-  /// @notice Return the owner
-  /// @return _owner The owner
-  function owner() external view returns (address _owner);
-
   /*///////////////////////////////////////////////////////////////
                               LOGIC
     //////////////////////////////////////////////////////////////*/

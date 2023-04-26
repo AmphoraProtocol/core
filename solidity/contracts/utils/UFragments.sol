@@ -3,7 +3,7 @@
 pragma solidity ^0.8.9;
 
 import {ERC20Detailed} from '@contracts/utils/ERC20Detailed.sol';
-import {OwnableUpgradeable} from '@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol';
+import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 
 /**
  * @title uFragments ERC20 token
@@ -17,7 +17,7 @@ import {OwnableUpgradeable} from '@openzeppelin/contracts-upgradeable/access/Own
  *      We support splitting the currency in expansion and combining the currency on contraction by
  *      changing the exchange rate between the hidden 'gons' and the public 'fragments'.
  */
-contract UFragments is OwnableUpgradeable, ERC20Detailed {
+contract UFragments is Ownable, ERC20Detailed {
   // PLEASE READ BEFORE CHANGING ANY ACCOUNTING OR MATH
   // Anytime there is division, there is a risk of numerical instability from rounding errors. In
   // order to minimize this risk, we adhere to the following guidelines:
@@ -89,7 +89,6 @@ contract UFragments is OwnableUpgradeable, ERC20Detailed {
   mapping(address => uint256) private _nonces;
 
   function _UFragments_init(string memory _name, string memory _symbol) internal onlyInitializing {
-    __Ownable_init();
     _erc20DetailedInit(_name, _symbol, uint8(DECIMALS));
     //set og initial values
     _totalGons = INITIAL_FRAGMENTS_SUPPLY * 10 ** 48;

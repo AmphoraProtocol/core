@@ -14,20 +14,14 @@ import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
 import {IVaultDeployer} from '@interfaces/core/IVaultDeployer.sol';
 
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import {OwnableUpgradeable} from '@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol';
+import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
-import {PausableUpgradeable} from '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
+import {Pausable} from '@openzeppelin/contracts/security/Pausable.sol';
 
 /// @notice Controller of all vaults in the USDA borrow/lend system
 ///         VaultController contains all business logic for borrowing and lending through the protocol.
 ///         It is also in charge of accruing interest.
-contract VaultController is
-  Initializable,
-  PausableUpgradeable,
-  IVaultController,
-  ExponentialNoError,
-  OwnableUpgradeable
-{
+contract VaultController is Initializable, Pausable, IVaultController, ExponentialNoError, Ownable {
   /// @dev The max allowed to be set as borrowing fee
   uint192 public constant MAX_INIT_BORROWING_FEE = 0.05e18;
 
@@ -102,18 +96,12 @@ contract VaultController is
     IVaultDeployer _vaultDeployer,
     uint192 _initialBorrowingFee
   ) external override initializer {
-    __Ownable_init();
-    __Pausable_init();
     VAULT_DEPLOYER = _vaultDeployer;
     interest = Interest(uint64(block.timestamp), 1 ether);
     protocolFee = 1e14;
     initialBorrowingFee = _initialBorrowingFee;
 
     claimerContract = _claimerContract;
-
-    vaultsMinted = 0;
-    tokensRegistered = 0;
-    totalBaseLiability = 0;
 
     if (address(_oldVaultController) != address(0)) _migrateCollateralsFrom(_oldVaultController, _tokenAddresses);
   }

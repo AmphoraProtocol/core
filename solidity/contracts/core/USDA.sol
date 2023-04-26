@@ -12,15 +12,13 @@ import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {IERC20Metadata} from '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
-import {PausableUpgradeable} from '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
-import {OwnableUpgradeable} from '@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol';
-import {ContextUpgradeable} from '@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol';
+import {Pausable} from '@openzeppelin/contracts/security/Pausable.sol';
 import {Context} from '@openzeppelin/contracts/utils/Context.sol';
 import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 
 /// @notice USDA token contract, handles all minting/burning of usda
 /// @dev extends UFragments
-contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, ExponentialNoError, Roles {
+contract USDA is Initializable, Pausable, UFragments, IUSDA, ExponentialNoError, Roles {
   using EnumerableSet for EnumerableSet.AddressSet;
 
   bytes32 public constant VAULT_CONTROLLER_ROLE = keccak256('VAULT_CONTROLLER');
@@ -63,7 +61,6 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
   /// @param _sUSDAddr The address of sUSD
   function initialize(IERC20 _sUSDAddr) public override initializer {
     _UFragments_init('USDA Token', 'USDA');
-    __Pausable_init();
     sUSD = _sUSDAddr;
   }
 
@@ -83,12 +80,6 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
   /// @dev Can only be called by the pauser
   function unpause() external override onlyPauser {
     _unpause();
-  }
-
-  /// @notice Returns the owner of the USDA contract
-  /// @return _ownerAddress The address of owner
-  function owner() public view override(IUSDA, OwnableUpgradeable) returns (address _ownerAddress) {
-    return super.owner();
   }
 
   /// @notice Returns the name of the token
@@ -325,21 +316,5 @@ contract USDA is Initializable, PausableUpgradeable, UFragments, IUSDA, Exponent
   /// @dev The vault controller is removed from the list but keeps the role as to not brick it
   function removeVaultControllerFromList(address _vaultController) external onlyOwner {
     _vaultControllers.remove(_vaultController);
-  }
-
-  /*///////////////////////////////////////////////////////////////
-                        OPENZEPPELIN OVERRIDES
-    //////////////////////////////////////////////////////////////*/
-
-  /// @notice Returns the msg sender
-  /// @return _sender The message sender
-  function _msgSender() internal view virtual override(Context, ContextUpgradeable) returns (address _sender) {
-    return msg.sender;
-  }
-
-  /// @notice Returns the msg data
-  /// @return _data The message data
-  function _msgData() internal view virtual override(Context, ContextUpgradeable) returns (bytes calldata _data) {
-    return msg.data;
   }
 }
