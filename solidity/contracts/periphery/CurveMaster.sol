@@ -29,7 +29,10 @@ contract CurveMaster is ICurveMaster, Ownable {
   /// @notice Set the VaultController addr in order to pay interest on curve setting
   /// @param _vaultMasterAddress The address of vault master
   function setVaultController(address _vaultMasterAddress) external override onlyOwner {
+    address _oldCurveAddress = vaultControllerAddress;
     vaultControllerAddress = _vaultMasterAddress;
+
+    emit VaultControllerSet(_oldCurveAddress, _vaultMasterAddress);
   }
 
   /// @notice Setting a new curve should pay interest
@@ -37,13 +40,19 @@ contract CurveMaster is ICurveMaster, Ownable {
   /// @param _curveAddress The address of the curve for the contract
   function setCurve(address _tokenAddress, address _curveAddress) external override onlyOwner {
     if (vaultControllerAddress != address(0)) IVaultController(vaultControllerAddress).calculateInterest();
+    address _oldCurve = curves[_tokenAddress];
     curves[_tokenAddress] = _curveAddress;
+
+    emit CurveSet(_oldCurve, _tokenAddress, _curveAddress);
   }
 
   /// @notice Special function that does not calculate interest, used for deployment
   /// @param _tokenAddress The address of the token
   /// @param _curveAddress The address of the curve for the contract
   function forceSetCurve(address _tokenAddress, address _curveAddress) external override onlyOwner {
+    address _oldCurve = curves[_tokenAddress];
     curves[_tokenAddress] = _curveAddress;
+
+    emit CurveForceSet(_oldCurve, _tokenAddress, _curveAddress);
   }
 }

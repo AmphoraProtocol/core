@@ -104,6 +104,12 @@ interface IVaultController {
   event ChangedClaimerContract(IAMPHClaimer _oldClaimerContract, IAMPHClaimer _newClaimerContract);
 
   /**
+   * @notice Emited when the owner registers the USDA contract
+   * @param _usdaContractAddress The address of the USDA contract
+   */
+  event RegisterUSDA(address _usdaContractAddress);
+
+  /**
    * @notice Emited when governance changes the initial borrowing fee
    *  @param _oldBorrowingFee The old borrowing fee
    *  @param _newBorrowingFee The new borrowing fee

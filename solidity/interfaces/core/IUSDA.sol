@@ -12,20 +12,79 @@ interface IUSDA is IERC20Metadata, IRoles {
   /*///////////////////////////////////////////////////////////////
                               EVENTS
     //////////////////////////////////////////////////////////////*/
-  /// @notice Emitted when a deposit is made
+  /**
+   * @notice Emitted when a deposit is made
+   * @param _from The address which made the deposit
+   * @param _value The value deposited
+   */
   event Deposit(address indexed _from, uint256 _value);
 
-  /// @notice Emitted when a withdraw is made
+  /**
+   * @notice Emitted when a withdraw is made
+   * @param _from The address which made the withdraw
+   * @param _value The value withdrawn
+   */
   event Withdraw(address indexed _from, uint256 _value);
 
-  /// @notice Emitted when a mint is made
+  /**
+   * @notice Emitted when a mint is made
+   * @param _to The address which made the mint
+   * @param _value The value minted
+   */
   event Mint(address _to, uint256 _value);
 
-  /// @notice Emitted when a burn is made
+  /**
+   * @notice Emitted when a burn is made
+   * @param _from The address which made the burn
+   * @param _value The value burned
+   */
   event Burn(address _from, uint256 _value);
 
-  /// @notice Emitted when a donation is made
+  /**
+   * @notice Emitted when a donation is made
+   * @param _from The address which made the donation
+   * @param _value The value of the donation
+   * @param _totalSupply The new total supply
+   */
   event Donation(address indexed _from, uint256 _value, uint256 _totalSupply);
+
+  /**
+   * @notice Emitted when the owner recovers dust
+   * @param _receiver The address which made the recover
+   * @param _amount The value recovered
+   */
+  event RecoveredDust(address indexed _receiver, uint256 _amount);
+
+  /**
+   * @notice Emitted when the owner sets a pauser
+   * @param _pauser The new pauser address
+   */
+  event PauserSet(address indexed _pauser);
+
+  /**
+   * @notice Emitted when a sUSD transfer is made from the vaultController
+   * @param _target The receiver of the transfer
+   * @param _susdAmount The amount sent
+   */
+  event VaultControllerTransfer(address _target, uint256 _susdAmount);
+
+  /**
+   * @notice Emitted when the owner adds a new vaultController giving special roles
+   * @param _vaultController The address of the vault controller
+   */
+  event VaultControllerAdded(address indexed _vaultController);
+
+  /**
+   * @notice Emitted when the owner removes a vaultController removing special roles
+   * @param _vaultController The address of the vault controller
+   */
+  event VaultControllerRemoved(address indexed _vaultController);
+
+  /**
+   * @notice Emitted when the owner removes a vaultController from the list
+   * @param _vaultController The address of the vault controller
+   */
+  event VaultControllerRemovedFromList(address indexed _vaultController);
 
   /*///////////////////////////////////////////////////////////////
                               ERRORS

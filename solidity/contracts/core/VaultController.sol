@@ -301,6 +301,7 @@ contract VaultController is Initializable, Pausable, IVaultController, Exponenti
   /// @param _usdaAddress The address to register as USDA
   function registerUSDA(address _usdaAddress) external override onlyOwner {
     usda = IUSDA(_usdaAddress);
+    emit RegisterUSDA(_usdaAddress);
   }
 
   /// @notice Emited when the owner registers a curve master

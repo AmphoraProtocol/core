@@ -9,6 +9,10 @@ import {ICurveSlave} from '@interfaces/utils/ICurveSlave.sol';
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
 
 abstract contract Base is DSTestPlus {
+  event VaultControllerSet(address _oldVaultControllerAddress, address _newVaultControllerAddress);
+  event CurveSet(address _oldCurveAddress, address _token, address _newCurveAddress);
+  event CurveForceSet(address _oldCurveAddress, address _token, address _newCurveAddress);
+
   CurveMaster public curveMaster;
   IVaultController internal _mockVaultController = IVaultController(mockContract(newAddress(), 'mockVaultController'));
 
@@ -78,6 +82,14 @@ contract UnitTestCurveMasterSetVaultController is Base {
 
     assertEq(_vaultController, curveMaster.vaultControllerAddress());
   }
+
+  function testEmitEvent(address _vaultController) public {
+    vm.expectEmit(false, false, false, true);
+    emit VaultControllerSet(curveMaster.vaultControllerAddress(), _vaultController);
+
+    vm.prank(curveMaster.owner());
+    curveMaster.setVaultController(_vaultController);
+  }
 }
 
 contract UnitTestCurveMasterSetCurve is Base {
@@ -117,6 +129,26 @@ contract UnitTestCurveMasterSetCurve is Base {
 
     assertEq(curveMaster.curves(_token), _curve);
   }
+
+  function testEmitEvent(address _token, address _curve) public {
+    vm.assume(_token != address(0));
+    vm.assume(_curve != address(0));
+
+    vm.expectEmit(false, false, false, true);
+    emit CurveSet(curveMaster.curves(_token), _token, _curve);
+
+    vm.prank(curveMaster.owner());
+    curveMaster.setVaultController(address(_mockVaultController));
+
+    vm.mockCall(
+      address(_mockVaultController),
+      abi.encodeWithSelector(IVaultController.calculateInterest.selector),
+      abi.encode(true)
+    );
+
+    vm.prank(curveMaster.owner());
+    curveMaster.setCurve(_token, _curve);
+  }
 }
 
 contract UnitTestCurveMasterForceSetCurve is Base {
@@ -135,5 +167,16 @@ contract UnitTestCurveMasterForceSetCurve is Base {
     curveMaster.forceSetCurve(_token, _curve);
 
     assertEq(curveMaster.curves(_token), _curve);
+  }
+
+  function testEmitEvent(address _token, address _curve) public {
+    vm.assume(_token != address(0));
+    vm.assume(_curve != address(0));
+
+    vm.expectEmit(true, true, true, true);
+    emit CurveForceSet(curveMaster.curves(_token), _token, _curve);
+
+    vm.prank(curveMaster.owner());
+    curveMaster.forceSetCurve(_token, _curve);
   }
 }

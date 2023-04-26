@@ -54,8 +54,11 @@ contract USDAHandler is BaseHandler {
 
     // set vault controller
     vaultController = newAddress();
+
+    vm.startPrank(owner);
     usda.addVaultController(vaultController);
     usda.removeVaultControllerFromList(vaultController); // NOTE: doing this to prevent a revert when paying interest
+    vm.stopPrank();
   }
 
   function callSummary() external view {

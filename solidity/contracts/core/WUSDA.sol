@@ -214,6 +214,8 @@ contract WUSDA is IWUSDA, ERC20, ERC20Permit {
   function _deposit(address _from, address _to, uint256 _usdaAmount, uint256 _wusdaAmount) private {
     IERC20(_USDA).safeTransferFrom(_from, address(this), _usdaAmount);
     _mint(_to, _wusdaAmount);
+
+    emit Deposit(_from, _to, _usdaAmount, _wusdaAmount);
   }
 
   /// @notice Internal helper function to handle withdraw state change.
@@ -224,6 +226,8 @@ contract WUSDA is IWUSDA, ERC20, ERC20Permit {
   function _withdraw(address _from, address _to, uint256 _usdaAmount, uint256 _wusdaAmount) private {
     _burn(_from, _wusdaAmount);
     IERC20(_USDA).safeTransfer(_to, _usdaAmount);
+
+    emit Withdraw(_from, _to, _usdaAmount, _wusdaAmount);
   }
 
   /// @notice Queries the current total supply of usda.

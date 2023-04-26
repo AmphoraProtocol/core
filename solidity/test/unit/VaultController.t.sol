@@ -296,6 +296,8 @@ contract UnitVaultControllerMintVault is Base {
 }
 
 contract UnitVaultControllerRegisterUSDA is Base {
+  event RegisterUSDA(address _usdaContractAddress);
+
   function testRevertIfRegisterFromNonOwner(address _usda) public {
     vm.expectRevert('Ownable: caller is not the owner');
     vm.prank(alice);
@@ -306,6 +308,14 @@ contract UnitVaultControllerRegisterUSDA is Base {
     vm.prank(governance);
     vaultController.registerUSDA(_usda);
     assertEq(address(vaultController.usda()), _usda);
+  }
+
+  function testEmitEvent(address _usda) public {
+    vm.expectEmit(false, false, false, true);
+    emit RegisterUSDA(_usda);
+
+    vm.prank(governance);
+    vaultController.registerUSDA(_usda);
   }
 }
 

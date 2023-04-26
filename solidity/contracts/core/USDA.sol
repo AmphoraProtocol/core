@@ -68,6 +68,8 @@ contract USDA is Initializable, Pausable, UFragments, IUSDA, ExponentialNoError,
   /// @dev The pauser is a separate role from the owner
   function setPauser(address _pauser) external override onlyOwner {
     pauser = _pauser;
+
+    emit PauserSet(_pauser);
   }
 
   /// @notice Pause contract
@@ -242,6 +244,8 @@ contract USDA is Initializable, Pausable, UFragments, IUSDA, ExponentialNoError,
     // This function allows governance to recover it
     uint256 _amount = sUSD.balanceOf(address(this)) - reserveAmount;
     sUSD.transfer(_to, _amount);
+
+    emit RecoveredDust(owner(), _amount);
   }
 
   /// @notice Function for the vaultController to mint
@@ -270,6 +274,8 @@ contract USDA is Initializable, Pausable, UFragments, IUSDA, ExponentialNoError,
     reserveAmount -= _susdAmount;
     // ensure transfer success
     sUSD.transfer(_target, _susdAmount);
+
+    emit VaultControllerTransfer(_target, _susdAmount);
   }
 
   /// @notice Function for the vaultController to scale all USDA balances
@@ -302,6 +308,8 @@ contract USDA is Initializable, Pausable, UFragments, IUSDA, ExponentialNoError,
   function addVaultController(address _vaultController) external onlyOwner {
     _vaultControllers.add(_vaultController);
     _grantRole(VAULT_CONTROLLER_ROLE, _vaultController);
+
+    emit VaultControllerAdded(_vaultController);
   }
 
   /// @notice Removes a vault controller
@@ -309,6 +317,8 @@ contract USDA is Initializable, Pausable, UFragments, IUSDA, ExponentialNoError,
   function removeVaultController(address _vaultController) external onlyOwner {
     _vaultControllers.remove(_vaultController);
     _revokeRole(VAULT_CONTROLLER_ROLE, _vaultController);
+
+    emit VaultControllerRemoved(_vaultController);
   }
 
   /// @notice Removes a vault controller from the list
@@ -316,5 +326,7 @@ contract USDA is Initializable, Pausable, UFragments, IUSDA, ExponentialNoError,
   /// @dev The vault controller is removed from the list but keeps the role as to not brick it
   function removeVaultControllerFromList(address _vaultController) external onlyOwner {
     _vaultControllers.remove(_vaultController);
+
+    emit VaultControllerRemovedFromList(_vaultController);
   }
 }

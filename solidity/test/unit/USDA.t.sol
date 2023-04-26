@@ -691,6 +691,8 @@ contract UnitUSDARecoverDust is BaseInit {
   uint256 internal _amountToRecover = 100 ether;
   uint256 internal _depositAmount = 100_000 ether;
 
+  event RecoveredDust(address indexed _receiver, uint256 _amount);
+
   function setUp() public virtual override {
     super.setUp();
     _usda.deposit(_depositAmount);
@@ -717,6 +719,13 @@ contract UnitUSDARecoverDust is BaseInit {
 
   function testRecoverIfPaused() public {
     _usda.pause();
+    _usda.recoverDust(address(this));
+  }
+
+  function testEmitEvent() public {
+    vm.expectEmit(true, true, true, true);
+    emit RecoveredDust(address(this), _amountToRecover);
+
     _usda.recoverDust(address(this));
   }
 }
@@ -804,6 +813,8 @@ contract UnitUSDAVaultControllerBurn is BaseInit {
 contract UnitUSDAVaultControllerTransfer is BaseInit {
   uint256 internal _amountToTransfer = 100 ether;
 
+  event VaultControllerTransfer(address _target, uint256 _susdAmount);
+
   function testRevertsIfCalledByNonVault() public {
     vm.expectRevert(
       abi.encodeWithSelector(IRoles.Roles_Unauthorized.selector, address(this), _usda.VAULT_CONTROLLER_ROLE())
@@ -827,6 +838,17 @@ contract UnitUSDAVaultControllerTransfer is BaseInit {
     _usda.vaultControllerTransfer(_vaultController, _amount);
     uint256 _reserveAfter = _usda.reserveAmount();
     assertEq(_reserveBefore - _amount, _reserveAfter);
+  }
+
+  function testEmitEvent(uint56 _amount) public {
+    vm.assume(_amount > 0);
+    _usda.deposit(_amount);
+
+    vm.expectEmit(true, true, true, true);
+    emit VaultControllerTransfer(_vaultController, _amount);
+
+    vm.prank(_vaultController);
+    _usda.vaultControllerTransfer(_vaultController, _amount);
   }
 }
 
@@ -865,6 +887,8 @@ contract UnitVaultControllerDonate is BaseInit {
 }
 
 contract UnitUSDAAddVaultController is BaseInit {
+  event VaultControllerAdded(address indexed _vaultController);
+
   function testRevertsIfCalledByNonOwner() public {
     vm.expectRevert('Ownable: caller is not the owner');
     vm.prank(newAddress());
@@ -888,9 +912,18 @@ contract UnitUSDAAddVaultController is BaseInit {
     vm.expectCall(address(_vaultController2), abi.encodeWithSelector(IVaultController.calculateInterest.selector));
     _usda.mint(1);
   }
+
+  function testEmitEvent() public {
+    vm.expectEmit(true, true, true, true);
+    emit VaultControllerAdded(address(_vaultController2));
+
+    _usda.addVaultController(_vaultController2);
+  }
 }
 
 contract UnitUSDARemoveVaultController is BaseInit {
+  event VaultControllerRemoved(address indexed _vaultController);
+
   function setUp() public virtual override {
     super.setUp();
     _usda.addVaultController(_vaultController2);
@@ -912,9 +945,18 @@ contract UnitUSDARemoveVaultController is BaseInit {
     vm.expectCall(address(_vaultController), abi.encodeWithSelector(IVaultController.calculateInterest.selector));
     _usda.mint(1);
   }
+
+  function testEmitEvent() public {
+    vm.expectEmit(true, true, true, true);
+    emit VaultControllerRemoved(address(_vaultController2));
+
+    _usda.removeVaultController(_vaultController2);
+  }
 }
 
 contract UnitUSDARemoveVaultControllerFromList is BaseInit {
+  event VaultControllerRemovedFromList(address indexed _vaultController);
+
   function setUp() public virtual override {
     super.setUp();
     _usda.addVaultController(_vaultController2);
@@ -935,6 +977,13 @@ contract UnitUSDARemoveVaultControllerFromList is BaseInit {
     _usda.removeVaultControllerFromList(_vaultController2);
     vm.expectCall(address(_vaultController), abi.encodeWithSelector(IVaultController.calculateInterest.selector));
     _usda.mint(1);
+  }
+
+  function testEmitEvent() public {
+    vm.expectEmit(true, true, true, true);
+    emit VaultControllerRemovedFromList(address(_vaultController2));
+
+    _usda.removeVaultControllerFromList(_vaultController2);
   }
 }
 
@@ -973,6 +1022,8 @@ contract UnitUSDAReserveRatio is BaseInit {
 }
 
 contract UnitUSDASetPauser is BaseInit {
+  event PauserSet(address indexed _pauser);
+
   function testSetPauser() public {
     address _newPauser = newAddress();
     assert(_usda.pauser() != _newPauser);
@@ -984,6 +1035,15 @@ contract UnitUSDASetPauser is BaseInit {
     vm.expectRevert('Ownable: caller is not the owner');
     vm.prank(newAddress());
     _usda.setPauser(newAddress());
+  }
+
+  function testSetPauserEmitEvent() public {
+    address _newPauser = newAddress();
+
+    vm.expectEmit(true, true, true, true);
+    emit PauserSet(_newPauser);
+
+    _usda.setPauser(_newPauser);
   }
 }
 

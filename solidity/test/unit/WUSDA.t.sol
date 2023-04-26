@@ -7,6 +7,9 @@ import {DSTestPlus} from 'solidity-utils/test/DSTestPlus.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 abstract contract Base is DSTestPlus {
+  event Deposit(address indexed _from, address indexed _to, uint256 _usdaAmount, uint256 _wusdaAmount);
+  event Withdraw(address indexed _from, address indexed _to, uint256 _usdaAmount, uint256 _wusdaAmount);
+
   uint256 internal constant _DELTA = 100;
 
   address public usdaToken = newAddress();
@@ -84,6 +87,15 @@ contract UnitWUSDAMint is Base {
     );
     wusda.mint(_amount);
   }
+
+  function testEmitEvent(uint256 _amount) public {
+    vm.assume(_amount <= wusdaMaxSupply);
+
+    vm.expectEmit(true, true, false, true);
+    emit Deposit(address(this), address(this), wusda.wrapperToUnderlying(_amount), _amount);
+
+    wusda.mint(_amount);
+  }
 }
 
 contract UnitWUSDAMintFor is Base {
@@ -109,6 +121,16 @@ contract UnitWUSDAMintFor is Base {
     vm.expectCall(
       usdaToken, abi.encodeWithSelector(IERC20.transferFrom.selector, address(this), address(wusda), _expectedAmount)
     );
+    wusda.mintFor(_receiver, _amount);
+  }
+
+  function testEmitEvent(uint256 _amount) public {
+    vm.assume(_amount <= wusdaMaxSupply);
+    address _receiver = newAddress();
+
+    vm.expectEmit(true, true, false, true);
+    emit Deposit(address(this), _receiver, wusda.wrapperToUnderlying(_amount), _amount);
+
     wusda.mintFor(_receiver, _amount);
   }
 }
@@ -138,6 +160,15 @@ contract UnitWUSDABurn is Base {
     vm.mockCall(usdaToken, abi.encodeWithSelector(IERC20.totalSupply.selector), abi.encode(_usdaTotalSupply));
     uint256 _expectedAmount = (_amount * _usdaTotalSupply) / wusdaMaxSupply;
     vm.expectCall(usdaToken, abi.encodeWithSelector(IERC20.transfer.selector, address(this), _expectedAmount));
+    wusda.burn(_amount);
+  }
+
+  function testEmitEvent(uint256 _amount) public {
+    vm.assume(_amount <= wusdaMinted);
+
+    vm.expectEmit(true, true, false, true);
+    emit Withdraw(address(this), address(this), wusda.wrapperToUnderlying(_amount), _amount);
+
     wusda.burn(_amount);
   }
 }
@@ -172,6 +203,16 @@ contract UnitWUSDABurnTo is Base {
     vm.expectCall(usdaToken, abi.encodeWithSelector(IERC20.transfer.selector, _receiver, _expectedAmount));
     wusda.burnTo(_receiver, _amount);
   }
+
+  function testEmitEvent(uint256 _amount) public {
+    vm.assume(_amount <= wusdaMinted);
+    address _receiver = newAddress();
+
+    vm.expectEmit(true, true, false, true);
+    emit Withdraw(address(this), _receiver, wusda.wrapperToUnderlying(_amount), _amount);
+
+    wusda.burnTo(_receiver, _amount);
+  }
 }
 
 contract UnitWUSDABurnAll is Base {
@@ -196,6 +237,13 @@ contract UnitWUSDABurnAll is Base {
     vm.mockCall(usdaToken, abi.encodeWithSelector(IERC20.totalSupply.selector), abi.encode(_usdaTotalSupply));
     uint256 _expectedAmount = (wusdaMinted * _usdaTotalSupply) / wusdaMaxSupply;
     vm.expectCall(usdaToken, abi.encodeWithSelector(IERC20.transfer.selector, address(this), _expectedAmount));
+    wusda.burnAll();
+  }
+
+  function testEmitEvent() public {
+    vm.expectEmit(true, true, false, true);
+    emit Withdraw(address(this), address(this), wusda.wrapperToUnderlying(wusdaMinted), wusdaMinted);
+
     wusda.burnAll();
   }
 }
@@ -225,6 +273,15 @@ contract UnitWUSDABurnAllTo is Base {
     uint256 _expectedAmount = (wusdaMinted * _usdaTotalSupply) / wusdaMaxSupply;
     address _receiver = newAddress();
     vm.expectCall(usdaToken, abi.encodeWithSelector(IERC20.transfer.selector, _receiver, _expectedAmount));
+    wusda.burnAllTo(_receiver);
+  }
+
+  function testEmitEvent() public {
+    address _receiver = newAddress();
+
+    vm.expectEmit(true, true, false, true);
+    emit Withdraw(address(this), _receiver, wusda.wrapperToUnderlying(wusdaMinted), wusdaMinted);
+
     wusda.burnAllTo(_receiver);
   }
 }
@@ -260,6 +317,18 @@ contract UnitWUSDADeposit is Base {
     );
     wusda.deposit(_usdaAmount);
   }
+
+  function testEmitEvent(uint256 _usdaAmount, uint128 _usdaTotalSupply) public {
+    vm.assume(_usdaTotalSupply > 0);
+    vm.mockCall(usdaToken, abi.encodeWithSelector(IERC20.totalSupply.selector), abi.encode(_usdaTotalSupply));
+    uint256 _maxUSDAAmount = (_usdaTotalSupply * wusdaMaxSupply) / _usdaTotalSupply;
+    vm.assume(_usdaAmount <= _maxUSDAAmount);
+
+    vm.expectEmit(true, true, false, true);
+    emit Deposit(address(this), address(this), _usdaAmount, wusda.underlyingToWrapper(_usdaAmount));
+
+    wusda.deposit(_usdaAmount);
+  }
 }
 
 contract UnitWUSDADepositFor is Base {
@@ -293,6 +362,18 @@ contract UnitWUSDADepositFor is Base {
     vm.expectCall(
       usdaToken, abi.encodeWithSelector(IERC20.transferFrom.selector, address(this), address(wusda), _usdaAmount)
     );
+    wusda.depositFor(_receiver, _usdaAmount);
+  }
+
+  function testEmitEvent(uint256 _usdaAmount, uint128 _usdaTotalSupply) public {
+    vm.assume(_usdaTotalSupply > 0);
+    vm.mockCall(usdaToken, abi.encodeWithSelector(IERC20.totalSupply.selector), abi.encode(_usdaTotalSupply));
+    uint256 _maxUSDAAmount = (_usdaTotalSupply * wusdaMaxSupply) / _usdaTotalSupply;
+    vm.assume(_usdaAmount <= _maxUSDAAmount);
+
+    vm.expectEmit(true, true, false, true);
+    emit Deposit(address(this), _receiver, _usdaAmount, wusda.underlyingToWrapper(_usdaAmount));
+
     wusda.depositFor(_receiver, _usdaAmount);
   }
 }
@@ -336,6 +417,19 @@ contract UnitWUSDAWithdraw is Base {
     uint256 _withdrawAmount = (_usdaAmount * wusdaMaxSupply) / _usdaTotalSupply;
     vm.assume(wusdaSupply >= _withdrawAmount);
     vm.expectCall(usdaToken, abi.encodeWithSelector(IERC20.transfer.selector, address(this), _usdaAmount));
+    wusda.withdraw(_usdaAmount);
+  }
+
+  function testEmitEvent(uint256 _usdaAmount, uint128 _usdaTotalSupply) public {
+    vm.assume(_usdaAmount <= usdaDeposited);
+    vm.assume(_usdaTotalSupply > 0);
+    vm.mockCall(usdaToken, abi.encodeWithSelector(IERC20.totalSupply.selector), abi.encode(_usdaTotalSupply));
+    uint256 _withdrawAmount = (_usdaAmount * wusdaMaxSupply) / _usdaTotalSupply;
+    vm.assume(wusdaSupply >= _withdrawAmount);
+
+    vm.expectEmit(true, true, false, true);
+    emit Withdraw(address(this), address(this), _usdaAmount, wusda.underlyingToWrapper(_usdaAmount));
+
     wusda.withdraw(_usdaAmount);
   }
 }
@@ -382,6 +476,19 @@ contract UnitWUSDAWithdrawTo is Base {
     vm.expectCall(usdaToken, abi.encodeWithSelector(IERC20.transfer.selector, receiver, _usdaAmount));
     wusda.withdrawTo(receiver, _usdaAmount);
   }
+
+  function testEmitEvent(uint256 _usdaAmount, uint128 _usdaTotalSupply) public {
+    vm.assume(_usdaAmount <= usdaDeposited);
+    vm.assume(_usdaTotalSupply > 0);
+    vm.mockCall(usdaToken, abi.encodeWithSelector(IERC20.totalSupply.selector), abi.encode(_usdaTotalSupply));
+    uint256 _withdrawAmount = (_usdaAmount * wusdaMaxSupply) / _usdaTotalSupply;
+    vm.assume(wusdaSupply >= _withdrawAmount);
+
+    vm.expectEmit(true, true, false, true);
+    emit Withdraw(address(this), receiver, _usdaAmount, wusda.underlyingToWrapper(_usdaAmount));
+
+    wusda.withdrawTo(receiver, _usdaAmount);
+  }
 }
 
 contract UnitWUSDAWithdrawAll is Base {
@@ -416,6 +523,13 @@ contract UnitWUSDAWithdrawAll is Base {
     uint256 _withdrawAmount = (usdaDeposited * wusdaMaxSupply) / usdaTotalSupply;
     vm.assume(wusdaSupply >= _withdrawAmount);
     vm.expectCall(usdaToken, abi.encodeWithSelector(IERC20.transfer.selector, address(this), usdaDeposited));
+    wusda.withdrawAll();
+  }
+
+  function testEmitEvent() public {
+    vm.expectEmit(true, true, false, true);
+    emit Withdraw(address(this), address(this), usdaDeposited, wusda.underlyingToWrapper(usdaDeposited));
+
     wusda.withdrawAll();
   }
 }
@@ -453,6 +567,13 @@ contract UnitWUSDAWithdrawAllTo is Base {
     uint256 _withdrawAmount = (usdaDeposited * wusdaMaxSupply) / usdaTotalSupply;
     vm.assume(wusdaSupply >= _withdrawAmount);
     vm.expectCall(usdaToken, abi.encodeWithSelector(IERC20.transfer.selector, receiver, usdaDeposited));
+    wusda.withdrawAllTo(receiver);
+  }
+
+  function testEmitEvent() public {
+    vm.expectEmit(true, true, false, true);
+    emit Withdraw(address(this), receiver, usdaDeposited, wusda.underlyingToWrapper(usdaDeposited));
+
     wusda.withdrawAllTo(receiver);
   }
 }
