@@ -302,6 +302,12 @@ interface IVaultController {
   // vault management business
   function mintVault() external returns (address _vaultAddress);
 
+  function simulateLiquidateVault(
+    uint96 _id,
+    address _assetAddress,
+    uint256 _tokensToLiquidate
+  ) external view returns (uint256 _collateralLiquidated, uint256 _usdaPaid);
+
   function liquidateVault(
     uint96 _id,
     address _assetAddress,

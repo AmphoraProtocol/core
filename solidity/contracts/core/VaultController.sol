@@ -566,6 +566,32 @@ contract VaultController is Initializable, Pausable, IVaultController, Exponenti
     emit RepayUSDA(_id, address(_vault), _amountInUSDA);
   }
 
+  /// @notice Simulates the liquidation of an underwater vault
+  /// @dev Returns all zeros if vault is solvent
+  /// @param _id The id of vault we want to target
+  /// @param _assetAddress The address of the token the liquidator wishes to liquidate
+  /// @param _tokensToLiquidate The number of tokens to liquidate
+  /// @return _collateralLiquidated The number of collateral tokens the liquidator will receive
+  /// @return _usdaPaid The amount of USDA the liquidator will have to pay
+  function simulateLiquidateVault(
+    uint96 _id,
+    address _assetAddress,
+    uint256 _tokensToLiquidate
+  ) external view override returns (uint256 _collateralLiquidated, uint256 _usdaPaid) {
+    // cannot liquidate 0
+    if (_tokensToLiquidate == 0) revert VaultController_LiquidateZeroTokens();
+    // check for registered asset
+    if (tokenAddressCollateralInfo[_assetAddress].tokenId == 0) revert VaultController_TokenNotRegistered();
+
+    // calculate the amount to liquidate and the 'bad fill price' using liquidationMath
+    // see _liquidationMath for more detailed explaination of the math
+    (uint256 _tokenAmount, uint256 _badFillPrice) = _liquidationMath(_id, _assetAddress, _tokensToLiquidate);
+    // set _tokensToLiquidate to this calculated amount if the function does not fail
+    _collateralLiquidated = _tokenAmount != 0 ? _tokenAmount : _tokensToLiquidate;
+    // the USDA to repurchase is equal to the bad fill price multiplied by the amount of tokens to liquidate
+    _usdaPaid = _truncate(_badFillPrice * _collateralLiquidated);
+  }
+
   /// @notice Liquidates an underwater vault
   /// @dev Pays interest before liquidation. Vaults may be liquidated up to the point where they are exactly solvent
   /// @param _id The id of vault we want to target

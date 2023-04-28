@@ -777,6 +777,80 @@ contract UnitVaultControllerLiquidateVault is VaultBase, ExponentialNoError {
   }
 }
 
+contract UnitVaultControllerSimulateLiquidateVault is VaultBase, ExponentialNoError {
+  function setUp() public virtual override {
+    super.setUp();
+    vm.mockCall(address(mockToken), abi.encodeWithSelector(IERC20.transferFrom.selector), abi.encode(true));
+    usdaToken.deposit(100 ether);
+  }
+
+  function testRevertIfLiquidateZeroAmount(uint96 _id, address _assetAddress) public {
+    vm.expectRevert(IVaultController.VaultController_LiquidateZeroTokens.selector);
+    vaultController.simulateLiquidateVault(_id, _assetAddress, 0);
+  }
+
+  function testRevertIfLiquidateTokenNotRegistered(
+    uint96 _id,
+    address _assetAddress,
+    uint256 _tokensToLiquidate
+  ) public {
+    vm.assume(_assetAddress != WETH_ADDRESS && _assetAddress != address(usdtLp) && _tokensToLiquidate != 0);
+    vm.expectRevert(IVaultController.VaultController_TokenNotRegistered.selector);
+    vaultController.simulateLiquidateVault(_id, _assetAddress, _tokensToLiquidate);
+  }
+
+  function testRevertIfVaultDoesNotExist(uint96 _id, uint256 _tokensToLiquidate) public {
+    vm.assume(_tokensToLiquidate != 0 && _id != _vaultId && _id != _vaultId2);
+    vm.expectRevert(IVaultController.VaultController_VaultDoesNotExist.selector);
+    vaultController.simulateLiquidateVault(_id, WETH_ADDRESS, _tokensToLiquidate);
+  }
+
+  function testRevertIfVaultIsSolvent(uint256 _tokensToLiquidate) public {
+    vm.assume(_tokensToLiquidate != 0);
+    vm.expectRevert(IVaultController.VaultController_VaultSolvent.selector);
+    vaultController.simulateLiquidateVault(_vaultId, WETH_ADDRESS, _tokensToLiquidate);
+  }
+
+  function testSimulate() public {
+    vm.mockCall(address(usdtLp), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
+
+    vm.mockCall(address(vaultController.BOOSTER()), abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(true));
+
+    vm.prank(vaultOwner);
+    _vault.depositERC20(address(usdtLp), _vaultDeposit);
+
+    vm.mockCall(
+      address(_crvRewards), abi.encodeWithSelector(IBaseRewardPool.withdrawAndUnwrap.selector), abi.encode(true)
+    );
+
+    vm.mockCall(
+      address(threeCrvOracle), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(1 ether)
+    );
+
+    // borrow a few usda
+    vm.startPrank(vaultOwner);
+    vaultController.borrowUSDA(_vaultId, vaultController.vaultBorrowingPower(_vaultId));
+    vm.stopPrank();
+
+    // make vault insolvent
+    vm.warp(block.timestamp + 7 days);
+    vaultController.calculateInterest();
+
+    // simulate
+    (uint256 _collateralLiquidatedSimulation, uint256 _usdaPaidSimulation) =
+      vaultController.simulateLiquidateVault(_vaultId, address(usdtLp), 10 ether);
+
+    // liquidate
+    vm.expectCall(
+      address(usdaToken), abi.encodeWithSelector(IUSDA.vaultControllerBurn.selector, address(this), _usdaPaidSimulation)
+    );
+    uint256 _collateralLiquidated = vaultController.liquidateVault(_vaultId, address(usdtLp), 10 ether);
+
+    // compare
+    assertEq(_collateralLiquidatedSimulation, _collateralLiquidated);
+  }
+}
+
 contract UnitVaultControllerCheckVault is VaultBase {
   function setUp() public virtual override {
     super.setUp();
