@@ -114,7 +114,7 @@ abstract contract Deploy is Script, TestConstants {
       chainlinkEth = new ChainlinkOracleRelay(CHAINLINK_ETH_FEED_ADDRESS, 10_000_000_000, 1, 1 hours);
       console.log('CHAINLINK_ETH_FEED: ', address(chainlinkEth));
       // Deploy anchoredViewEth relay
-      anchoredViewEth = new AnchoredViewRelay(address(uniswapRelayEthUsdc), address(chainlinkEth), 20, 100);
+      anchoredViewEth = new AnchoredViewRelay(address(uniswapRelayEthUsdc), address(chainlinkEth), 20, 100, 10, 100);
       console.log('ANCHORED_VIEW_RELAY: ', address(anchoredViewEth));
       _wethOracle = address(anchoredViewEth);
     }

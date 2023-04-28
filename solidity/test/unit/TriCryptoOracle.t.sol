@@ -195,10 +195,10 @@ contract UnitCurrentValue is Base {
     assertEq(triCryptoOracle.currentValue(), _maxPrice);
   }
 
-  function testCurrentValueRevertsWhenBtcPriceStale(uint32 _btcPrice, uint32 _ethPrice, uint32 _usdtPrice) public {
+  function testCurrentValueWhenBtcPriceStale(uint32 _btcPrice) public {
     vm.assume(_btcPrice > 0.1e8);
-    vm.assume(_ethPrice > 0.1e8);
-    vm.assume(_usdtPrice > 0.1e8);
+    uint256 _usdtPrice = 1e8;
+    uint256 _ethPrice = 1000e8;
     uint256 _vp = 1.1e18;
 
     // mockCall to get_virtual_price
@@ -235,14 +235,17 @@ contract UnitCurrentValue is Base {
       abi.encode(0, 1e8, 0, block.timestamp, 0)
     );
 
-    vm.expectRevert(ChainlinkStalePriceLib.Chainlink_StalePrice.selector);
-    triCryptoOracle.currentValue();
+    uint256 _basePrices = (uint256(_btcPrice) * 1e10 * _ethPrice * 1e10 * _usdtPrice * 1e10);
+
+    uint256 _maxPrice = (3 * _vp * FixedPointMathLib.cbrt(_basePrices)) / 1 ether;
+
+    assertEq(triCryptoOracle.currentValue(), _maxPrice);
   }
 
-  function testCurrentValueRevertsWhenEthPriceStale(uint32 _btcPrice, uint32 _ethPrice, uint32 _usdtPrice) public {
-    vm.assume(_btcPrice > 0.1e8);
+  function testCurrentValueRevertsWhenEthPriceStale(uint32 _ethPrice) public {
     vm.assume(_ethPrice > 0.1e8);
-    vm.assume(_usdtPrice > 0.1e8);
+    uint256 _usdtPrice = 1e8;
+    uint256 _btcPrice = 0.1e8;
     uint256 _vp = 1.1e18;
 
     // mockCall to get_virtual_price
@@ -279,14 +282,17 @@ contract UnitCurrentValue is Base {
       abi.encode(0, 1e8, 0, block.timestamp, 0)
     );
 
-    vm.expectRevert(ChainlinkStalePriceLib.Chainlink_StalePrice.selector);
-    triCryptoOracle.currentValue();
+    uint256 _basePrices = (uint256(_btcPrice) * 1e10 * _ethPrice * 1e10 * _usdtPrice * 1e10);
+
+    uint256 _maxPrice = (3 * _vp * FixedPointMathLib.cbrt(_basePrices)) / 1 ether;
+
+    assertEq(triCryptoOracle.currentValue(), _maxPrice);
   }
 
-  function testCurrentValueRevertsWhenUsdtPriceStale(uint32 _btcPrice, uint32 _ethPrice, uint32 _usdtPrice) public {
-    vm.assume(_btcPrice > 0.1e8);
-    vm.assume(_ethPrice > 0.1e8);
+  function testCurrentValueWhenUsdtPriceStale(uint32 _usdtPrice) public {
     vm.assume(_usdtPrice > 0.1e8);
+    uint256 _btcPrice = 0.1e8;
+    uint256 _ethPrice = 1000e8;
     uint256 _vp = 1.1e18;
 
     // mockCall to get_virtual_price
@@ -323,8 +329,11 @@ contract UnitCurrentValue is Base {
       abi.encode(0, 1e8, 0, block.timestamp, 0)
     );
 
-    vm.expectRevert(ChainlinkStalePriceLib.Chainlink_StalePrice.selector);
-    triCryptoOracle.currentValue();
+    uint256 _basePrices = (uint256(_btcPrice) * 1e10 * _ethPrice * 1e10 * _usdtPrice * 1e10);
+
+    uint256 _maxPrice = (3 * _vp * FixedPointMathLib.cbrt(_basePrices)) / 1 ether;
+
+    assertEq(triCryptoOracle.currentValue(), _maxPrice);
   }
 
   function testCurrentValueRevertsWhenWbtcPriceStale(uint32 _btcPrice, uint32 _ethPrice, uint32 _usdtPrice) public {
@@ -367,8 +376,11 @@ contract UnitCurrentValue is Base {
       abi.encode(0, 1e8, 0, block.timestamp - _wbtcStaleDelay - 1, 0)
     );
 
-    vm.expectRevert(ChainlinkStalePriceLib.Chainlink_StalePrice.selector);
-    triCryptoOracle.currentValue();
+    uint256 _basePrices = (uint256(_btcPrice) * 1e10 * _ethPrice * 1e10 * _usdtPrice * 1e10);
+
+    uint256 _maxPrice = (3 * _vp * FixedPointMathLib.cbrt(_basePrices)) / 1 ether;
+
+    assertEq(triCryptoOracle.currentValue(), _maxPrice);
   }
 }
 

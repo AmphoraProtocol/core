@@ -78,10 +78,11 @@ contract TriCryptoOracle is OracleRelay, Ownable {
     uint256 _vp = TRI_CRYPTO.get_virtual_price();
 
     // Get the prices from chainlink and add 10 decimals
-    uint256 _btcPrice = (ChainlinkStalePriceLib.getCurrentPrice(BTC_FEED, btcStaleDelay)) * 1e10;
-    uint256 _wbtcPrice = (ChainlinkStalePriceLib.getCurrentPrice(WBTC_FEED, wbtcStaleDelay)) * 1e10;
-    uint256 _ethPrice = (ChainlinkStalePriceLib.getCurrentPrice(ETH_FEED, ethStaleDelay)) * 1e10;
-    uint256 _usdtPrice = (ChainlinkStalePriceLib.getCurrentPrice(USDT_FEED, usdtStaleDelay)) * 1e10;
+    // TODO: need to be added as anchor oracler, stale delay is set in ChainlinkOracleRelay
+    uint256 _btcPrice = (ChainlinkStalePriceLib.getCurrentPrice(BTC_FEED)) * 1e10;
+    uint256 _wbtcPrice = (ChainlinkStalePriceLib.getCurrentPrice(WBTC_FEED)) * 1e10;
+    uint256 _ethPrice = (ChainlinkStalePriceLib.getCurrentPrice(ETH_FEED)) * 1e10;
+    uint256 _usdtPrice = (ChainlinkStalePriceLib.getCurrentPrice(USDT_FEED)) * 1e10;
 
     uint256 _minWbtcPrice = (_wbtcPrice < 1e18) ? (_wbtcPrice * _btcPrice) / 1e18 : _btcPrice;
 

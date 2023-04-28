@@ -42,6 +42,13 @@ contract ChainlinkOracleRelay is OracleRelay, Ownable {
     return _getLastSecond();
   }
 
+  /// @notice Returns true if the price is stale
+  /// @return _stale True if the price is stale
+  function isStale() external view returns (bool _stale) {
+    (,,, uint256 _updatedAt,) = _AGGREGATOR.latestRoundData();
+    if (block.timestamp > _updatedAt + stalePriceDelay) _stale = true;
+  }
+
   /// @notice Sets the stale price delay
   /// @param _stalePriceDelay The new stale price delay
   /// @dev Only the owner can call this function
@@ -51,9 +58,10 @@ contract ChainlinkOracleRelay is OracleRelay, Ownable {
   }
 
   /// @notice Returns last second value of the oracle
+  /// @dev    It does not revert if price is stale
   /// @return _value The last second value of the oracle
   function _getLastSecond() private view returns (uint256 _value) {
-    uint256 _latest = ChainlinkStalePriceLib.getCurrentPrice(_AGGREGATOR, stalePriceDelay);
+    uint256 _latest = ChainlinkStalePriceLib.getCurrentPrice(_AGGREGATOR);
     _value = (uint256(_latest) * MULTIPLY) / DIVIDE;
   }
 }

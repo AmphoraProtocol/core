@@ -5,6 +5,7 @@ import {DSTestPlus} from 'solidity-utils/test/DSTestPlus.sol';
 import {AnchoredViewRelay} from '@contracts/periphery/oracles/AnchoredViewRelay.sol';
 
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
+import {IChainlinkOracleRelay} from '@interfaces/periphery/IChainlinkOracleRelay.sol';
 
 abstract contract Base is DSTestPlus {
   AnchoredViewRelay public anchoredViewRelay;
@@ -13,6 +14,9 @@ abstract contract Base is DSTestPlus {
 
   uint256 public widthNumerator = 10;
   uint256 public widthDenominator = 100;
+
+  uint256 public staleWidthNumerator = 5;
+  uint256 public staleWidthDenominator = 100;
 
   IOracleRelay.OracleType public oracleType = IOracleRelay.OracleType(2); // 2 == Price
 
@@ -23,7 +27,7 @@ abstract contract Base is DSTestPlus {
 
     // Deploy contract
     anchoredViewRelay =
-      new AnchoredViewRelay(address(_mockAnchorRelay), address(_mockMainRelay), widthNumerator, widthDenominator);
+    new AnchoredViewRelay(address(_mockAnchorRelay), address(_mockMainRelay), widthNumerator, widthDenominator, staleWidthNumerator, staleWidthDenominator);
   }
 }
 
@@ -65,6 +69,9 @@ contract UnitTestAnchoredViewRelayCurrentValue is Base {
     vm.mockCall(
       address(_mockAnchorRelay), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(_anchorPrice)
     );
+    vm.mockCall(
+      address(_mockMainRelay), abi.encodeWithSelector(IChainlinkOracleRelay.isStale.selector), abi.encode(false)
+    );
 
     vm.expectRevert('anchor too low');
     anchoredViewRelay.currentValue();
@@ -85,6 +92,57 @@ contract UnitTestAnchoredViewRelayCurrentValue is Base {
     );
     vm.mockCall(
       address(_mockAnchorRelay), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(_anchorPrice)
+    );
+    vm.mockCall(
+      address(_mockMainRelay), abi.encodeWithSelector(IChainlinkOracleRelay.isStale.selector), abi.encode(false)
+    );
+
+    vm.expectRevert('anchor too high');
+    anchoredViewRelay.currentValue();
+  }
+
+  function testCurrentValueRevertWithAnchorTooLowAndStalePrice(uint256 _anchorPrice) public {
+    vm.assume(_anchorPrice != 0);
+    vm.assume(_anchorPrice < type(uint256).max / staleWidthNumerator);
+    vm.assume(staleWidthNumerator * _anchorPrice >= staleWidthDenominator);
+
+    uint256 _mainPrice = 100 ether;
+    uint256 _buffer = (staleWidthNumerator * _anchorPrice) / staleWidthDenominator;
+
+    vm.assume(_anchorPrice + _buffer < _mainPrice);
+
+    vm.mockCall(
+      address(_mockMainRelay), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(_mainPrice)
+    );
+    vm.mockCall(
+      address(_mockAnchorRelay), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(_anchorPrice)
+    );
+    vm.mockCall(
+      address(_mockMainRelay), abi.encodeWithSelector(IChainlinkOracleRelay.isStale.selector), abi.encode(true)
+    );
+
+    vm.expectRevert('anchor too low');
+    anchoredViewRelay.currentValue();
+  }
+
+  function testCurrentValueRevertWithAnchorTooHighAndStalePrice(uint256 _anchorPrice) public {
+    vm.assume(_anchorPrice != 0);
+    vm.assume(_anchorPrice < type(uint256).max / staleWidthNumerator);
+    vm.assume(staleWidthNumerator * _anchorPrice >= staleWidthDenominator);
+
+    uint256 _mainPrice = 100 ether;
+    uint256 _buffer = (staleWidthNumerator * _anchorPrice) / staleWidthDenominator;
+
+    vm.assume(_anchorPrice - _buffer > _mainPrice);
+
+    vm.mockCall(
+      address(_mockMainRelay), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(_mainPrice)
+    );
+    vm.mockCall(
+      address(_mockAnchorRelay), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(_anchorPrice)
+    );
+    vm.mockCall(
+      address(_mockMainRelay), abi.encodeWithSelector(IChainlinkOracleRelay.isStale.selector), abi.encode(true)
     );
 
     vm.expectRevert('anchor too high');

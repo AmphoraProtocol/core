@@ -59,12 +59,10 @@ contract ThreeCrvOracle is OracleRelay, Ownable {
   /// @dev Uses both divide and multiply only for tokens not supported directly by Chainlink, for example MKR/USD
   function _get() internal view returns (uint256 _value) {
     // As the price should never be negative, the unchecked conversion is acceptable
+    // TODO: need to be added as anchor oracler, stale delay is set in ChainlinkOracleRelay
     uint256 _minStable = Math.min(
-      (ChainlinkStalePriceLib.getCurrentPrice(DAI, daiStaleDelay)),
-      Math.min(
-        (ChainlinkStalePriceLib.getCurrentPrice(USDC, usdcStaleDelay)),
-        (ChainlinkStalePriceLib.getCurrentPrice(USDT, usdtStaleDelay))
-      )
+      (ChainlinkStalePriceLib.getCurrentPrice(DAI)),
+      Math.min((ChainlinkStalePriceLib.getCurrentPrice(USDC)), (ChainlinkStalePriceLib.getCurrentPrice(USDT)))
     );
 
     uint256 _lpPrice = THREE_CRV.get_virtual_price() * _minStable;

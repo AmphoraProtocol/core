@@ -45,8 +45,9 @@ contract UnitTestChainlinkOracleRelayCurrentValue is Base {
     chainlinkOracleRelay.currentValue();
   }
 
-  function testChainlinkOracleRelayRevertWithPriceStale(int256 _latestAnswer) public {
+  function testChainlinkOracleRelayWithPriceStale(int256 _latestAnswer) public {
     vm.assume(_latestAnswer > 0);
+    vm.assume(uint256(_latestAnswer) < type(uint256).max / mul);
 
     vm.mockCall(
       address(_mockAggregator),
@@ -54,8 +55,8 @@ contract UnitTestChainlinkOracleRelayCurrentValue is Base {
       abi.encode(0, _latestAnswer, 0, block.timestamp - stalePeriod - 1, 0)
     );
 
-    vm.expectRevert(ChainlinkStalePriceLib.Chainlink_StalePrice.selector);
-    chainlinkOracleRelay.currentValue();
+    uint256 _response = chainlinkOracleRelay.currentValue();
+    assertEq(_response, (uint256(_latestAnswer) * mul) / div);
   }
 
   function testChainlinkOracleRelay(int256 _latestAnswer) public {
@@ -83,5 +84,25 @@ contract UnitChainlinkOracleRelaySetStaleDelay is Base {
   function testChainlinkOracleRelaySetStaleDelayRevertWithZero() public {
     vm.expectRevert(ChainlinkOracleRelay.ChainlinkOracle_ZeroAmount.selector);
     chainlinkOracleRelay.setStalePriceDelay(0);
+  }
+}
+
+contract UnitChainlinkOracleRelayIsStale is Base {
+  function testIsStale() public {
+    vm.mockCall(
+      address(_mockAggregator),
+      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
+      abi.encode(0, 0, 0, block.timestamp - stalePeriod - 1, 0)
+    );
+    assertTrue(chainlinkOracleRelay.isStale());
+  }
+
+  function testIsNotStale() public {
+    vm.mockCall(
+      address(_mockAggregator),
+      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
+      abi.encode(0, 0, 0, block.timestamp - 1, 0)
+    );
+    assertFalse(chainlinkOracleRelay.isStale());
   }
 }

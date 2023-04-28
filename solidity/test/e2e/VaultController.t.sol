@@ -533,7 +533,7 @@ contract E2EVaultController is CommonE2EBase {
     assertEq(_tokensToLiquidate, bobWETH);
   }
 
-  function testLiquidateVaultRevertsWhenPriceIsStale() public {
+  function testLiquidateVaultWhenPriceIsStale() public {
     uint192 _accountBorrowingPower = vaultController.vaultBorrowingPower(bobsVaultId);
     uint256 _vaultInitialWethBalance = bobVault.tokenBalance(WETH_ADDRESS);
 
@@ -551,10 +551,16 @@ contract E2EVaultController is CommonE2EBase {
     // Advance time so the price is stale
     vm.warp(block.timestamp + staleTime + 1);
 
+    uint256 _liquidatableTokens = vaultController.tokensToLiquidate(bobsVaultId, WETH_ADDRESS);
+    uint256 _daveUSDA = 1_000_000 ether;
     // Liquidate vault
     vm.startPrank(dave);
-    vm.expectRevert(ChainlinkStalePriceLib.Chainlink_StalePrice.selector);
-    vaultController.liquidateVault(bobsVaultId, WETH_ADDRESS, _vaultInitialWethBalance);
+    susd.approve(address(usdaToken), _daveUSDA);
+    usdaToken.deposit(_daveUSDA);
+    uint256 _liquidated = vaultController.liquidateVault(bobsVaultId, WETH_ADDRESS, _vaultInitialWethBalance);
     vm.stopPrank();
+
+    // Only the max liquidatable amount should be liquidated
+    assertEq(_liquidated, _liquidatableTokens);
   }
 }

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.9;
 
 import {IOracleRelay, OracleRelay} from '@contracts/periphery/oracles/OracleRelay.sol';
+import {IChainlinkOracleRelay} from '@interfaces/periphery/IChainlinkOracleRelay.sol';
 
 /// @notice Implementation of compounds' AnchoredView, using a main relay and an anchor relay, the AnchoredView
 /// ensures that the main relay's price is within some amount of the anchor relay price
@@ -16,16 +17,23 @@ contract AnchoredViewRelay is OracleRelay {
   uint256 public widthNumerator;
   uint256 public widthDenominator;
 
+  uint256 public staleWidthNumerator;
+  uint256 public staleWidthDenominator;
+
   /// @notice All values set at construction time
   /// @param _anchorAddress The address of OracleRelay to use as anchor
   /// @param _mainAddress The address of OracleRelay to use as main
   /// @param _widthNumerator The numerator of the allowable deviation width
   /// @param _widthDenominator The denominator of the allowable deviation width
+  /// @param _widthNumerator The numerator of the allowable deviation width for the stale price
+  /// @param _widthDenominator The denominator of the allowable deviation width for the stale price
   constructor(
     address _anchorAddress,
     address _mainAddress,
     uint256 _widthNumerator,
-    uint256 _widthDenominator
+    uint256 _widthDenominator,
+    uint256 _staleWidthNumerator,
+    uint256 _staleWidthDenominator
   ) OracleRelay(IOracleRelay(_mainAddress).oracleType()) {
     anchorAddress = _anchorAddress;
     anchorRelay = IOracleRelay(_anchorAddress);
@@ -35,6 +43,9 @@ contract AnchoredViewRelay is OracleRelay {
 
     widthNumerator = _widthNumerator;
     widthDenominator = _widthDenominator;
+
+    staleWidthNumerator = _staleWidthNumerator;
+    staleWidthDenominator = _staleWidthDenominator;
   }
 
   /// @notice Returns current value of oracle
@@ -55,8 +66,13 @@ contract AnchoredViewRelay is OracleRelay {
     uint256 _anchorPrice = anchorRelay.currentValue();
     require(_anchorPrice > 0, 'invalid anchor value');
 
-    // calculate buffer
-    uint256 _buffer = (widthNumerator * _anchorPrice) / widthDenominator;
+    uint256 _buffer;
+    if (IChainlinkOracleRelay(mainAddress).isStale()) {
+      /// If the price is stale the range percentage is smaller
+      _buffer = (staleWidthNumerator * _anchorPrice) / staleWidthDenominator;
+    } else {
+      _buffer = (widthNumerator * _anchorPrice) / widthDenominator;
+    }
 
     // create upper and lower bounds
     uint256 _upperBounds = _anchorPrice + _buffer;

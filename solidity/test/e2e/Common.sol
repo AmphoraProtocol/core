@@ -216,15 +216,15 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError {
     // Deploy chainlinkWbtc oracle relay
     chainlinkBtc = new ChainlinkOracleRelay(CHAINLINK_BTC_FEED_ADDRESS, 100_000_000_000_000_000_000, 1, staleTime);
     // Deploy anchoredViewEth relay
-    anchoredViewEth = new AnchoredViewRelay(address(uniswapRelayEthUsdc), address(chainlinkEth), 20, 100);
+    anchoredViewEth = new AnchoredViewRelay(address(uniswapRelayEthUsdc), address(chainlinkEth), 20, 100, 10, 100);
     // Deploy anchoredViewUni relay
-    anchoredViewUni = new AnchoredViewRelay(address(uniswapRelayUniUsdc), address(chainLinkUni), 40, 100);
+    anchoredViewUni = new AnchoredViewRelay(address(uniswapRelayUniUsdc), address(chainLinkUni), 40, 100, 10, 100);
     // Deploy anchoredViewAave relay
-    anchoredViewAave = new AnchoredViewRelay(address(uniswapRelayAaveWeth), address(chainlinkAave), 25, 100);
+    anchoredViewAave = new AnchoredViewRelay(address(uniswapRelayAaveWeth), address(chainlinkAave), 25, 100, 10, 100);
     // Deploy anchoredViewDydx relay
-    anchoredViewDydx = new AnchoredViewRelay(address(uniswapRelayDydxWeth), address(chainlinkDydx), 20, 100);
+    anchoredViewDydx = new AnchoredViewRelay(address(uniswapRelayDydxWeth), address(chainlinkDydx), 20, 100, 10, 100);
     // Deploy anchoredViewEth relay
-    anchoredViewBtc = new AnchoredViewRelay(address(uniswapRelayWbtcUsdc), address(chainlinkBtc), 20, 100);
+    anchoredViewBtc = new AnchoredViewRelay(address(uniswapRelayWbtcUsdc), address(chainlinkBtc), 20, 100, 10, 100);
     // Deploy the ThreeCrvOracle
     threeCrvOracle = new ThreeCrvOracle();
     // Deploy the triCryptoOracle

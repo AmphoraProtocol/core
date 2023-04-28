@@ -89,7 +89,7 @@ contract UnitTestThreeCrvCurrentValue is Base {
     assertEq(_price, _lpPrice / 1e8);
   }
 
-  function testThreeCrvCurrentValueRevertsOnDaiStale(
+  function testThreeCrvCurrentValueWithDaiStale(
     int256 _latestAnswerDai,
     int256 _latestAnswerUsdc,
     int256 _latestAnswerUsdt,
@@ -131,11 +131,11 @@ contract UnitTestThreeCrvCurrentValue is Base {
       address(_mockCurvePool), abi.encodeWithSelector(ICurvePool.get_virtual_price.selector), abi.encode(_virtualPrice)
     );
 
-    vm.expectRevert(ChainlinkStalePriceLib.Chainlink_StalePrice.selector);
-    threeCrvOracle.currentValue();
+    uint256 _price = threeCrvOracle.currentValue();
+    assertEq(_price, _lpPrice / 1e8);
   }
 
-  function testThreeCrvCurrentValueRevertsOnUsdcStale(
+  function testThreeCrvCurrentValueWithUsdcStale(
     int256 _latestAnswerDai,
     int256 _latestAnswerUsdc,
     int256 _latestAnswerUsdt,
@@ -177,11 +177,11 @@ contract UnitTestThreeCrvCurrentValue is Base {
       address(_mockCurvePool), abi.encodeWithSelector(ICurvePool.get_virtual_price.selector), abi.encode(_virtualPrice)
     );
 
-    vm.expectRevert(ChainlinkStalePriceLib.Chainlink_StalePrice.selector);
-    threeCrvOracle.currentValue();
+    uint256 _price = threeCrvOracle.currentValue();
+    assertEq(_price, _lpPrice / 1e8);
   }
 
-  function testThreeCrvCurrentValueRevertsOnUsdtStale(
+  function testThreeCrvCurrentValueWithUsdtStale(
     int256 _latestAnswerDai,
     int256 _latestAnswerUsdc,
     int256 _latestAnswerUsdt,
@@ -223,8 +223,8 @@ contract UnitTestThreeCrvCurrentValue is Base {
       address(_mockCurvePool), abi.encodeWithSelector(ICurvePool.get_virtual_price.selector), abi.encode(_virtualPrice)
     );
 
-    vm.expectRevert(ChainlinkStalePriceLib.Chainlink_StalePrice.selector);
-    threeCrvOracle.currentValue();
+    uint256 _price = threeCrvOracle.currentValue();
+    assertEq(_price, _lpPrice / 1e8);
   }
 }
 
