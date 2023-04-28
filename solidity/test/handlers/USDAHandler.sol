@@ -48,6 +48,7 @@ contract USDAHandler is BaseHandler {
     // exclude owner from set because it breaks the invariant when mint and withdraw (basic rug)
     _excludeActor(owner);
     _excludeActor(address(0));
+    _excludeActor(address(usda));
 
     // set vault controller
     vaultController = newAddress();

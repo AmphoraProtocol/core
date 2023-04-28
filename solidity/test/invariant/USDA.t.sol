@@ -54,6 +54,13 @@ contract InvariantUSDA is BaseInvariant {
     assert(_sUSDInTheSystem == _totalSupply);
   }
 
+  /// @dev the sUSD balance in the contract should be equal to the sUSD deposited minus the withdrawn and the transferred
+  function invariant_theSUSDInContractShouldBeEqualToTheDepositedMinusTheWithdrawn() public view {
+    uint256 _sUSDInTheSystem = usdaHandler.ghost_depositSum() - usdaHandler.ghost_withdrawSum();
+
+    assert(usdaHandler.susd().balanceOf(address(usda)) == _sUSDInTheSystem - usdaHandler.ghost_susdTransferredSum());
+  }
+
   function invariant_callSummary() public view {
     usdaHandler.callSummary();
   }
