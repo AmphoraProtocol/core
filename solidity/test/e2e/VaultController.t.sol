@@ -180,7 +180,8 @@ contract E2EVaultController is CommonE2EBase {
       _tokens,
       IAMPHClaimer(address(amphClaimer)),
       IVaultDeployer(address(vaultDeployer)),
-      0.01e18
+      0.01e18,
+      0.005e18
     );
     vm.stopPrank();
 
@@ -440,7 +441,10 @@ contract E2EVaultController is CommonE2EBase {
 
       // Check that dave now has the weth of the vault
       uint256 _daveFinalWeth = IERC20(WETH_ADDRESS).balanceOf(dave);
-      assertEq(_daveFinalWeth - _daveInitialWeth, _liquidated);
+      assertEq(
+        _daveFinalWeth - _daveInitialWeth,
+        _liquidated - vaultController.getLiquidationFee(uint192(_vaultInitialWethBalance), WETH_ADDRESS)
+      );
 
       // Check that the vault's borrowing power is now zero
       uint192 _newAccountBorrowingPower = vaultController.vaultBorrowingPower(bobsVaultId);
@@ -507,7 +511,11 @@ contract E2EVaultController is CommonE2EBase {
     );
 
     // Dave got the correct amount of uni tokens
-    assertEq(_daveStartUniBalance + _liquidated, IERC20(UNI_ADDRESS).balanceOf(dave));
+    assertEq(
+      _daveStartUniBalance
+        + (_liquidated - vaultController.getLiquidationFee(uint192(_liquidatableTokens), UNI_ADDRESS)),
+      IERC20(UNI_ADDRESS).balanceOf(dave)
+    );
 
     // Carol's vault got some UNI tokens removed
     assertEq(_carolVaultStartUniBalance - _liquidated, carolVault.tokenBalance(UNI_ADDRESS));

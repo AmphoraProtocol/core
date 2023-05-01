@@ -175,7 +175,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError {
     label(address(vaultDeployer), 'VaultDeployer');
 
     // Initialize VaultController
-    vaultController.initialize(IVaultController(address(0)), _tokens, amphClaimer, vaultDeployer, 0.01e18);
+    vaultController.initialize(IVaultController(address(0)), _tokens, amphClaimer, vaultDeployer, 0.01e18, 0.005e18);
 
     // Deploy and initialize USDA
     usdaToken = new USDA(IERC20(SUSD_ADDRESS));

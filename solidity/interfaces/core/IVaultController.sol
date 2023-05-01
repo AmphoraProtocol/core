@@ -92,9 +92,16 @@ interface IVaultController {
    * @param _vaultId The id of the vault that was liquidated
    * @param _assetAddress The address of the token that was liquidated
    * @param _usdaToRepurchase The amount of USDA that was repurchased
-   * @param _tokensToLiquidate The number of tokens that were liquidated
+   * @param _tokensToLiquidate The number of tokens that were taken from the vault and sent to the liquidator
+   * @param _liquidationFee The number of tokens that were taken from the fee and sent to the treasury
    */
-  event Liquidate(uint256 _vaultId, address _assetAddress, uint256 _usdaToRepurchase, uint256 _tokensToLiquidate);
+  event Liquidate(
+    uint256 _vaultId,
+    address _assetAddress,
+    uint256 _usdaToRepurchase,
+    uint256 _tokensToLiquidate,
+    uint256 _liquidationFee
+  );
 
   /**
    * @notice Emited when governance changes the claimer contract
@@ -115,6 +122,13 @@ interface IVaultController {
    *  @param _newBorrowingFee The new borrowing fee
    */
   event ChangedInitialBorrowingFee(uint192 _oldBorrowingFee, uint192 _newBorrowingFee);
+
+  /**
+   * @notice Emited when governance changes the liquidation fee
+   *  @param _oldLiquidationFee The old liquidation fee
+   *  @param _newLiquidationFee The new liquidation fee
+   */
+  event ChangedLiquidationFee(uint192 _oldLiquidationFee, uint192 _newLiquidationFee);
 
   /*///////////////////////////////////////////////////////////////
                             ERRORS
@@ -229,6 +243,8 @@ interface IVaultController {
 
   function initialBorrowingFee() external view returns (uint192 _initialBorrowingFee);
 
+  function liquidationFee() external view returns (uint192 _liquidationFee);
+
   function vaultAddress(uint96 _id) external view returns (address _vaultAddress);
 
   function vaultIDs(address _wallet) external view returns (uint96[] memory _vaultIDs);
@@ -279,7 +295,8 @@ interface IVaultController {
     address[] memory _tokenAddresses,
     IAMPHClaimer _claimerContract,
     IVaultDeployer _vaultDeployer,
-    uint192 _initialBorrowingFee
+    uint192 _initialBorrowingFee,
+    uint192 _liquidationFee
   ) external;
 
   function amountToSolvency(uint96 _id) external view returns (uint256 _amountToSolvency);
@@ -295,6 +312,8 @@ interface IVaultController {
   function vaultSummaries(uint96 _start, uint96 _stop) external view returns (VaultSummary[] memory _vaultSummaries);
 
   function getBorrowingFee(uint192 _amount) external view returns (uint192 _fee);
+
+  function getLiquidationFee(uint192 _tokensToLiquidate, address _assetAddress) external view returns (uint192 _fee);
 
   // interest calculations
   function calculateInterest() external returns (uint256 _interest);
@@ -358,4 +377,6 @@ interface IVaultController {
   function changeClaimerContract(IAMPHClaimer _newClaimerContract) external;
 
   function changeInitialBorrowingFee(uint192 _newBorrowingFee) external;
+
+  function changeLiquidationFee(uint192 _newLiquidationFee) external;
 }

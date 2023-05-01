@@ -77,7 +77,7 @@ abstract contract Base is DSTestPlus, TestConstants {
     vm.startPrank(governance);
     vaultController = new VaultController(booster);
     vaultDeployer = new VaultDeployer(IVaultController(address(vaultController)), cvx, crv);
-    vaultController.initialize(IVaultController(address(0)), _tokens, mockAmphClaimer, vaultDeployer, 0.01e18);
+    vaultController.initialize(IVaultController(address(0)), _tokens, mockAmphClaimer, vaultDeployer, 0.01e18, 0.005e18);
 
     curveMaster = new CurveMaster();
     threeLines = new ThreeLines0_100(2 ether, 0.1 ether, 0.005 ether, 0.25 ether, 0.5 ether);
@@ -182,7 +182,9 @@ contract UnitVaultControllerInitialize is Base {
   function testInitializedCorrectly() public {
     address[] memory _tokens = new address[](1);
     mockVaultController = new VaultControllerForTest(booster);
-    mockVaultController.initialize(IVaultController(address(0)), _tokens, mockAmphClaimer, vaultDeployer, 0.01e18);
+    mockVaultController.initialize(
+      IVaultController(address(0)), _tokens, mockAmphClaimer, vaultDeployer, 0.01e18, 0.005e18
+    );
 
     assertEq(mockVaultController.owner(), address(this));
     assertEq(mockVaultController.lastInterestTime(), block.timestamp);
@@ -192,6 +194,7 @@ contract UnitVaultControllerInitialize is Base {
     assertEq(mockVaultController.tokensRegistered(), 0);
     assertEq(mockVaultController.totalBaseLiability(), 0);
     assertEq(mockVaultController.initialBorrowingFee(), 10_000_000_000_000_000);
+    assertEq(mockVaultController.liquidationFee(), 5_000_000_000_000_000);
     assertEq(address(mockVaultController.claimerContract()), address(mockAmphClaimer));
   }
 
@@ -206,7 +209,7 @@ contract UnitVaultControllerInitialize is Base {
     // Deploy the new vault controller
     mockVaultController = new VaultControllerForTest(booster);
     mockVaultController.initialize(
-      IVaultController(address(vaultController)), _tokens, mockAmphClaimer, vaultDeployer, 0.01e18
+      IVaultController(address(vaultController)), _tokens, mockAmphClaimer, vaultDeployer, 0.01e18, 0.005e18
     );
     vm.stopPrank();
 
@@ -372,6 +375,34 @@ contract UnitVaultControllerChangeInitialBorrowingFee is Base {
   }
 }
 
+contract UnitVaultControllerChangeLiquidationFee is Base {
+  event ChangedLiquidationFee(uint192 _oldLiquidationFee, uint192 _newLiquidationFee);
+
+  function testRevertIfChangeFromNonOwner(uint192 _newFee) public {
+    vm.expectRevert('Ownable: caller is not the owner');
+    vm.prank(alice);
+    vaultController.changeLiquidationFee(_newFee);
+  }
+
+  function testRevertIfFeeIsTooHigh(uint192 _newFee) public {
+    vm.assume(_newFee > 1 ether);
+    vm.expectRevert(IVaultController.VaultController_FeeTooLarge.selector);
+    vm.prank(governance);
+    vaultController.changeLiquidationFee(_newFee);
+  }
+
+  function testChangeLiquidationFee(uint192 _fee) public {
+    vm.assume(_fee < 1 ether);
+
+    vm.expectEmit(false, false, false, true);
+    emit ChangedLiquidationFee(vaultController.liquidationFee(), _fee);
+
+    vm.prank(governance);
+    vaultController.changeLiquidationFee(_fee);
+    assertEq(vaultController.liquidationFee(), _fee);
+  }
+}
+
 contract UnitVaultControllerGetBorrowingFee is Base {
   function testGetBorrowingFee(uint192 _baseAmount) public {
     vm.assume(_baseAmount < type(uint192).max / vaultController.initialBorrowingFee());
@@ -379,6 +410,21 @@ contract UnitVaultControllerGetBorrowingFee is Base {
     vm.assume(_baseAmount * vaultController.initialBorrowingFee() >= 1e18);
 
     assertEq(vaultController.getBorrowingFee(_baseAmount), (_baseAmount * vaultController.initialBorrowingFee()) / 1e18);
+  }
+}
+
+contract UnitVaultControllerGetLiquidationFee is Base {
+  function testGetLiquidationFee(uint192 _amount) public {
+    vm.assume(_amount < type(uint192).max / vaultController.liquidationFee());
+    vm.assume(_amount < type(uint192).max / (vaultController.liquidationFee() + 1e18));
+    vm.assume(_amount * vaultController.liquidationFee() >= 1e18);
+
+    uint256 _liquidatorExpectedProfit = (_amount * vaultController.tokenLiquidationIncentive(WETH_ADDRESS)) / 1e18;
+
+    assertEq(
+      vaultController.getLiquidationFee(_amount, WETH_ADDRESS),
+      (_liquidatorExpectedProfit * vaultController.liquidationFee()) / 1e18
+    );
   }
 }
 
@@ -642,7 +688,13 @@ contract UnitVaultControllerChangeClaimerContract is Base {
 }
 
 contract UnitVaultControllerLiquidateVault is VaultBase, ExponentialNoError {
-  event Liquidate(uint256 _vaultId, address _assetAddress, uint256 _usdaToRepurchase, uint256 _tokensToLiquidate);
+  event Liquidate(
+    uint256 _vaultId,
+    address _assetAddress,
+    uint256 _usdaToRepurchase,
+    uint256 _tokensToLiquidate,
+    uint256 _liquidationFee
+  );
 
   function setUp() public virtual override {
     super.setUp();
@@ -724,7 +776,73 @@ contract UnitVaultControllerLiquidateVault is VaultBase, ExponentialNoError {
     );
     vm.expectCall(
       address(_vault),
+      abi.encodeWithSelector(
+        IVault.controllerTransfer.selector,
+        address(usdtLp),
+        address(this),
+        _tokensToLiquidate - vaultController.getLiquidationFee(uint192(_tokensToLiquidate), address(usdtLp))
+      )
+    );
+    vm.expectCall(
+      address(_vault),
+      abi.encodeWithSelector(
+        IVault.controllerTransfer.selector,
+        address(usdtLp),
+        address(vaultController.owner()),
+        vaultController.getLiquidationFee(uint192(_tokensToLiquidate), address(usdtLp))
+      )
+    );
+
+    vaultController.liquidateVault(_vaultId, address(usdtLp), 10 ether);
+  }
+
+  function testLiquidateWhenLiquidationFeeIsZero() public {
+    vm.mockCall(address(usdtLp), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
+
+    vm.mockCall(address(vaultController.BOOSTER()), abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(true));
+
+    vm.prank(vaultOwner);
+    _vault.depositERC20(address(usdtLp), _vaultDeposit);
+
+    vm.mockCall(
+      address(_crvRewards), abi.encodeWithSelector(IBaseRewardPool.withdrawAndUnwrap.selector), abi.encode(true)
+    );
+
+    vm.mockCall(
+      address(threeCrvOracle), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(1 ether)
+    );
+
+    // set liquidation fee in zero
+    vm.prank(vaultController.owner());
+    vaultController.changeLiquidationFee(0);
+
+    // borrow a few usda
+    vm.startPrank(vaultOwner);
+    vaultController.borrowUSDA(_vaultId, vaultController.vaultBorrowingPower(_vaultId));
+    vm.stopPrank();
+
+    // make vault insolvent
+    vm.warp(block.timestamp + 2 weeks);
+    vaultController.calculateInterest();
+
+    uint256 _tokensToLiquidate = vaultController.tokensToLiquidate(_vaultId, address(usdtLp));
+    uint256 _badFillPrice = _truncate(threeCrvOracle.currentValue() * (1e18 - LIQUIDATION_INCENTIVE));
+
+    (, uint192 _factor) = vaultController.interest();
+    uint256 _liability = (_truncate(_badFillPrice * _tokensToLiquidate) * 1e18) / _factor;
+
+    vm.expectCall(address(_vault), abi.encodeWithSelector(IVault.modifyLiability.selector, false, _liability));
+    vm.expectCall(
+      address(_crvRewards),
+      abi.encodeWithSelector(IBaseRewardPool.withdrawAndUnwrap.selector, _tokensToLiquidate, false)
+    );
+    vm.expectCall(
+      address(_vault),
       abi.encodeWithSelector(IVault.controllerTransfer.selector, address(usdtLp), address(this), _tokensToLiquidate)
+    );
+    vm.expectCall(
+      address(_vault),
+      abi.encodeWithSelector(IVault.controllerTransfer.selector, address(usdtLp), address(vaultController.owner()), 0)
     );
 
     vaultController.liquidateVault(_vaultId, address(usdtLp), 10 ether);
@@ -754,7 +872,12 @@ contract UnitVaultControllerLiquidateVault is VaultBase, ExponentialNoError {
     );
     vm.expectCall(
       address(_vault),
-      abi.encodeWithSelector(IVault.controllerTransfer.selector, WETH_ADDRESS, address(this), _tokensToLiquidate)
+      abi.encodeWithSelector(
+        IVault.controllerTransfer.selector,
+        WETH_ADDRESS,
+        address(this),
+        _tokensToLiquidate - vaultController.getLiquidationFee(uint192(_tokensToLiquidate), WETH_ADDRESS)
+      )
     );
     vaultController.liquidateVault(_vaultId, WETH_ADDRESS, 10 ether);
   }
@@ -772,7 +895,14 @@ contract UnitVaultControllerLiquidateVault is VaultBase, ExponentialNoError {
     uint256 _badFillPrice = _truncate(anchoredViewEth.currentValue() * (1e18 - LIQUIDATION_INCENTIVE));
 
     vm.expectEmit(true, true, true, true);
-    emit Liquidate(_vaultId, WETH_ADDRESS, _truncate(_badFillPrice * _tokensToLiquidate), _tokensToLiquidate);
+    uint256 _liquidationFee = vaultController.getLiquidationFee(uint192(_tokensToLiquidate), WETH_ADDRESS);
+    emit Liquidate(
+      _vaultId,
+      WETH_ADDRESS,
+      _truncate(_badFillPrice * _tokensToLiquidate),
+      _tokensToLiquidate - _liquidationFee,
+      _liquidationFee
+    );
     vaultController.liquidateVault(_vaultId, WETH_ADDRESS, 10 ether);
   }
 }
@@ -833,11 +963,11 @@ contract UnitVaultControllerSimulateLiquidateVault is VaultBase, ExponentialNoEr
     vm.stopPrank();
 
     // make vault insolvent
-    vm.warp(block.timestamp + 7 days);
+    vm.warp(block.timestamp + 2 weeks);
     vaultController.calculateInterest();
 
     // simulate
-    (uint256 _collateralLiquidatedSimulation, uint256 _usdaPaidSimulation) =
+    (uint256 _collateralReceivedInSimulation, uint256 _usdaPaidSimulation) =
       vaultController.simulateLiquidateVault(_vaultId, address(usdtLp), 10 ether);
 
     // liquidate
@@ -847,7 +977,11 @@ contract UnitVaultControllerSimulateLiquidateVault is VaultBase, ExponentialNoEr
     uint256 _collateralLiquidated = vaultController.liquidateVault(_vaultId, address(usdtLp), 10 ether);
 
     // compare
-    assertEq(_collateralLiquidatedSimulation, _collateralLiquidated);
+    assertEq(
+      _collateralReceivedInSimulation
+        + vaultController.getLiquidationFee(uint192(_collateralLiquidated), address(usdtLp)),
+      _collateralLiquidated
+    );
   }
 }
 
@@ -1199,7 +1333,9 @@ contract UnitVaultControllerGetVault is VaultBase {
     address[] memory _tokens = new address[](1);
     mockVaultController = new VaultControllerForTest(booster);
     _mockVaultDeployer = new VaultDeployer(IVaultController(address(mockVaultController)), cvx, crv);
-    mockVaultController.initialize(IVaultController(address(0)), _tokens, mockAmphClaimer, _mockVaultDeployer, 0.01e18);
+    mockVaultController.initialize(
+      IVaultController(address(0)), _tokens, mockAmphClaimer, _mockVaultDeployer, 0.01e18, 0.005e18
+    );
   }
 
   function testRevertIfVaultDoesNotExist(uint96 _id) public {

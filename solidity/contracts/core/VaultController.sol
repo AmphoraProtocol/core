@@ -67,6 +67,8 @@ contract VaultController is Initializable, Pausable, IVaultController, Exponenti
   uint192 public protocolFee;
   /// @dev The initial borrowing fee (1e18 == 100%)
   uint192 public initialBorrowingFee;
+  /// @dev The fee taken from the liquidator profit (1e18 == 100%)
+  uint192 public liquidationFee;
 
   /// @notice Any function with this modifier will call the _payInterest() function before
   modifier paysInterest() {
@@ -89,17 +91,22 @@ contract VaultController is Initializable, Pausable, IVaultController, Exponenti
   /// @param _oldVaultController The old vault controller
   /// @param _tokenAddresses The addresses of the collateral we want to take information for
   /// @param _claimerContract The claimer contract
+  /// @param _vaultDeployer The deployer contract
+  /// @param _initialBorrowingFee The initial borrowing fee
+  /// @param _liquidationFee The liquidation fee
   function initialize(
     IVaultController _oldVaultController,
     address[] memory _tokenAddresses,
     IAMPHClaimer _claimerContract,
     IVaultDeployer _vaultDeployer,
-    uint192 _initialBorrowingFee
+    uint192 _initialBorrowingFee,
+    uint192 _liquidationFee
   ) external override initializer {
     VAULT_DEPLOYER = _vaultDeployer;
     interest = Interest(uint64(block.timestamp), 1 ether);
     protocolFee = 1e14;
     initialBorrowingFee = _initialBorrowingFee;
+    liquidationFee = _liquidationFee;
 
     claimerContract = _claimerContract;
 
@@ -426,6 +433,16 @@ contract VaultController is Initializable, Pausable, IVaultController, Exponenti
     emit ChangedInitialBorrowingFee(_oldBorrowingFee, _newBorrowingFee);
   }
 
+  /// @notice Change the liquidation fee
+  /// @param _newLiquidationFee The new liquidation fee
+  function changeLiquidationFee(uint192 _newLiquidationFee) external override onlyOwner {
+    if (_newLiquidationFee >= 1e18) revert VaultController_FeeTooLarge();
+    uint192 _oldLiquidationFee = liquidationFee;
+    liquidationFee = _newLiquidationFee;
+
+    emit ChangedLiquidationFee(_oldLiquidationFee, _newLiquidationFee);
+  }
+
   /// @notice Check a vault for over-collateralization
   /// @param _id The id of vault we want to target
   /// @return _overCollateralized Returns true if vault over-collateralized; false if vault under-collaterlized
@@ -463,16 +480,29 @@ contract VaultController is Initializable, Pausable, IVaultController, Exponenti
     _borrow(_id, _susdAmount, _target, false);
   }
 
-  function _getBorrowingFee(uint192 _amount) internal view returns (uint192 _fee) {
-    // _amount * (100% + initialBorrowingFee)
-    _fee = _safeu192(_truncate(uint256(_amount * (1e18 + initialBorrowingFee)))) - _amount;
-  }
-
   /// @notice Returns the initial borrowing fee
   /// @param _amount The base amount
   /// @return _fee The fee calculated based on a base amount
   function getBorrowingFee(uint192 _amount) public view override returns (uint192 _fee) {
-    _fee = _getBorrowingFee(_amount);
+    // _amount * (100% + initialBorrowingFee)
+    _fee = _safeu192(_truncate(uint256(_amount * (1e18 + initialBorrowingFee)))) - _amount;
+  }
+
+  /// @notice Returns the liquidation fee
+  /// @param _tokensToLiquidate The collateral amount
+  /// @param _assetAddress The collateral address to liquidate
+  /// @return _fee The fee calculated based on amount
+  function getLiquidationFee(
+    uint192 _tokensToLiquidate,
+    address _assetAddress
+  ) public view override returns (uint192 _fee) {
+    uint256 _liquidationIncentive = tokenAddressCollateralInfo[_assetAddress].liquidationIncentive;
+    // _tokensToLiquidate * (100% + _liquidationIncentive)
+    uint192 _liquidatorExpectedProfit =
+      _safeu192(_truncate(uint256(_tokensToLiquidate * (1e18 + _liquidationIncentive)))) - _tokensToLiquidate;
+    // _liquidatorExpectedProfit * (100% + liquidationFee)
+    _fee =
+      _safeu192(_truncate(uint256(_liquidatorExpectedProfit * (1e18 + liquidationFee)))) - _liquidatorExpectedProfit;
   }
 
   /// @notice Business logic to perform the USDA loan
@@ -487,7 +517,7 @@ contract VaultController is Initializable, Pausable, IVaultController, Exponenti
     // only the minter of the vault may borrow from their vault
     if (_msgSender() != _vault.minter()) revert VaultController_OnlyMinter();
     // add the fee
-    uint192 _fee = _getBorrowingFee(_amount);
+    uint192 _fee = getBorrowingFee(_amount);
     // the base amount is the amount of USDA they wish to borrow divided by the interest factor, accounting for the fee
     uint192 _baseAmount = _safeu192(uint256((_amount + _fee) * EXP_SCALE) / uint256(interest.factor));
     // _baseLiability should contain the vault's new liability, in terms of base units
@@ -590,6 +620,8 @@ contract VaultController is Initializable, Pausable, IVaultController, Exponenti
     _collateralLiquidated = _tokenAmount != 0 ? _tokenAmount : _tokensToLiquidate;
     // the USDA to repurchase is equal to the bad fill price multiplied by the amount of tokens to liquidate
     _usdaPaid = _truncate(_badFillPrice * _collateralLiquidated);
+    // extract fee
+    _collateralLiquidated -= getLiquidationFee(uint192(_collateralLiquidated), _assetAddress);
   }
 
   /// @notice Liquidates an underwater vault
@@ -633,8 +665,12 @@ contract VaultController is Initializable, Pausable, IVaultController, Exponenti
       _vault.controllerWithdrawAndUnwrap(_assetInfo.crvRewardsContract, _tokensToLiquidate);
     }
 
+    uint192 _liquidationFee = getLiquidationFee(uint192(_tokensToLiquidate), _assetAddress);
+
     // finally, deliver tokens to liquidator
-    _vault.controllerTransfer(_assetAddress, _msgSender(), _tokensToLiquidate);
+    _vault.controllerTransfer(_assetAddress, _msgSender(), _tokensToLiquidate - _liquidationFee);
+    // and the fee to the treasury
+    _vault.controllerTransfer(_assetAddress, owner(), _liquidationFee);
     // and reduces total
     _modifyTotalDeposited(_tokensToLiquidate, _assetAddress, false);
 
@@ -642,8 +678,8 @@ contract VaultController is Initializable, Pausable, IVaultController, Exponenti
     if (_getVaultBorrowingPower(_vault) > _vaultLiability(_id)) revert VaultController_OverLiquidation();
 
     // emit the event
-    emit Liquidate(_id, _assetAddress, _usdaToRepurchase, _tokensToLiquidate);
-    // return the amount of tokens liquidated
+    emit Liquidate(_id, _assetAddress, _usdaToRepurchase, _tokensToLiquidate - _liquidationFee, _liquidationFee);
+    // return the amount of tokens liquidated (including fee)
     return _tokensToLiquidate;
   }
 
@@ -757,7 +793,7 @@ contract VaultController is Initializable, Pausable, IVaultController, Exponenti
   /// @return _borrowPower The amount of USDA the vault can borrow
   function vaultBorrowingPower(uint96 _id) external view override returns (uint192 _borrowPower) {
     uint192 _bp = _getVaultBorrowingPower(_getVault(_id));
-    _borrowPower = _bp - _getBorrowingFee(_bp);
+    _borrowPower = _bp - getBorrowingFee(_bp);
   }
 
   /// @notice Returns the borrowing power of a vault

@@ -231,15 +231,16 @@ contract E2EMultiAssetLoan is IsolatedBase {
     // liquidate wbtc
     vm.startPrank(dave);
     uint256 _wbtcToLiq = vaultController.tokensToLiquidate(gusVaultId, WBTC_ADDRESS);
-    vaultController.liquidateVault(gusVaultId, WBTC_ADDRESS, _wbtcToLiq - 5000);
-    assert(wbtc.balanceOf(dave) == _wbtcToLiq - 5000);
+    _wbtcToLiq -= 5000;
+    vaultController.liquidateVault(gusVaultId, WBTC_ADDRESS, _wbtcToLiq);
+    assert(wbtc.balanceOf(dave) == _wbtcToLiq - vaultController.getLiquidationFee(uint192(_wbtcToLiq), WBTC_ADDRESS));
     vm.stopPrank();
 
     // liquidate uni
     vm.startPrank(dave);
     uint256 _uniToLiq = vaultController.tokensToLiquidate(gusVaultId, UNI_ADDRESS);
     vaultController.liquidateVault(gusVaultId, UNI_ADDRESS, _uniToLiq);
-    assert(uni.balanceOf(dave) == _uniToLiq);
+    assert(uni.balanceOf(dave) == _uniToLiq - vaultController.getLiquidationFee(uint192(_uniToLiq), UNI_ADDRESS));
     vm.stopPrank();
     assertApproxEqAbs(vaultController.amountToSolvency(gusVaultId), 0, 5);
 
@@ -913,7 +914,7 @@ contract E2EWBtcLoan is IsolatedBase {
     vm.startPrank(dave);
     uint256 _wbtcToLiq = vaultController.tokensToLiquidate(gusVaultId, WBTC_ADDRESS);
     vaultController.liquidateVault(gusVaultId, WBTC_ADDRESS, _wbtcToLiq);
-    assert(wbtc.balanceOf(dave) == _wbtcToLiq);
+    assert(wbtc.balanceOf(dave) == _wbtcToLiq - vaultController.getLiquidationFee(uint192(_wbtcToLiq), WBTC_ADDRESS));
     vm.stopPrank();
 
     // mint some USDA

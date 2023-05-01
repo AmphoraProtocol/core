@@ -39,7 +39,7 @@ contract E2EVaultControllerMigration is CommonE2EBase {
     _tokens[0] = WETH_ADDRESS;
     _tokens[1] = UNI_ADDRESS;
     _tokens[2] = AAVE_ADDRESS;
-    newVaultController.initialize(vaultController, _tokens, amphClaimer, newVaultDeployer, 0.01e18);
+    newVaultController.initialize(vaultController, _tokens, amphClaimer, newVaultDeployer, 0.01e18, 0.005e18);
 
     newVaultController.transferOwnership(address(governor));
     vm.stopPrank();
