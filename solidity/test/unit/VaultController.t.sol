@@ -31,7 +31,25 @@ import {TestConstants} from '@test/utils/TestConstants.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 contract VaultControllerForTest is VaultController {
-  constructor(address _booster) VaultController(_booster) {}
+  constructor(
+    IVaultController _oldVaultController,
+    address[] memory _tokenAddresses,
+    IAMPHClaimer _claimerContract,
+    IVaultDeployer _vaultDeployer,
+    uint192 _initialBorrowingFee,
+    address _booster,
+    uint192 _liquidationFee
+  )
+    VaultController(
+      _oldVaultController,
+      _tokenAddresses,
+      _claimerContract,
+      _vaultDeployer,
+      _initialBorrowingFee,
+      _booster,
+      _liquidationFee
+    )
+  {}
 
   function migrateCollateralsFrom(IVaultController _oldVaultController, address[] memory _tokenAddresses) public {
     _migrateCollateralsFrom(_oldVaultController, _tokenAddresses);
@@ -75,9 +93,10 @@ abstract contract Base is DSTestPlus, TestConstants {
   function setUp() public virtual {
     address[] memory _tokens = new address[](1);
     vm.startPrank(governance);
-    vaultController = new VaultController(booster);
-    vaultDeployer = new VaultDeployer(IVaultController(address(vaultController)), cvx, crv);
-    vaultController.initialize(IVaultController(address(0)), _tokens, mockAmphClaimer, vaultDeployer, 0.01e18, 0.005e18);
+
+    vaultDeployer = new VaultDeployer(cvx, crv);
+    vaultController =
+    new VaultController(IVaultController(address(0)), _tokens, mockAmphClaimer, vaultDeployer, 0.01e18, booster, 0.005e18);
 
     curveMaster = new CurveMaster();
     threeLines = new ThreeLines0_100(2 ether, 0.1 ether, 0.005 ether, 0.25 ether, 0.5 ether);
@@ -178,13 +197,12 @@ abstract contract VaultBase is Base {
   }
 }
 
-contract UnitVaultControllerInitialize is Base {
-  function testInitializedCorrectly() public {
+contract UnitVaultControllerConstructor is Base {
+  function testDeployedCorrectly() public {
     address[] memory _tokens = new address[](1);
-    mockVaultController = new VaultControllerForTest(booster);
-    mockVaultController.initialize(
-      IVaultController(address(0)), _tokens, mockAmphClaimer, vaultDeployer, 0.01e18, 0.005e18
-    );
+
+    mockVaultController =
+    new VaultControllerForTest(IVaultController(address(0)), _tokens, mockAmphClaimer, vaultDeployer, 0.01e18, booster, 0.005e18);
 
     assertEq(mockVaultController.owner(), address(this));
     assertEq(mockVaultController.lastInterestTime(), block.timestamp);
@@ -198,7 +216,7 @@ contract UnitVaultControllerInitialize is Base {
     assertEq(address(mockVaultController.claimerContract()), address(mockAmphClaimer));
   }
 
-  function testInitializeFromPreviousVaultController() public {
+  function testMigrateFromPreviousVaultController() public {
     address[] memory _tokens = new address[](1);
     _tokens[0] = WETH_ADDRESS;
     vm.startPrank(governance);
@@ -206,11 +224,10 @@ contract UnitVaultControllerInitialize is Base {
     vaultController.registerErc20(
       WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE, type(uint256).max, 0
     );
+
     // Deploy the new vault controller
-    mockVaultController = new VaultControllerForTest(booster);
-    mockVaultController.initialize(
-      IVaultController(address(vaultController)), _tokens, mockAmphClaimer, vaultDeployer, 0.01e18, 0.005e18
-    );
+    mockVaultController =
+    new VaultControllerForTest(IVaultController(address(vaultController)), _tokens, mockAmphClaimer, vaultDeployer, 0.01e18, booster, 0.005e18);
     vm.stopPrank();
 
     assertEq(address(mockVaultController.tokensOracle(WETH_ADDRESS)), address(anchoredViewEth));
@@ -248,12 +265,14 @@ contract UnitVaultControllerPause is Base {
 
 contract UnitVaultControllerMigrateCollateralsFrom is Base {
   function testRevertIfWrongCollateral() public {
-    address[] memory _tokens = new address[](1);
-    _tokens[0] = WETH_ADDRESS;
+    address[] memory _empty = new address[](0);
     vm.startPrank(governance);
     // Deploy the new vault controller
-    mockVaultController = new VaultControllerForTest(booster);
+    mockVaultController =
+    new VaultControllerForTest(IVaultController(address(0)), _empty, mockAmphClaimer, vaultDeployer, 0.01e18, booster, 0.005e18);
     vm.expectRevert(IVaultController.VaultController_WrongCollateralAddress.selector);
+    address[] memory _tokens = new address[](1);
+    _tokens[0] = WETH_ADDRESS;
     mockVaultController.migrateCollateralsFrom(IVaultController(address(vaultController)), _tokens);
     vm.stopPrank();
   }
@@ -267,7 +286,9 @@ contract UnitVaultControllerMigrateCollateralsFrom is Base {
       WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE, type(uint256).max, 0
     );
     // Deploy the new vault controller
-    mockVaultController = new VaultControllerForTest(booster);
+    address[] memory _empty = new address[](0);
+    mockVaultController =
+    new VaultControllerForTest(IVaultController(address(0)), _empty, mockAmphClaimer, vaultDeployer, 0.01e18, booster, 0.005e18);
     mockVaultController.migrateCollateralsFrom(IVaultController(address(vaultController)), _tokens);
     vm.stopPrank();
 
@@ -1330,12 +1351,11 @@ contract UnitVaultControllerGetVault is VaultBase {
 
   function setUp() public virtual override {
     super.setUp();
+    _mockVaultDeployer = new VaultDeployer(cvx, crv);
     address[] memory _tokens = new address[](1);
-    mockVaultController = new VaultControllerForTest(booster);
-    _mockVaultDeployer = new VaultDeployer(IVaultController(address(mockVaultController)), cvx, crv);
-    mockVaultController.initialize(
-      IVaultController(address(0)), _tokens, mockAmphClaimer, _mockVaultDeployer, 0.01e18, 0.005e18
-    );
+
+    mockVaultController =
+    new VaultControllerForTest(IVaultController(address(0)), _tokens, mockAmphClaimer, _mockVaultDeployer, 0.01e18, booster, 0.005e18);
   }
 
   function testRevertIfVaultDoesNotExist(uint96 _id) public {

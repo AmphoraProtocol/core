@@ -139,7 +139,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError {
   function setUp() public virtual {
     vm.createSelectFork(vm.rpcUrl('mainnet'), FORK_BLOCK);
 
-    address[] memory _tokens = new address[](1);
+    address[] memory _tokens = new address[](0);
 
     // Transfer some susd, weth and uni to users
     _dealSUSD(andy, andySUSDBalance);
@@ -161,21 +161,21 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError {
     // Deploy AMPH token
     amphToken = new AmphoraProtocolToken(frank, initialAMPH);
 
+    // Deploy VaultDeployer
+    vaultDeployer = new VaultDeployer(IERC20(CVX_ADDRESS), IERC20(CRV_ADDRESS));
+    label(address(vaultDeployer), 'VaultDeployer');
+
     // Deploy VaultController
-    vaultController = new VaultController(BOOSTER);
+    vaultController =
+    new VaultController(IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), vaultDeployer, 0.01e18, BOOSTER, 0.005e18);
     label(address(vaultController), 'VaultController');
 
     // Deploy claimer
     amphClaimer =
     new AMPHClaimer(address(vaultController), IERC20(address(amphToken)), IERC20(CVX_ADDRESS), IERC20(CRV_ADDRESS), cvxRate, crvRate, cvxRewardFee, crvRewardFee);
 
-    // Deploy VaultDeployer
-    vaultDeployer =
-      new VaultDeployer(IVaultController(address(vaultController)), IERC20(CVX_ADDRESS), IERC20(CRV_ADDRESS));
-    label(address(vaultDeployer), 'VaultDeployer');
-
-    // Initialize VaultController
-    vaultController.initialize(IVaultController(address(0)), _tokens, amphClaimer, vaultDeployer, 0.01e18, 0.005e18);
+    // Change AMPH claimer
+    vaultController.changeClaimerContract(amphClaimer);
 
     // Deploy and initialize USDA
     usdaToken = new USDA(IERC20(SUSD_ADDRESS));

@@ -290,15 +290,6 @@ interface IVaultController {
                             LOGIC
     //////////////////////////////////////////////////////////////*/
 
-  function initialize(
-    IVaultController _oldVaultController,
-    address[] memory _tokenAddresses,
-    IAMPHClaimer _claimerContract,
-    IVaultDeployer _vaultDeployer,
-    uint192 _initialBorrowingFee,
-    uint192 _liquidationFee
-  ) external;
-
   function amountToSolvency(uint96 _id) external view returns (uint256 _amountToSolvency);
 
   function vaultLiability(uint96 _id) external view returns (uint192 _vaultLiability);

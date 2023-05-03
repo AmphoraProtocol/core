@@ -27,19 +27,17 @@ contract E2EVaultControllerMigration is CommonE2EBase {
   }
 
   function testMigrateVaultController() public {
+    newVaultDeployer = new VaultDeployer(IERC20(CVX_ADDRESS), IERC20(CRV_ADDRESS));
+
     // deploy new vault manager
     vm.startPrank(frank);
-    newVaultController = new VaultController(BOOSTER);
-    label(address(newVaultController), 'newVaultController');
-
-    newVaultDeployer =
-      new VaultDeployer(IVaultController(address(newVaultController)),IERC20(CVX_ADDRESS), IERC20(CRV_ADDRESS));
-
     address[] memory _tokens = new address[](3);
     _tokens[0] = WETH_ADDRESS;
     _tokens[1] = UNI_ADDRESS;
     _tokens[2] = AAVE_ADDRESS;
-    newVaultController.initialize(vaultController, _tokens, amphClaimer, newVaultDeployer, 0.01e18, 0.005e18);
+    newVaultController =
+      new VaultController(vaultController, _tokens, amphClaimer, newVaultDeployer, 0.01e18, BOOSTER, 0.005e18);
+    label(address(newVaultController), 'newVaultController');
 
     newVaultController.transferOwnership(address(governor));
     vm.stopPrank();

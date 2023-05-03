@@ -79,10 +79,11 @@ abstract contract Deploy is Script, TestConstants {
     console.log('GOVERNOR: ', address(governor));
 
     // Deploy VaultController & VaultDeployer
-    vaultController = new VaultController(_booster);
-    console.log('VAULT_CONTROLLER: ', address(vaultController));
-    vaultDeployer = new VaultDeployer(IVaultController(address(vaultController)), _cvxAddress, _crvAddress);
+    vaultDeployer = new VaultDeployer(_cvxAddress, _crvAddress);
     console.log('VAULT_DEPLOYER: ', address(vaultDeployer));
+    vaultController =
+    new VaultController(IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), vaultDeployer, 0.01e18, _booster, 0.005e18);
+    console.log('VAULT_CONTROLLER: ', address(vaultController));
 
     // Deploy claimer
     amphClaimer =
@@ -90,8 +91,8 @@ abstract contract Deploy is Script, TestConstants {
     console.log('AMPH_CLAIMER: ', address(amphClaimer));
     amphToken.mint(address(amphClaimer), 1_000_000 ether); // Mint amph to start LM program
 
-    // Initialize vault controller
-    vaultController.initialize(IVaultController(address(0)), _tokens, amphClaimer, vaultDeployer, 0.01e18, 0.005e18);
+    // Change AMPH claimer
+    vaultController.changeClaimerContract(amphClaimer);
 
     // Deploy and initialize USDA
     usda = new USDA(_sUSDAddress);

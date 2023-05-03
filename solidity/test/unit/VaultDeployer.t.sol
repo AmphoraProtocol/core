@@ -17,24 +17,11 @@ abstract contract Base is DSTestPlus {
 
   function setUp() public virtual {
     vm.prank(address(mockVaultController));
-    vaultDeployer = new VaultDeployer(mockVaultController, cvx, crv);
-  }
-}
-
-contract UnitVaultDeployerConstructor is Base {
-  function testVaultControllerAddress() external {
-    assertEq(address(vaultDeployer.VAULT_CONTROLLER()), address(mockVaultController));
+    vaultDeployer = new VaultDeployer(cvx, crv);
   }
 }
 
 contract UnitVaultDeployerDeployVault is Base {
-  function testRevertsIfInvalidVaultController(uint96 _id, address _owner) public {
-    vm.expectRevert(IVaultDeployer.VaultDeployer_OnlyVaultController.selector);
-
-    vm.prank(newAddress());
-    vaultDeployer.deployVault(_id, _owner);
-  }
-
   function testDeployVault(uint96 _id, address _owner) public {
     vm.assume(_id > 1);
     vm.prank(address(mockVaultController));

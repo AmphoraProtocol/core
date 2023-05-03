@@ -2,7 +2,6 @@
 /* solhint-disable */
 pragma solidity ^0.8.9;
 
-import {ERC20Detailed} from '@contracts/utils/ERC20Detailed.sol';
 import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 import {IERC20Metadata} from '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 

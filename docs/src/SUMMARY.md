@@ -26,7 +26,6 @@
         - [UniswapV3TokenOracleRelay](solidity/contracts/periphery/oracles/UniswapV3TokenOracleRelay.sol/contract.UniswapV3TokenOracleRelay.md)
       - [CurveMaster](solidity/contracts/periphery/CurveMaster.sol/contract.CurveMaster.md)
     - [❱ utils](solidity/contracts/utils/README.md)
-      - [ERC20Detailed](solidity/contracts/utils/ERC20Detailed.sol/abstract.ERC20Detailed.md)
       - [ExponentialNoError](solidity/contracts/utils/ExponentialNoError.sol/contract.ExponentialNoError.md)
       - [Proposal](solidity/contracts/utils/GovernanceStructs.sol/struct.Proposal.md)
       - [Receipt](solidity/contracts/utils/GovernanceStructs.sol/struct.Receipt.md)

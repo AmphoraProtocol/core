@@ -169,20 +169,14 @@ contract E2EVaultController is CommonE2EBase {
    * ----------------------- Public Function Tests -----------------------
    */
 
-  function testInitializeFromOldVaultController() public {
+  function testMigrateFromOldVaultController() public {
     address[] memory _tokens = new address[](1);
     _tokens[0] = WETH_ADDRESS;
     vm.startPrank(frank);
+
     // Deploy the new vault controller
-    vaultController2 = new VaultController(BOOSTER);
-    vaultController2.initialize(
-      IVaultController(address(vaultController)),
-      _tokens,
-      IAMPHClaimer(address(amphClaimer)),
-      IVaultDeployer(address(vaultDeployer)),
-      0.01e18,
-      0.005e18
-    );
+    vaultController2 =
+    new VaultController(IVaultController(address(vaultController)), _tokens, IAMPHClaimer(address(amphClaimer)), IVaultDeployer(address(vaultDeployer)), 0.01e18, BOOSTER, 0.005e18);
     vm.stopPrank();
 
     assertEq(address(vaultController2.tokensOracle(WETH_ADDRESS)), address(anchoredViewEth));

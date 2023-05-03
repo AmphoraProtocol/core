@@ -19,16 +19,6 @@ interface IVaultDeployer {
   error VaultDeployer_OnlyVaultController();
 
   /*///////////////////////////////////////////////////////////////
-                            VARIABLES
-  //////////////////////////////////////////////////////////////*/
-
-  /**
-   * @notice Returns the vault controller
-   * @return _vaultController The vault controller
-   */
-  function VAULT_CONTROLLER() external view returns (IVaultController _vaultController);
-
-  /*///////////////////////////////////////////////////////////////
                               LOGIC
   //////////////////////////////////////////////////////////////*/
 

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {ERC20Detailed} from '@contracts/utils/ERC20Detailed.sol';
 import {ExponentialNoError} from '@contracts/utils/ExponentialNoError.sol';
 import {Roles} from '@contracts/utils/Roles.sol';
 import {UFragments} from '@contracts/utils/UFragments.sol';
@@ -9,7 +8,6 @@ import {UFragments} from '@contracts/utils/UFragments.sol';
 import {IUSDA} from '@interfaces/core/IUSDA.sol';
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
 
-import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {IERC20Metadata} from '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 import {Pausable} from '@openzeppelin/contracts/security/Pausable.sol';
@@ -18,7 +16,7 @@ import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet
 
 /// @notice USDA token contract, handles all minting/burning of usda
 /// @dev extends UFragments
-contract USDA is Initializable, Pausable, UFragments, IUSDA, ExponentialNoError, Roles {
+contract USDA is Pausable, UFragments, IUSDA, ExponentialNoError, Roles {
   using EnumerableSet for EnumerableSet.AddressSet;
 
   bytes32 public constant VAULT_CONTROLLER_ROLE = keccak256('VAULT_CONTROLLER');

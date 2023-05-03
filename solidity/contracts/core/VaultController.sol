@@ -15,23 +15,20 @@ import {IVaultDeployer} from '@interfaces/core/IVaultDeployer.sol';
 
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
-import {Initializable} from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import {Pausable} from '@openzeppelin/contracts/security/Pausable.sol';
 
 /// @notice Controller of all vaults in the USDA borrow/lend system
 ///         VaultController contains all business logic for borrowing and lending through the protocol.
 ///         It is also in charge of accruing interest.
-contract VaultController is Initializable, Pausable, IVaultController, ExponentialNoError, Ownable {
+contract VaultController is Pausable, IVaultController, ExponentialNoError, Ownable {
   /// @dev The max allowed to be set as borrowing fee
   uint192 public constant MAX_INIT_BORROWING_FEE = 0.05e18;
 
   /// @dev The convex booster interface
   IBooster public immutable BOOSTER;
 
-  // TODO: Change to immutable, can't initialize it in initializer
   /// @dev The vault deployer interface
-  // solhint-disable-next-line defi-wonderland/wonder-var-name-mixedcase
-  IVaultDeployer public VAULT_DEPLOYER;
+  IVaultDeployer public immutable VAULT_DEPLOYER;
 
   /// @dev Mapping of vault id to vault address
   mapping(uint96 => address) public vaultIdVaultAddress;
@@ -82,26 +79,23 @@ contract VaultController is Initializable, Pausable, IVaultController, Exponenti
     _;
   }
 
-  /// @param _booster The convex booster address
-  constructor(address _booster) {
-    BOOSTER = IBooster(_booster);
-  }
-
   /// @notice Can initialize collaterals from an older vault controller
   /// @param _oldVaultController The old vault controller
   /// @param _tokenAddresses The addresses of the collateral we want to take information for
   /// @param _claimerContract The claimer contract
   /// @param _vaultDeployer The deployer contract
   /// @param _initialBorrowingFee The initial borrowing fee
+  /// @param _booster The convex booster address
   /// @param _liquidationFee The liquidation fee
-  function initialize(
+  constructor(
     IVaultController _oldVaultController,
     address[] memory _tokenAddresses,
     IAMPHClaimer _claimerContract,
     IVaultDeployer _vaultDeployer,
     uint192 _initialBorrowingFee,
+    address _booster,
     uint192 _liquidationFee
-  ) external override initializer {
+  ) {
     VAULT_DEPLOYER = _vaultDeployer;
     interest = Interest(uint64(block.timestamp), 1 ether);
     protocolFee = 1e14;
@@ -109,6 +103,8 @@ contract VaultController is Initializable, Pausable, IVaultController, Exponenti
     liquidationFee = _liquidationFee;
 
     claimerContract = _claimerContract;
+
+    BOOSTER = IBooster(_booster);
 
     if (address(_oldVaultController) != address(0)) _migrateCollateralsFrom(_oldVaultController, _tokenAddresses);
   }
@@ -340,7 +336,7 @@ contract VaultController is Initializable, Pausable, IVaultController, Exponenti
     uint256 _cap,
     uint256 _poolId
   ) external override onlyOwner {
-    CollateralInfo memory _collateral = tokenAddressCollateralInfo[_tokenAddress];
+    CollateralInfo storage _collateral = tokenAddressCollateralInfo[_tokenAddress];
     if (_collateral.tokenId != 0) revert VaultController_TokenAlreadyRegistered();
     if (_poolId != 0) {
       (address _lpToken,,, address _crvRewards,,) = BOOSTER.poolInfo(_poolId);
@@ -353,7 +349,7 @@ contract VaultController is Initializable, Pausable, IVaultController, Exponenti
       _collateral.crvRewardsContract = IBaseRewardPool(address(0));
       _collateral.poolId = 0;
     }
-    //ltv must be compatible with liquidation incentive
+    // ltv must be compatible with liquidation incentive
     if (_ltv >= (EXP_SCALE - _liquidationIncentive)) revert VaultController_LTVIncompatible();
     // increment the amount of registered token
     tokensRegistered = tokensRegistered + 1;
@@ -369,8 +365,7 @@ contract VaultController is Initializable, Pausable, IVaultController, Exponenti
     _collateral.cap = _cap;
     // finally, add the token to the array of enabled tokens
     enabledTokens.push(_tokenAddress);
-    // and save in mapping
-    tokenAddressCollateralInfo[_tokenAddress] = _collateral;
+
     emit RegisteredErc20(_tokenAddress, _ltv, _oracleAddress, _liquidationIncentive, _cap);
   }
 
@@ -389,9 +384,9 @@ contract VaultController is Initializable, Pausable, IVaultController, Exponenti
     uint256 _cap,
     uint256 _poolId
   ) external override onlyOwner {
-    CollateralInfo memory _collateral = tokenAddressCollateralInfo[_tokenAddress];
+    CollateralInfo storage _collateral = tokenAddressCollateralInfo[_tokenAddress];
     if (_collateral.tokenId == 0) revert VaultController_TokenNotRegistered();
-    //_ltv must be compatible with liquidation incentive
+    // _ltv must be compatible with liquidation incentive
     if (_ltv >= (EXP_SCALE - _liquidationIncentive)) revert VaultController_LTVIncompatible();
     if (_poolId != 0) {
       (address _lpToken,,, address _crvRewards,,) = BOOSTER.poolInfo(_poolId);
@@ -408,8 +403,6 @@ contract VaultController is Initializable, Pausable, IVaultController, Exponenti
     _collateral.liquidationIncentive = _liquidationIncentive;
     // set the cap
     _collateral.cap = _cap;
-    // finally save in mapping
-    tokenAddressCollateralInfo[_tokenAddress] = _collateral;
 
     emit UpdateRegisteredErc20(_tokenAddress, _ltv, _oracleAddress, _liquidationIncentive, _cap, _poolId);
   }
