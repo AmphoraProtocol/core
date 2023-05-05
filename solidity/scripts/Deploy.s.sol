@@ -30,144 +30,156 @@ import {MintableToken} from '@scripts/fakes/MintableToken.sol';
 import {ERC20, IERC20} from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import '@openzeppelin/contracts/utils/Strings.sol';
 
+struct DeployVars {
+  address deployer;
+  IERC20 cvxAddress;
+  IERC20 crvAddress;
+  IERC20 sUSDAddress;
+  IERC20 wethAddress;
+  address booster;
+  address wethOracle;
+  bool giveOwnershipToGov;
+}
+
 abstract contract Deploy is Script, TestConstants {
-  VaultController public vaultController;
-  VaultDeployer public vaultDeployer;
-  AMPHClaimer public amphClaimer;
-  USDA public usda;
+  uint256 public constant initialAmphSupply = 100_000_000 ether;
 
-  CurveMaster public curveMaster;
-  ThreeLines0_100 public threeLines;
+  uint256 public constant cvxRate = 10 ether; // 10 AMPH per 1 CVX
+  uint256 public constant crvRate = 0.5 ether; // 0.5 AMPH per 1 CVX
 
-  AmphoraProtocolToken public amphToken;
-  GovernorCharlie public governor;
+  uint256 public constant cvxRewardFee = 0.02 ether;
+  uint256 public constant crvRewardFee = 0.01 ether;
 
-  // uniswapv3 oracles
-  UniswapV3OracleRelay public uniswapRelayEthUsdc;
-  // Chainlink oracles
-  ChainlinkOracleRelay public chainlinkEth;
-  // AnchoredView relayers
-  AnchoredViewRelay public anchoredViewEth;
-
-  uint256 public initialAmphSupply = 100_000_000 ether;
-
-  uint256 public cvxRate = 10 ether; // 10 AMPH per 1 CVX
-  uint256 public crvRate = 0.5 ether; // 0.5 AMPH per 1 CVX
-
-  uint256 public cvxRewardFee = 0.02 ether;
-  uint256 public crvRewardFee = 0.01 ether;
-
-  function _deploy(
-    address _deployer,
-    IERC20 _cvxAddress,
-    IERC20 _crvAddress,
-    IERC20 _sUSDAddress,
-    IERC20 _wethAddress,
-    address _booster,
-    address _wethOracle,
-    bool _giveOwnershipToGov
-  ) internal {
-    address[] memory _tokens = new address[](1);
+  function _deploy(DeployVars memory _deployVars)
+    internal
+    returns (
+      AmphoraProtocolToken _amphToken,
+      GovernorCharlie _governor,
+      VaultController _vaultController,
+      VaultDeployer _vaultDeployer,
+      AMPHClaimer _amphClaimer,
+      USDA _usda
+    )
+  {
+    address[] memory _tokens;
 
     // TODO: pass deployer rights to governance?
-    vm.startBroadcast(_deployer);
+    vm.startBroadcast(_deployVars.deployer);
 
     // Deploy governance and amph token
-    amphToken = new AmphoraProtocolToken(_deployer, initialAmphSupply);
-    console.log('AMPHORA_TOKEN: ', address(amphToken));
-    governor = new GovernorCharlie(address(amphToken));
-    console.log('GOVERNOR: ', address(governor));
+    _amphToken = new AmphoraProtocolToken(_deployVars.deployer, initialAmphSupply);
+    console.log('AMPHORA_TOKEN: ', address(_amphToken));
+    _governor = new GovernorCharlie(address(_amphToken));
+    console.log('GOVERNOR: ', address(_governor));
 
     // Deploy VaultController & VaultDeployer
-    vaultDeployer = new VaultDeployer(_cvxAddress, _crvAddress);
-    console.log('VAULT_DEPLOYER: ', address(vaultDeployer));
-    vaultController =
-    new VaultController(IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), vaultDeployer, 0.01e18, _booster, 0.005e18);
-    console.log('VAULT_CONTROLLER: ', address(vaultController));
+    _vaultDeployer = new VaultDeployer(_deployVars.cvxAddress, _deployVars.crvAddress);
+    console.log('VAULT_DEPLOYER: ', address(_vaultDeployer));
+    _vaultController =
+    new VaultController(IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), _vaultDeployer, 0.01e18, _deployVars.booster, 0.005e18);
+    console.log('VAULT_CONTROLLER: ', address(_vaultController));
 
     // Deploy claimer
-    amphClaimer =
-    new AMPHClaimer(address(vaultController), IERC20(address(amphToken)), _cvxAddress, _crvAddress, cvxRate, crvRate, cvxRewardFee, crvRewardFee);
-    console.log('AMPH_CLAIMER: ', address(amphClaimer));
-    amphToken.mint(address(amphClaimer), 1_000_000 ether); // Mint amph to start LM program
+    _amphClaimer =
+    new AMPHClaimer(address(_vaultController), IERC20(address(_amphToken)), _deployVars.cvxAddress, _deployVars.crvAddress, cvxRate, crvRate, cvxRewardFee, crvRewardFee);
+    console.log('AMPH_CLAIMER: ', address(_amphClaimer));
+    _amphToken.mint(address(_amphClaimer), 1_000_000 ether); // Mint amph to start LM program
 
     // Change AMPH claimer
-    vaultController.changeClaimerContract(amphClaimer);
+    _vaultController.changeClaimerContract(_amphClaimer);
 
     // Deploy and initialize USDA
-    usda = new USDA(_sUSDAddress);
-    console.log('USDA: ', address(usda));
+    _usda = new USDA(_deployVars.sUSDAddress);
+    console.log('USDA: ', address(_usda));
 
-    // Deploy curve
-    threeLines = new ThreeLines0_100(2 ether, 0.1 ether, 0.005 ether, 0.25 ether, 0.5 ether);
-    console.log('THREE_LINES_0_100: ', address(threeLines));
+    {
+      // Deploy curve
+      ThreeLines0_100 _threeLines = new ThreeLines0_100(2 ether, 0.1 ether, 0.005 ether, 0.25 ether, 0.5 ether);
+      console.log('THREE_LINES_0_100: ', address(_threeLines));
 
-    // Deploy CurveMaster
-    curveMaster = new CurveMaster();
-    console.log('CURVE_MASTER: ', address(curveMaster));
+      // Deploy CurveMaster
+      CurveMaster _curveMaster = new CurveMaster();
+      console.log('CURVE_MASTER: ', address(_curveMaster));
+      // Set curve
+      _curveMaster.setCurve(address(0), address(_threeLines));
+      // Add _curveMaster to VaultController
+      _vaultController.registerCurveMaster(address(_curveMaster));
+    }
 
     // If custom wethOracle not set, deploy new ones
-    if (_wethOracle == address(0)) {
+    if (_deployVars.wethOracle == address(0)) {
       // Deploy uniswapRelayEthUsdc oracle relay
-      uniswapRelayEthUsdc = new UniswapV3OracleRelay(7200, USDC_WETH_POOL_ADDRESS, true, 1_000_000_000_000, 1);
-      console.log('UNISWAP_ETH_USDC_ORACLE: ', address(uniswapRelayEthUsdc));
+      UniswapV3OracleRelay _uniswapRelayEthUsdc =
+        new UniswapV3OracleRelay(7200, USDC_WETH_POOL_ADDRESS, true, 1_000_000_000_000, 1);
+      console.log('UNISWAP_ETH_USDC_ORACLE: ', address(_uniswapRelayEthUsdc));
       // Deploy chainlinkEth oracle relay
-      chainlinkEth = new ChainlinkOracleRelay(CHAINLINK_ETH_FEED_ADDRESS, 10_000_000_000, 1, 1 hours);
-      console.log('CHAINLINK_ETH_FEED: ', address(chainlinkEth));
+      ChainlinkOracleRelay _chainlinkEth =
+        new ChainlinkOracleRelay(CHAINLINK_ETH_FEED_ADDRESS, 10_000_000_000, 1, 1 hours);
+      console.log('CHAINLINK_ETH_FEED: ', address(_chainlinkEth));
       // Deploy anchoredViewEth relay
-      anchoredViewEth = new AnchoredViewRelay(address(uniswapRelayEthUsdc), address(chainlinkEth), 20, 100, 10, 100);
-      console.log('ANCHORED_VIEW_RELAY: ', address(anchoredViewEth));
-      _wethOracle = address(anchoredViewEth);
+      AnchoredViewRelay _anchoredViewEth =
+        new AnchoredViewRelay(address(_uniswapRelayEthUsdc), address(_chainlinkEth), 20, 100, 10, 100);
+      console.log('ANCHORED_VIEW_RELAY: ', address(_anchoredViewEth));
+      _deployVars.wethOracle = address(_anchoredViewEth);
     }
 
-    // Add curveMaster to VaultController
-    vaultController.registerCurveMaster(address(curveMaster));
-    // Set VaultController address for usda
-    usda.addVaultController(address(vaultController));
+    // Set VaultController address for _usda
+    _usda.addVaultController(address(_vaultController));
     // Register WETH as acceptable erc20 to vault controller
-    vaultController.registerErc20(
-      address(_wethAddress), WETH_LTV, _wethOracle, LIQUIDATION_INCENTIVE, type(uint256).max, 0
+    _vaultController.registerErc20(
+      address(_deployVars.wethAddress), WETH_LTV, _deployVars.wethOracle, LIQUIDATION_INCENTIVE, type(uint256).max, 0
     );
     // Register USDA
-    vaultController.registerUSDA(address(usda));
-    // Set curve
-    curveMaster.setCurve(address(0), address(threeLines));
+    _vaultController.registerUSDA(address(_usda));
     // Set pauser
-    usda.setPauser(_deployer);
+    _usda.setPauser(_deployVars.deployer);
 
-    if (_giveOwnershipToGov) {
-      _changeOwnership(
-        _deployer, address(governor), amphToken, vaultController, amphClaimer, usda, curveMaster, chainlinkEth
-      );
-    }
+    // if (_giveOwnershipToGov) {
+    //   _changeOwnership(
+    //     _deployer, address(_governor), _amphToken, _vaultController, _amphClaimer, _usda, _curveMaster, chainlinkEth
+    //   );
+    // }
 
     vm.stopBroadcast();
   }
 
+  /// @dev If _oracle is address(0), will deploy a new fake oracle
+  /// @dev If _lpToken is address(0), will deploy a new fake lp token
   function _addFakeCurveLP(
     MintableToken _cvx,
     MintableToken _crv,
     FakeBooster fakeBooster,
-    address _fakeLpReceiver
+    address _fakeLpReceiver,
+    address _oracle,
+    address _lpToken,
+    VaultController _vaultController
   ) internal {
-    // Deploy for convex rewards
-    FakeWethOracle fakeRewardsOracle1 = new FakeWethOracle();
-    fakeRewardsOracle1.setPrice(500 * 1e18);
+    if (_oracle == address(0)) {
+      // Deploy for convex rewards
+      FakeWethOracle fakeRewardsOracle1 = new FakeWethOracle();
+      fakeRewardsOracle1.setPrice(500 * 1e18);
+      console.log('FAKE_ORACLE_1: ', address(fakeRewardsOracle1));
+      _oracle = address(fakeRewardsOracle1);
+    }
 
-    MintableToken fakeLp1 = new MintableToken('FakeLP1');
-    fakeLp1.mint(_fakeLpReceiver, 1_000_000 ether);
+    if (_lpToken == address(0)) {
+      MintableToken fakeLp1 = new MintableToken('LPToken');
+      fakeLp1.mint(_fakeLpReceiver, 1_000_000 ether);
+      console.log('FAKE_LP', address(fakeLp1));
+      _lpToken = address(fakeLp1);
+    }
+
     uint256 _oneEther = 1 ether;
     uint256 _rewardsPerSecond = _oneEther / 3600; // 1 token per hour
     console.log('FAKE_BOOSTER: ', address(fakeBooster));
     console.log('CRV: ', address(_crv));
-    console.log('FAKE_LP', address(fakeLp1));
 
     FakeBaseRewardPool fakeBaseRewardPool1 =
-      new FakeBaseRewardPool(address(fakeBooster), _crv, _rewardsPerSecond, address(fakeLp1));
+      new FakeBaseRewardPool(address(fakeBooster), _crv, _rewardsPerSecond, address(_lpToken));
 
     _crv.mint(address(fakeBaseRewardPool1), 1_000_000_000 ether);
 
-    uint256 _pid = fakeBooster.addPoolInfo(address(fakeLp1), address(fakeBaseRewardPool1));
+    uint256 _pid = fakeBooster.addPoolInfo(address(_lpToken), address(fakeBaseRewardPool1));
 
     // Add cvx rewards
     console.log('CVX', address(_cvx));
@@ -178,10 +190,10 @@ abstract contract Deploy is Script, TestConstants {
 
     fakeBaseRewardPool1.addExtraReward(fakeVirtualRewardsPool);
 
-    for (uint256 i = 0; i < 3; i++) {
+    for (uint256 i = 0; i < 2; i++) {
       // Add extra rewards
-      MintableToken _fakeRewardsToken = new MintableToken(string.concat('FakeRewardsToken', Strings.toString(i+1)));
-      console.log(string.concat('FAKE_REWARDS_TOKEN', Strings.toString(i + 1)), ': ', address(_fakeRewardsToken));
+      MintableToken _fakeRewardsToken = new MintableToken(string.concat('RewardToken', Strings.toString(i+1)));
+      console.log(string.concat('REWARD_TOKEN', Strings.toString(i + 1)), ': ', address(_fakeRewardsToken));
       FakeVirtualRewardsPool fakeExtraVirtualRewardsPool =
         new FakeVirtualRewardsPool(fakeBaseRewardPool1, _fakeRewardsToken, _rewardsPerSecond * (i + 2));
 
@@ -191,8 +203,8 @@ abstract contract Deploy is Script, TestConstants {
     }
 
     // Register curveLP token
-    vaultController.registerErc20(
-      address(fakeLp1), WETH_LTV, address(fakeRewardsOracle1), LIQUIDATION_INCENTIVE, type(uint256).max, _pid
+    _vaultController.registerErc20(
+      address(_lpToken), WETH_LTV, address(_oracle), LIQUIDATION_INCENTIVE, type(uint256).max, _pid
     );
   }
 
@@ -227,7 +239,7 @@ contract DeployMainnet is Deploy {
   address public deployer = vm.rememberKey(vm.envUint('DEPLOYER_MAINNNET_PRIVATE_KEY'));
 
   function run() external {
-    _deploy(
+    DeployVars memory _deployVars = DeployVars(
       deployer,
       IERC20(CVX_ADDRESS),
       IERC20(CRV_ADDRESS),
@@ -237,6 +249,8 @@ contract DeployMainnet is Deploy {
       address(0),
       true
     );
+
+    _deploy(_deployVars);
   }
 }
 
@@ -244,7 +258,7 @@ contract DeployGoerli is Deploy {
   address public deployer = vm.rememberKey(vm.envUint('DEPLOYER_GOERLI_PRIVATE_KEY'));
 
   function run() external {
-    _deploy(
+    DeployVars memory _deployVars = DeployVars(
       deployer,
       IERC20(CVX_ADDRESS),
       IERC20(CRV_ADDRESS),
@@ -254,6 +268,48 @@ contract DeployGoerli is Deploy {
       address(0),
       true
     );
+
+    _deploy(_deployVars);
+  }
+}
+
+contract DeployGoerliOpenDeployment is Deploy {
+  address public deployer = vm.rememberKey(vm.envUint('DEPLOYER_GOERLI_PRIVATE_KEY'));
+  address public constant wethGoerli = 0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6;
+  address public constant linkGoerli = 0x326C977E6efc84E512bB9C30f76E30c160eD06FB;
+  address public constant ethUSD = 0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e;
+  address public constant linkUSD = 0x48731cF7e84dc94C5f84577882c14Be11a5B7456;
+
+  function run() external {
+    vm.startBroadcast(deployer);
+    MintableToken cvx = new MintableToken('CVX');
+    MintableToken crv = new MintableToken('CRV');
+    FakeBooster fakeBooster = new FakeBooster();
+
+    // Deploy a copy of sUSDA
+    MintableToken susdCopy = new MintableToken('sUSD');
+    susdCopy.mint(deployer, 1_000_000 ether);
+    console.log('sUSD_COPY: ', address(susdCopy));
+
+    // Chainlink ETH/USD
+    ChainlinkOracleRelay _chainlinkEth = new ChainlinkOracleRelay(ethUSD, 10_000_000_000, 1, 100 days);
+    console.log('CHAINLINK_ETH_FEED: ', address(_chainlinkEth));
+
+    vm.stopBroadcast();
+    DeployVars memory _deployVars =
+      DeployVars(deployer, cvx, crv, susdCopy, IERC20(wethGoerli), address(fakeBooster), address(_chainlinkEth), false);
+    (,, VaultController _vaultController,,, USDA _usda) = _deploy(_deployVars);
+
+    vm.startBroadcast(deployer);
+    susdCopy.approve(address(_usda), 1_000_000 ether);
+    _usda.donate(500_000 ether);
+    {
+      // Chainlink LINK/USD
+      ChainlinkOracleRelay _chainlinkLink = new ChainlinkOracleRelay(linkUSD, 10_000_000_000, 1, 100 days);
+      console.log('CHAINLINK_LINK_FEED: ', address(_chainlinkLink));
+      _addFakeCurveLP(cvx, crv, fakeBooster, deployer, address(_chainlinkLink), linkGoerli, _vaultController);
+    }
+    vm.stopBroadcast();
   }
 }
 
@@ -277,12 +333,14 @@ contract DeploySepolia is Deploy {
     console.log('FAKE_WETH_ORACLE: ', address(fakeWethOracle));
     vm.stopBroadcast();
 
-    _deploy(
+    DeployVars memory _deployVars = DeployVars(
       deployer, cvx, crv, susdCopy, IERC20(address(wethSepolia)), address(fakeBooster), address(fakeWethOracle), false
     );
 
+    (,, VaultController _vaultController,,,) = _deploy(_deployVars);
+
     vm.startBroadcast(deployer);
-    _addFakeCurveLP(cvx, crv, fakeBooster, deployer);
+    _addFakeCurveLP(cvx, crv, fakeBooster, deployer, address(0), address(0), _vaultController);
     vm.stopBroadcast();
   }
 }
@@ -291,7 +349,7 @@ contract DeployLocal is Deploy {
   address public deployer = vm.rememberKey(vm.envUint('DEPLOYER_ANVIL_LOCAL_PRIVATE_KEY'));
 
   function run() external {
-    _deploy(
+    DeployVars memory _deployVars = DeployVars(
       deployer,
       IERC20(CVX_ADDRESS),
       IERC20(CRV_ADDRESS),
@@ -301,5 +359,7 @@ contract DeployLocal is Deploy {
       address(0),
       true
     );
+
+    _deploy(_deployVars);
   }
 }
