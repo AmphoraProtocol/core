@@ -56,12 +56,12 @@ contract AmphoraProtocolToken is IAmphoraProtocolToken, Context, Ownable {
   /// @param _account The address to recieve initial suppply
   /// @param _initialSupply The initial supply
   constructor(address _account, uint256 _initialSupply) {
-    if (_account == address(0)) revert TokenDelegate_InvalidAddress();
-    if (_initialSupply <= 0) revert TokenDelegate_InvalidSupply();
+    if (_account == address(0)) revert AmphoraProtocolToken_InvalidAddress();
+    if (_initialSupply <= 0) revert AmphoraProtocolToken_InvalidSupply();
 
     totalSupply = _initialSupply;
 
-    if (_initialSupply >= 2 ** 96) revert TokenDelegate_Overflow();
+    if (_initialSupply >= 2 ** 96) revert AmphoraProtocolToken_Overflow();
 
     _balances[_account] = uint96(totalSupply);
     emit Transfer(address(0), _account, totalSupply);
@@ -70,7 +70,7 @@ contract AmphoraProtocolToken is IAmphoraProtocolToken, Context, Ownable {
   /// @notice Change token name
   /// @param _name New token name
   function changeName(string calldata _name) external override onlyOwner {
-    if (bytes(_name).length <= 0) revert TokenDelegate_InvalidLength();
+    if (bytes(_name).length <= 0) revert AmphoraProtocolToken_InvalidLength();
 
     emit ChangedName(name, _name);
 
@@ -80,7 +80,7 @@ contract AmphoraProtocolToken is IAmphoraProtocolToken, Context, Ownable {
   /// @notice Change token symbol
   /// @param _symbol New token symbol
   function changeSymbol(string calldata _symbol) external override onlyOwner {
-    if (bytes(_symbol).length <= 0) revert TokenDelegate_InvalidLength();
+    if (bytes(_symbol).length <= 0) revert AmphoraProtocolToken_InvalidLength();
 
     emit ChangedSymbol(symbol, _symbol);
 
@@ -139,12 +139,12 @@ contract AmphoraProtocolToken is IAmphoraProtocolToken, Context, Ownable {
       keccak256(abi.encode(PERMIT_TYPEHASH, _owner, _spender, _rawAmount, nonces[_owner]++, _deadline));
     bytes32 _digest = keccak256(abi.encodePacked('\x19\x01', _domainSeparator, _structHash));
     if (uint256(_s) > 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) {
-      revert TokenDelegate_InvalidSignature();
+      revert AmphoraProtocolToken_InvalidSignature();
     }
     address _signatory = ecrecover(_digest, _v, _r, _s);
-    if (_signatory == address(0x0)) revert TokenDelegate_InvalidSignature();
+    if (_signatory == address(0x0)) revert AmphoraProtocolToken_InvalidSignature();
 
-    if (block.timestamp > _deadline) revert TokenDelegate_SignatureExpired();
+    if (block.timestamp > _deadline) revert AmphoraProtocolToken_SignatureExpired();
 
     _allowances[_owner][_spender] = _amount;
 
@@ -232,13 +232,13 @@ contract AmphoraProtocolToken is IAmphoraProtocolToken, Context, Ownable {
     bytes32 _structHash = keccak256(abi.encode(DELEGATION_TYPEHASH, _delegatee, _nonce, _expiry));
     bytes32 _digest = keccak256(abi.encodePacked('\x19\x01', _domainSeparator, _structHash));
     if (uint256(_s) > 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) {
-      revert TokenDelegate_InvalidSignature();
+      revert AmphoraProtocolToken_InvalidSignature();
     }
     address _signatory = ecrecover(_digest, _v, _r, _s);
-    if (_signatory == address(0)) revert TokenDelegate_InvalidSignature();
+    if (_signatory == address(0)) revert AmphoraProtocolToken_InvalidSignature();
 
-    if (_nonce != nonces[_signatory]++) revert TokenDelegate_InvalidNonce();
-    if (block.timestamp > _expiry) revert TokenDelegate_SignatureExpired();
+    if (_nonce != nonces[_signatory]++) revert AmphoraProtocolToken_InvalidNonce();
+    if (block.timestamp > _expiry) revert AmphoraProtocolToken_SignatureExpired();
     return _delegate(_signatory, _delegatee);
   }
 
@@ -256,7 +256,7 @@ contract AmphoraProtocolToken is IAmphoraProtocolToken, Context, Ownable {
   /// @param _blockNumber The block number to get the vote balance at
   /// @return _accountVotes The number of votes the account had as of the given block
   function getPriorVotes(address _account, uint256 _blockNumber) public view override returns (uint96 _accountVotes) {
-    if (_blockNumber >= block.number) revert TokenDelegate_CannotDetermineVotes();
+    if (_blockNumber >= block.number) revert AmphoraProtocolToken_CannotDetermineVotes();
     // check naive cases
     (bool _ok, uint96 _votes) = _naivePriorVotes(_account, _blockNumber);
     if (_ok) return _votes;
@@ -322,7 +322,7 @@ contract AmphoraProtocolToken is IAmphoraProtocolToken, Context, Ownable {
   /// @param _dst The address to transfer to
   /// @param _amount The amount to transfer
   function _transferTokens(address _src, address _dst, uint96 _amount) internal {
-    if (_src == address(0) || _dst == address(0)) revert TokenDelegate_ZeroAddress();
+    if (_src == address(0) || _dst == address(0)) revert AmphoraProtocolToken_ZeroAddress();
 
     _balances[_src] = _sub96(_balances[_src], _amount, '_transferTokens: transfer amount exceeds balance');
     _balances[_dst] = _add96(_balances[_dst], _amount, '_transferTokens: transfer amount overflows');

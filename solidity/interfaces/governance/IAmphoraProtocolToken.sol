@@ -10,38 +10,35 @@ interface IAmphoraProtocolToken is ITokenEvents {
                             ERRORS
     //////////////////////////////////////////////////////////////*/
 
-  /// @notice Thrown when already initialized
-  error TokenDelegate_AlreadyInitialized();
-
   /// @notice Thrown when invalid address
-  error TokenDelegate_InvalidAddress();
+  error AmphoraProtocolToken_InvalidAddress();
 
   /// @notice Thrown when invalid supply
-  error TokenDelegate_InvalidSupply();
+  error AmphoraProtocolToken_InvalidSupply();
 
   /// @notice Thrown when overflow
-  error TokenDelegate_Overflow();
+  error AmphoraProtocolToken_Overflow();
 
   /// @notice Thrown when invalid length
-  error TokenDelegate_InvalidLength();
+  error AmphoraProtocolToken_InvalidLength();
 
   /// @notice Thrown when invalid signature
-  error TokenDelegate_InvalidSignature();
+  error AmphoraProtocolToken_InvalidSignature();
 
   /// @notice Thrown when signature expired
-  error TokenDelegate_SignatureExpired();
+  error AmphoraProtocolToken_SignatureExpired();
 
   /// @notice Thrown when invalid nonce
-  error TokenDelegate_InvalidNonce();
+  error AmphoraProtocolToken_InvalidNonce();
 
   /// @notice Thrown when votes can't be determined
-  error TokenDelegate_CannotDetermineVotes();
+  error AmphoraProtocolToken_CannotDetermineVotes();
 
   /// @notice Thrown when zero address used
-  error TokenDelegate_ZeroAddress();
+  error AmphoraProtocolToken_ZeroAddress();
 
   /// @notice Thrown when transfer exceeds balance
-  error TokenDelegate_TransferExceedsBalance();
+  error AmphoraProtocolToken_TransferExceedsBalance();
 
   /*///////////////////////////////////////////////////////////////
                             STRUCT
