@@ -32,6 +32,9 @@ jobs:
       - name: Run unit tests
         run: yarn test:unit
 
+      - name: "Run invariant tests"
+        run: yarn test:invariant
+
       - name: "Create env file"
         run: |
           touch .env

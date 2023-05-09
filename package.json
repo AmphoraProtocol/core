@@ -31,6 +31,7 @@
     "test": "yarn test:unit && yarn test:e2e",
     "test:e2e": "forge test --match-contract E2E -vvv",
     "test:gas": "forge test --match-contract E2E -vvv --gas-report",
+    "test:invariant": "forge test --match-contract Invariant -vvv",
     "test:unit": "forge test --match-contract Unit -vvv"
   },
   "lint-staged": {

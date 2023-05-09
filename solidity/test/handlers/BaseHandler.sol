@@ -65,6 +65,8 @@ abstract contract BaseHandler is DSTestPlus {
 
   uint256 public totalCalls;
 
+  uint256 public actorsIndex;
+
   modifier countCall(bytes32 _key) {
     _;
     calls[_key]++;
@@ -83,11 +85,19 @@ abstract contract BaseHandler is DSTestPlus {
     _;
   }
 
+  function createMultipleActors(uint256 _numberOfActors) public {
+    for (uint256 _i; _i < _numberOfActors; _i++) {
+      address _newActor = address(uint160(actorsIndex + 100));
+      actorsIndex++;
+      _actors.add(_newActor);
+    }
+  }
+
   function getRandomActor(uint256 _actorIndexSeed) public view returns (address _actor) {
     _actor = _actors.rand(_actorIndexSeed);
   }
 
-  function actors() external view returns (address[] memory _addressActors) {
+  function actors() public view returns (address[] memory _addressActors) {
     return _actors.addrs;
   }
 
