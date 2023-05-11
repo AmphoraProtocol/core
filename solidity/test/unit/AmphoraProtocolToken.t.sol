@@ -35,7 +35,7 @@ contract UnitAmphoraProtocolTokenConstructor is Base {
   }
 
   function testRevertIfSupplyOverflows() public {
-    vm.expectRevert(IAmphoraProtocolToken.AmphoraProtocolToken_Overflow.selector);
+    vm.expectRevert('ERC20Votes: total supply risks overflowing votes');
     vm.prank(owner);
     mockAmphoraToken = new AmphoraProtocolToken(owner, type(uint192).max);
   }
@@ -46,68 +46,14 @@ contract UnitAmphoraProtocolTokenConstructor is Base {
   }
 }
 
-contract UnitAmphoraProtocolTokenChangeName is Base {
-  event ChangedName(string _oldName, string _newName);
-
-  string public tokenName = 'Amphora Protocol';
-
-  function testRevertIfNotOwner(string calldata _name) public {
-    vm.expectRevert('Ownable: caller is not the owner');
-    vm.prank(newAddress());
-    amphoraToken.changeName(_name);
-  }
-
-  function testRevertIfLengthIsZero() public {
-    vm.expectRevert(IAmphoraProtocolToken.AmphoraProtocolToken_InvalidLength.selector);
-    vm.prank(owner);
-    amphoraToken.changeName('');
-  }
-
-  function testChangeName() public {
-    string memory _newTokenName = 'Amphora Protocol V2';
-    vm.expectEmit(true, true, true, true);
-    emit ChangedName(tokenName, _newTokenName);
-
-    vm.prank(owner);
-    amphoraToken.changeName(_newTokenName);
-    assertEq(amphoraToken.name(), _newTokenName);
-  }
-}
-
-contract UnitAmphoraProtocolTokenChangeSymbol is Base {
-  event ChangedSymbol(string _oldSybmol, string _newSybmol);
-
-  string public tokenSymbol = 'AMPH';
-
-  function testRevertIfNotOwner(string calldata _symbol) public {
-    vm.expectRevert('Ownable: caller is not the owner');
-    vm.prank(newAddress());
-    amphoraToken.changeSymbol(_symbol);
-  }
-
-  function testRevertIfLengthIsZero() public {
-    vm.expectRevert(IAmphoraProtocolToken.AmphoraProtocolToken_InvalidLength.selector);
-    vm.prank(owner);
-    amphoraToken.changeSymbol('');
-  }
-
-  function testChangeSymbol() public {
-    string memory _newTokenSymbol = 'AMPH_V2';
-    vm.expectEmit(true, true, true, true);
-    emit ChangedSymbol(tokenSymbol, _newTokenSymbol);
-
-    vm.prank(owner);
-    amphoraToken.changeSymbol(_newTokenSymbol);
-    assertEq(amphoraToken.symbol(), _newTokenSymbol);
-  }
-}
-
 contract UnitAmphoraProtocolTokenAllowance is Base {
   function testZeroAllowance(address _spender) public {
     assertEq(amphoraToken.allowance(owner, _spender), 0);
   }
 
   function testAllowance(address _spender) public {
+    vm.assume(_spender != address(0));
+
     vm.prank(owner);
     amphoraToken.approve(_spender, 1 ether);
 
@@ -118,18 +64,9 @@ contract UnitAmphoraProtocolTokenAllowance is Base {
 contract UnitAmphoraProtocolTokenApprove is Base {
   event Approval(address indexed _owner, address indexed _spender, uint256 _amount);
 
-  function testRevertIfAmountTooHigh(address _spender) public {
-    vm.expectRevert('approve: amount exceeds 96 bits');
-    amphoraToken.approve(_spender, type(uint192).max);
-  }
-
-  function testApproveWithUnit256Max(address _spender) public {
-    vm.prank(owner);
-    assertTrue(amphoraToken.approve(_spender, type(uint256).max));
-    assertEq(amphoraToken.allowance(owner, _spender), type(uint96).max);
-  }
-
   function testApprove(address _spender) public {
+    vm.assume(_spender != address(0));
+
     vm.expectEmit(true, true, true, true);
     emit Approval(owner, _spender, 10 ether);
 
@@ -153,31 +90,17 @@ contract UnitAmphoraProtocolTokenBalanceOf is Base {
 contract UnitAmphoraProtocolTokenTransfer is Base {
   event Transfer(address indexed _from, address indexed _to, uint256 _amount);
 
-  function testRevertIfAmountTooHigh(address _receiver) public {
-    vm.expectRevert('transfer: amount exceeds 96 bits');
-    vm.prank(owner);
-    amphoraToken.transfer(_receiver, type(uint192).max);
-  }
-
-  function testRevertIfSenderIsZeroAddress(address _receiver, uint96 _amount) public {
-    vm.assume(_amount <= type(uint96).max);
-
-    vm.expectRevert(IAmphoraProtocolToken.AmphoraProtocolToken_ZeroAddress.selector);
-    vm.prank(address(0));
-    amphoraToken.transfer(_receiver, _amount);
-  }
-
   function testRevertIfReceiverIsZeroAddress(uint96 _amount) public {
     vm.assume(_amount <= type(uint96).max);
 
-    vm.expectRevert(IAmphoraProtocolToken.AmphoraProtocolToken_ZeroAddress.selector);
+    vm.expectRevert('ERC20: transfer to the zero address');
     vm.prank(owner);
     amphoraToken.transfer(address(0), _amount);
   }
 
   function testRevertIfAmountHigherThanBalance(address _receiver) public {
     vm.assume(_receiver != address(0));
-    vm.expectRevert('_transferTokens: transfer amount exceeds balance');
+    vm.expectRevert('ERC20: transfer amount exceeds balance');
     vm.prank(owner);
     amphoraToken.transfer(_receiver, initSupply + 1);
   }
@@ -202,16 +125,10 @@ contract UnitAmphoraProtocolTokenTransferFrom is Base {
 
   uint256 public amount = 10 ether;
 
-  function testRevertIfAmountTooHigh(address _receiver) public {
-    vm.expectRevert('transferFrom: amount exceeds 96 bits');
-    vm.prank(owner);
-    amphoraToken.transferFrom(owner, _receiver, type(uint192).max);
-  }
-
   function testRevertIfAmountExceedsSpenderAllowance(address _receiver) public {
     vm.assume(_receiver != owner);
 
-    vm.expectRevert('transferFrom: transfer amount exceeds spender allowance');
+    vm.expectRevert('ERC20: insufficient allowance');
     vm.prank(_receiver);
     amphoraToken.transferFrom(owner, _receiver, amount * 2);
   }
@@ -246,21 +163,21 @@ contract UnitAmphoraProtocolTokenMint is Base {
   }
 
   function testRevertIfReceiverIsZeroAddress(uint96 _amount) public {
-    vm.expectRevert('mint: cant transfer to 0 address');
+    vm.expectRevert('ERC20: mint to the zero address');
     vm.prank(owner);
     amphoraToken.mint(address(0), _amount);
   }
 
   function testRevertIfAmountTooHigh(address _receiver) public {
     vm.assume(_receiver != address(0));
-    vm.expectRevert('mint: amount exceeds 96 bits');
+    vm.expectRevert('ERC20Votes: total supply risks overflowing votes');
     vm.prank(owner);
     amphoraToken.mint(_receiver, type(uint192).max);
   }
 
   function testRevertIfTotalSupplyTooHigh(address _receiver) public {
     vm.assume(_receiver != address(0));
-    vm.expectRevert('mint: totalSupply exceeds 96 bits');
+    vm.expectRevert('ERC20Votes: total supply risks overflowing votes');
     vm.prank(owner);
     amphoraToken.mint(_receiver, type(uint96).max);
   }
@@ -313,7 +230,7 @@ contract UnitAmphoraProtocolGetCurrentVotes is Base {
 
 contract UnitAmphoraProtocolTokenGetPriorVotes is Base {
   function testRevertIfBlockNumberIsInvalid(address _account) public {
-    vm.expectRevert(IAmphoraProtocolToken.AmphoraProtocolToken_CannotDetermineVotes.selector);
+    vm.expectRevert('ERC20Votes: block not yet mined');
     amphoraToken.getPriorVotes(_account, block.number + 10);
   }
 
