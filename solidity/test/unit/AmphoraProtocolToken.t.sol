@@ -184,7 +184,7 @@ contract UnitAmphoraProtocolTokenMint is Base {
 
   function testMint(address _receiver, uint96 _amount) public {
     vm.assume(_amount > 0 && _amount < type(uint96).max - initSupply);
-    vm.assume(_receiver != address(0));
+    vm.assume(_receiver != address(0) && _receiver != owner);
 
     vm.expectEmit(true, true, true, true);
     emit Transfer(address(0), _receiver, _amount);

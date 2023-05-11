@@ -31,8 +31,8 @@ contract UnitTestCurveMasterGetValueAt is Base {
   }
 
   function testGetValueAtRevertWithZeroResult(address _token, address _curve, int256 _xValue) public {
-    vm.assume(_token != address(0));
-    vm.assume(_curve != address(0));
+    vm.assume(_token > address(10));
+    vm.assume(_curve > address(10));
     vm.assume(_curve != address(curveMaster));
     vm.assume(_curve != address(this));
     vm.assume(_curve != address(vm));
@@ -49,8 +49,8 @@ contract UnitTestCurveMasterGetValueAt is Base {
   }
 
   function testGetValueAt(address _token, address _curve, int256 _xValue) public {
-    vm.assume(_token != address(0));
-    vm.assume(_curve != address(0));
+    vm.assume(_token > address(10));
+    vm.assume(_curve > address(10));
     vm.assume(_curve != address(curveMaster));
     vm.assume(_curve != address(this));
     vm.assume(_curve != address(vm));
