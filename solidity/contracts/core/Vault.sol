@@ -70,27 +70,20 @@ contract Vault is IVault, Context {
   /// @notice Returns the minter of the vault
   /// @return _minter The address of minter
   function minter() external view override returns (address _minter) {
-    return vaultInfo.minter;
+    _minter = vaultInfo.minter;
   }
 
   /// @notice Returns the id of the vault
   /// @return _id The id of the vault
   function id() external view override returns (uint96 _id) {
-    return vaultInfo.id;
-  }
-
-  /// @notice Returns the vault's balance of an erc20 token
-  /// @param _token The address of the erc20 token
-  /// @return _balance The token balance
-  function tokenBalance(address _token) external view override returns (uint256 _balance) {
-    return balances[_token];
+    _id = vaultInfo.id;
   }
 
   /// @notice Returns true if the token is staked on convex
   /// @param _token The address of the erc20 token
   /// @return _isStaked True if the token is staked on convex
   function isStaked(address _token) external view override returns (bool _isStaked) {
-    return isTokenStaked[_token];
+    _isStaked = isTokenStaked[_token];
   }
 
   /// @notice Used to deposit a token to the vault
@@ -104,7 +97,7 @@ contract Vault is IVault, Context {
     if (CONTROLLER.tokenCollateralType(_token) == IVaultController.CollateralType.CurveLPStakedOnConvex) {
       uint256 _poolId = CONTROLLER.tokenPoolId(_token);
       /// If it's type CurveLPStakedOnConvex then pool id can't be 0
-      IBooster _booster = CONTROLLER.booster();
+      IBooster _booster = CONTROLLER.BOOSTER();
       if (isTokenStaked[_token]) {
         /// In this case the user's balance is already staked so we only stake the newly deposited amount
         _depositAndStakeOnConvex(_token, _booster, _amount, _poolId);
@@ -155,7 +148,7 @@ contract Vault is IVault, Context {
 
     isTokenStaked[_tokenAddress] = true;
 
-    IBooster _booster = CONTROLLER.booster();
+    IBooster _booster = CONTROLLER.BOOSTER();
     _depositAndStakeOnConvex(_tokenAddress, _booster, balances[_tokenAddress], _poolId);
 
     emit Staked(_tokenAddress, balances[_tokenAddress]);
@@ -174,12 +167,11 @@ contract Vault is IVault, Context {
   /// @dev    Transfers a percentage of the crv and cvx rewards to claim AMPH tokens
   /// @param _tokenAddresses The addresses of the erc20 tokens
   function claimRewards(address[] memory _tokenAddresses) external override onlyMinter {
-    uint256 _tokensToClaim = _tokenAddresses.length;
     uint256 _totalCrvReward;
     uint256 _totalCvxReward;
 
     IAMPHClaimer _amphClaimer = CONTROLLER.claimerContract();
-    for (uint256 _i; _i < _tokensToClaim;) {
+    for (uint256 _i; _i < _tokenAddresses.length;) {
       IVaultController.CollateralInfo memory _collateralInfo = CONTROLLER.tokenCollateralInfo(_tokenAddresses[_i]);
       if (_collateralInfo.tokenId == 0) revert Vault_TokenNotRegistered();
       if (_collateralInfo.collateralType != IVaultController.CollateralType.CurveLPStakedOnConvex) {
@@ -195,11 +187,8 @@ contract Vault is IVault, Context {
         _rewardsContract.getReward(address(this), false);
       }
 
-      // All other rewards
-      uint256 _rewardsAmount = _rewardsContract.extraRewardsLength();
-
       // Loop and claim all virtual rewards
-      for (uint256 _j; _j < _rewardsAmount;) {
+      for (uint256 _j; _j < _rewardsContract.extraRewardsLength();) {
         IVirtualBalanceRewardPool _virtualReward = _rewardsContract.extraRewards(_j);
         IERC20 _rewardToken = _virtualReward.rewardToken();
         uint256 _earnedReward = _virtualReward.earned(address(this));
@@ -271,7 +260,7 @@ contract Vault is IVault, Context {
     _rewards[0] = Reward(CRV, _crvReward);
 
     uint256 _i;
-    for (_i; _i < _rewardsAmount; _i++) {
+    for (_i; _i < _rewardsAmount;) {
       IVirtualBalanceRewardPool _virtualReward = _rewardsContract.extraRewards(_i);
       IERC20 _rewardToken = _virtualReward.rewardToken();
       uint256 _earnedReward = _virtualReward.earned(address(this));
@@ -281,6 +270,10 @@ contract Vault is IVault, Context {
         _cvxPosition = _i;
       }
       _rewards[_i + 1] = Reward(_rewardToken, _earnedReward);
+
+      unchecked {
+        ++_i;
+      }
     }
 
     uint256 _takenCVX;
@@ -328,13 +321,13 @@ contract Vault is IVault, Context {
     uint256 _baseAmount
   ) external override onlyVaultController returns (uint256 _newLiability) {
     if (_increase) {
-      baseLiability = baseLiability + _baseAmount;
+      baseLiability += _baseAmount;
     } else {
       // require statement only valid for repayment
       if (baseLiability < _baseAmount) revert Vault_RepayTooMuch();
-      baseLiability = baseLiability - _baseAmount;
+      baseLiability -= _baseAmount;
     }
-    return baseLiability;
+    _newLiability = baseLiability;
   }
 
   function _depositAndStakeOnConvex(address _token, IBooster _booster, uint256 _amount, uint256 _poolId) internal {

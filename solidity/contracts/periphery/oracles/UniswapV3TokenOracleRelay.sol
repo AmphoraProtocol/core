@@ -52,7 +52,7 @@ contract UniswapV3TokenOracleRelay is OracleRelay {
     //get price of eth to convert _priceInEth to USD terms
     uint256 _ethPrice = ETH_ORACLE.currentValue();
 
-    return (_ethPrice * _priceInEth) / 1e18;
+    _usdPrice = (_ethPrice * _priceInEth) / 1e18;
   }
 
   /// @notice Returns last second value of the oracle

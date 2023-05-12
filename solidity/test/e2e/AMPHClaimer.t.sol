@@ -16,7 +16,7 @@ contract E2EAMPHClaimer is CommonE2EBase {
 
     // create a vault for bob
     bobVaultId = _mintVault(bob);
-    bobVault = IVault(vaultController.vaultAddress(bobVaultId));
+    bobVault = IVault(vaultController.vaultIdVaultAddress(bobVaultId));
 
     // deal some tokens to bob
     deal(CVX_ADDRESS, address(bobVault), 1 ether);

@@ -64,10 +64,6 @@ contract UnitUSDAGetters is Base {
   function testDecimalsReturnsDecimals() public {
     assertEq(_usda.decimals(), 18);
   }
-
-  function testReserveAddressReturnsToken() public {
-    assertEq(_usda.reserveAddress(), address(_mockToken));
-  }
 }
 
 contract UnitUSDADeposit is Base {

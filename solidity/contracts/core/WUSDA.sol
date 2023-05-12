@@ -38,7 +38,7 @@ contract WUSDA is IWUSDA, ERC20, ERC20Permit {
   // Attributes
 
   /// @notice The reference to the usda token.
-  address private immutable _USDA;
+  address public immutable USDA;
 
   //--------------------------------------------------------------------------
 
@@ -46,7 +46,7 @@ contract WUSDA is IWUSDA, ERC20, ERC20Permit {
   /// @param _name The wUSDA ERC20 name.
   /// @param _symbol The wUSDA ERC20 symbol.
   constructor(address _usdaToken, string memory _name, string memory _symbol) ERC20(_name, _symbol) ERC20Permit(_name) {
-    _USDA = _usdaToken;
+    USDA = _usdaToken;
   }
 
   //--------------------------------------------------------------------------
@@ -177,30 +177,30 @@ contract WUSDA is IWUSDA, ERC20, ERC20Permit {
 
   /// @return _usdaAddress The address of the underlying 'wrapped' token ie) usda.
   function underlying() external view override returns (address _usdaAddress) {
-    return _USDA;
+    _usdaAddress = USDA;
   }
 
   /// @return _usdaAmount The total _usdaAmount held by this contract.
   function totalUnderlying() external view override returns (uint256 _usdaAmount) {
-    return _wUSDAToUSDA(totalSupply(), _usdaSupply());
+    _usdaAmount = _wUSDAToUSDA(totalSupply(), _usdaSupply());
   }
 
   /// @param _owner The account address.
   /// @return _redeemableUSDA The usda balance redeemable by the owner.
   function balanceOfUnderlying(address _owner) external view override returns (uint256 _redeemableUSDA) {
-    return _wUSDAToUSDA(balanceOf(_owner), _usdaSupply());
+    _redeemableUSDA = _wUSDAToUSDA(balanceOf(_owner), _usdaSupply());
   }
 
   /// @param _usdaAmount The amount of usda tokens.
   /// @return _wusdaAmount The amount of wUSDA tokens exchangeable.
   function underlyingToWrapper(uint256 _usdaAmount) external view override returns (uint256 _wusdaAmount) {
-    return _usdaToWUSDA(_usdaAmount, _usdaSupply());
+    _wusdaAmount = _usdaToWUSDA(_usdaAmount, _usdaSupply());
   }
 
   /// @param _wusdaAmount The amount of wUSDA tokens.
   /// @return _usdaAmount The amount of usda tokens exchangeable.
   function wrapperToUnderlying(uint256 _wusdaAmount) external view override returns (uint256 _usdaAmount) {
-    return _wUSDAToUSDA(_wusdaAmount, _usdaSupply());
+    _usdaAmount = _wUSDAToUSDA(_wusdaAmount, _usdaSupply());
   }
 
   //--------------------------------------------------------------------------
@@ -212,7 +212,7 @@ contract WUSDA is IWUSDA, ERC20, ERC20Permit {
   /// @param _usdaAmount The amount of _usdaAmount to deposit.
   /// @param _wusdaAmount The amount of _wusdaAmount to mint.
   function _deposit(address _from, address _to, uint256 _usdaAmount, uint256 _wusdaAmount) private {
-    IERC20(_USDA).safeTransferFrom(_from, address(this), _usdaAmount);
+    IERC20(USDA).safeTransferFrom(_from, address(this), _usdaAmount);
     _mint(_to, _wusdaAmount);
 
     emit Deposit(_from, _to, _usdaAmount, _wusdaAmount);
@@ -225,7 +225,7 @@ contract WUSDA is IWUSDA, ERC20, ERC20Permit {
   /// @param _wusdaAmount The amount of _wusdaAmount to burn.
   function _withdraw(address _from, address _to, uint256 _usdaAmount, uint256 _wusdaAmount) private {
     _burn(_from, _wusdaAmount);
-    IERC20(_USDA).safeTransfer(_to, _usdaAmount);
+    IERC20(USDA).safeTransfer(_to, _usdaAmount);
 
     emit Withdraw(_from, _to, _usdaAmount, _wusdaAmount);
   }
@@ -233,7 +233,7 @@ contract WUSDA is IWUSDA, ERC20, ERC20Permit {
   /// @notice Queries the current total supply of usda.
   /// @return _totalUsdaSupply The current usda supply.
   function _usdaSupply() private view returns (uint256 _totalUsdaSupply) {
-    return IERC20(_USDA).totalSupply();
+    _totalUsdaSupply = IERC20(USDA).totalSupply();
   }
 
   //--------------------------------------------------------------------------
@@ -244,7 +244,7 @@ contract WUSDA is IWUSDA, ERC20, ERC20Permit {
   /// @param _totalUsdaSupply The total usda supply.
   /// @return _wusdaAmount The amount of wUSDA tokens exchangeable.
   function _usdaToWUSDA(uint256 _usdaAmount, uint256 _totalUsdaSupply) private pure returns (uint256 _wusdaAmount) {
-    return (_usdaAmount * MAX_wUSDA_SUPPLY) / _totalUsdaSupply;
+    _wusdaAmount = (_usdaAmount * MAX_wUSDA_SUPPLY) / _totalUsdaSupply;
   }
 
   /// @notice Converts _wusdaAmount amount to _usdaAmount.
@@ -252,6 +252,6 @@ contract WUSDA is IWUSDA, ERC20, ERC20Permit {
   /// @param _totalUsdaSupply The total usda supply.
   /// @return _usdaAmount The amount of usda tokens exchangeable.
   function _wUSDAToUSDA(uint256 _wusdaAmount, uint256 _totalUsdaSupply) private pure returns (uint256 _usdaAmount) {
-    return (_wusdaAmount * _totalUsdaSupply) / MAX_wUSDA_SUPPLY;
+    _usdaAmount = (_wusdaAmount * _totalUsdaSupply) / MAX_wUSDA_SUPPLY;
   }
 }

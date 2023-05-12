@@ -15,7 +15,7 @@ contract CurveLpLiquidation is CommonE2EBase {
   function testCurveLpLiquidation() public {
     // bob mints vault
     bobVaultId = _mintVault(bob);
-    bobVault = IVault(vaultController.vaultAddress(bobVaultId));
+    bobVault = IVault(vaultController.vaultIdVaultAddress(bobVaultId));
 
     // bob deposits LP
     vm.startPrank(bob);
@@ -54,11 +54,11 @@ contract CurveLpLiquidation is CommonE2EBase {
     // liquidate
     vm.startPrank(dave);
     uint256 _daveBalanceBefore = usdtStableLP.balanceOf(dave);
-    uint256 _vaultTokenBalanceBefore = bobVault.tokenBalance(address(usdtStableLP));
+    uint256 _vaultTokenBalanceBefore = bobVault.balances(address(usdtStableLP));
     uint256 _tokensToLiquidate = vaultController.tokensToLiquidate(bobVaultId, address(usdtStableLP));
     vaultController.liquidateVault(bobVaultId, address(usdtStableLP), _tokensToLiquidate);
     uint256 _daveBalanceAfter = usdtStableLP.balanceOf(dave);
-    uint256 _vaultTokenBalanceAfter = bobVault.tokenBalance(address(usdtStableLP));
+    uint256 _vaultTokenBalanceAfter = bobVault.balances(address(usdtStableLP));
     vm.stopPrank();
     assertGt(_vaultTokenBalanceBefore, _vaultTokenBalanceAfter);
     assertGt(_daveBalanceAfter, _daveBalanceBefore);

@@ -102,6 +102,21 @@ interface IVault {
   /*///////////////////////////////////////////////////////////////
                             VARIABLES
     //////////////////////////////////////////////////////////////*/
+
+  /**
+   * @notice Returns the struct containing the vault information
+   * @return _id Id of the vault
+   * @return _minter Minter of the vault
+   */
+  function vaultInfo() external view returns (uint96 _id, address _minter);
+
+  /**
+   * @notice Returns the vault's balance of a token
+   * @param _token The address of the token
+   * @return _balance The token's balance of the vault
+   */
+  function balances(address _token) external view returns (uint256 _balance);
+
   /**
    * @notice Returns the current vault base liability
    * @return _liability The current vault base liability of the vault
@@ -137,12 +152,6 @@ interface IVault {
   /*///////////////////////////////////////////////////////////////
                               LOGIC
     //////////////////////////////////////////////////////////////*/
-  /**
-   * @notice Returns the vault's balance of a token
-   * @param _token The address of the token
-   * @return _balance The token's balance of the vault
-   */
-  function tokenBalance(address _token) external view returns (uint256 _balance);
 
   function isStaked(address _token) external view returns (bool _isStaked);
 

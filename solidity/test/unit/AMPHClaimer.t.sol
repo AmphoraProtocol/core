@@ -49,7 +49,7 @@ abstract contract Base is DSTestPlus {
 
     vm.mockCall(
       address(_mockVaultController),
-      abi.encodeWithSelector(IVaultController.vaultAddress.selector),
+      abi.encodeWithSelector(IVaultController.vaultIdVaultAddress.selector),
       abi.encode(bobVault)
     );
     vm.mockCall(address(_mockCVX), abi.encodeWithSelector(IERC20.transferFrom.selector), abi.encode(true));

@@ -125,7 +125,7 @@ contract E2EBorrowSUSD is IsolatedBase {
 
     // bob mints vault
     bobVaultId = _mintVault(bob);
-    bobVault = IVault(vaultController.vaultAddress(bobVaultId));
+    bobVault = IVault(vaultController.vaultIdVaultAddress(bobVaultId));
 
     // bob deposits wETH collateral
     vm.startPrank(bob);
@@ -182,7 +182,7 @@ contract E2EMultiAssetLoan is IsolatedBase {
 
     // make a vault and transfer wBTC
     gusVaultId = _mintVault(gus);
-    gusVault = IVault(vaultController.vaultAddress(gusVaultId));
+    gusVault = IVault(vaultController.vaultIdVaultAddress(gusVaultId));
 
     // deposits wbtc
     vm.startPrank(gus);
@@ -339,7 +339,7 @@ contract E2ENoReserve is IsolatedBase {
 
     // bob mints vault
     bobVaultId = _mintVault(bob);
-    bobVault = IVault(vaultController.vaultAddress(bobVaultId));
+    bobVault = IVault(vaultController.vaultIdVaultAddress(bobVaultId));
 
     // bob deposits wETH collateral
     vm.startPrank(bob);
@@ -360,7 +360,7 @@ contract E2ENoReserve is IsolatedBase {
 
     // carol mints vault
     carolVaultId = _mintVault(carol);
-    carolVault = IVault(vaultController.vaultAddress(carolVaultId));
+    carolVault = IVault(vaultController.vaultIdVaultAddress(carolVaultId));
 
     // carol deposits wETH collateral
     vm.startPrank(carol);
@@ -442,7 +442,7 @@ contract E2EUniPool is IsolatedBase {
 
     // bob mints vault, start some liability
     bobVaultId = _mintVault(bob);
-    bobVault = IVault(vaultController.vaultAddress(bobVaultId));
+    bobVault = IVault(vaultController.vaultIdVaultAddress(bobVaultId));
 
     // bob deposits wETH collateral
     vm.startPrank(bob);
@@ -538,7 +538,7 @@ contract E2EUniV3Pool is IsolatedBase {
 
     // bob mints vault, start some liability
     bobVaultId = _mintVault(bob);
-    bobVault = IVault(vaultController.vaultAddress(bobVaultId));
+    bobVault = IVault(vaultController.vaultIdVaultAddress(bobVaultId));
 
     // bob deposits wETH collateral
     vm.startPrank(bob);
@@ -686,7 +686,7 @@ contract E2EwUSDAUniV3 is IsolatedBase {
 
     // bob mints vault, start some liability
     bobVaultId = _mintVault(bob);
-    bobVault = IVault(vaultController.vaultAddress(bobVaultId));
+    bobVault = IVault(vaultController.vaultIdVaultAddress(bobVaultId));
 
     // bob deposits wETH collateral
     vm.startPrank(bob);
@@ -879,7 +879,7 @@ contract E2EWBtcLoan is IsolatedBase {
 
     // make a vault and transfer wBTC
     gusVaultId = _mintVault(gus);
-    gusVault = IVault(vaultController.vaultAddress(gusVaultId));
+    gusVault = IVault(vaultController.vaultIdVaultAddress(gusVaultId));
 
     // deposits wbtc
     vm.startPrank(gus);

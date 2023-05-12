@@ -28,7 +28,7 @@ contract MintVaultAndDeposit is Script, TestConstants {
     weth.approve(address(vault), depositAmount);
     /// Deposit WETH
     vault.depositERC20(WETH_ADDRESS, depositAmount);
-    console.log('WETH BALANCE IN VAULT AFTER DEPOSIT: ', vault.tokenBalance(WETH_ADDRESS));
+    console.log('WETH BALANCE IN VAULT AFTER DEPOSIT: ', vault.balances(WETH_ADDRESS));
     vm.stopBroadcast();
   }
 }

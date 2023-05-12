@@ -314,7 +314,7 @@ contract UnitVaultControllerMintVault is Base {
   function testMintVault() public {
     address _vault = vaultController.mintVault();
     assertEq(vaultController.vaultsMinted(), 1);
-    assertEq(vaultController.vaultAddress(1), _vault);
+    assertEq(vaultController.vaultIdVaultAddress(1), _vault);
   }
 }
 
@@ -1178,18 +1178,18 @@ contract UnitVaultControllerModifyTotalDeposited is VaultBase {
   function testRevertNotValidToken(address _token) public {
     vm.assume(_token != WETH_ADDRESS && _token != address(usdtLp));
 
-    vm.prank(vaultController.vaultAddress(_vaultId));
+    vm.prank(vaultController.vaultIdVaultAddress(_vaultId));
     vm.expectRevert(IVaultController.VaultController_TokenNotRegistered.selector);
     vaultController.modifyTotalDeposited(_vaultId, 0, _token, true);
   }
 
   function testValidVault() public {
-    vm.prank(vaultController.vaultAddress(_vaultId));
+    vm.prank(vaultController.vaultIdVaultAddress(_vaultId));
     vaultController.modifyTotalDeposited(_vaultId, 0, WETH_ADDRESS, true);
   }
 
   function testIncrease(uint56 _toIncrease) public {
-    vm.startPrank(vaultController.vaultAddress(_vaultId));
+    vm.startPrank(vaultController.vaultIdVaultAddress(_vaultId));
     uint256 _totalDepositedBefore = vaultController.tokenTotalDeposited(WETH_ADDRESS);
     vaultController.modifyTotalDeposited(_vaultId, _toIncrease, WETH_ADDRESS, true);
     uint256 _totalDepositedAfter = vaultController.tokenTotalDeposited(WETH_ADDRESS);
@@ -1198,7 +1198,7 @@ contract UnitVaultControllerModifyTotalDeposited is VaultBase {
   }
 
   function testDecrease(uint56 _toDecrease) public {
-    vm.startPrank(vaultController.vaultAddress(_vaultId));
+    vm.startPrank(vaultController.vaultIdVaultAddress(_vaultId));
     vaultController.modifyTotalDeposited(_vaultId, _toDecrease, WETH_ADDRESS, true);
 
     uint256 _totalDepositedBefore = vaultController.tokenTotalDeposited(WETH_ADDRESS);
@@ -1228,7 +1228,7 @@ contract UnitVaultControllerCapReached is Base {
     vm.assume(cap >= _amount);
     vm.assume(_amount > 0);
 
-    address _vaultAddress = vaultController.vaultAddress(1);
+    address _vaultAddress = vaultController.vaultIdVaultAddress(1);
     vm.prank(alice);
     IVault(_vaultAddress).depositERC20(WETH_ADDRESS, _amount);
   }
@@ -1237,7 +1237,7 @@ contract UnitVaultControllerCapReached is Base {
     vm.assume(cap < _amount);
     vm.assume(_amount > 0);
 
-    address _vaultAddress = vaultController.vaultAddress(1);
+    address _vaultAddress = vaultController.vaultIdVaultAddress(1);
     vm.prank(alice);
     vm.expectRevert(IVaultController.VaultController_CapReached.selector);
     IVault(_vaultAddress).depositERC20(WETH_ADDRESS, _amount);

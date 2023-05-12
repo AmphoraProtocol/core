@@ -79,12 +79,6 @@ contract USDA is Pausable, UFragments, IUSDA, ExponentialNoError, Roles {
     _unpause();
   }
 
-  /// @notice Returns the address of the reserve currency, or susd
-  /// @return _reserveAddress The reserve address
-  function reserveAddress() public view override returns (address _reserveAddress) {
-    return address(sUSD);
-  }
-
   /// @notice Deposit sUSD to mint USDA
   /// @dev Caller should obtain 1 USDA for each sUSD
   /// the calculations for deposit mimic the calculations done by mint in the ampleforth contract, simply with the susd transfer
@@ -172,12 +166,13 @@ contract USDA is Pausable, UFragments, IUSDA, ExponentialNoError, Roles {
     _mint(_msgSender(), _susdAmount);
   }
 
+  /// @dev mint a specific `amount` of tokens to the `target`
   function _mint(address _target, uint256 _amount) internal {
     uint256 __gonsPerFragment = _gonsPerFragment;
     // the gonbalances of the sender is in gons, therefore we must multiply the deposit amount, which is in fragments, by gonsperfragment
     _gonBalances[_target] += _amount * __gonsPerFragment;
     // total supply is in fragments, and so we add amount
-    _totalSupply = _totalSupply + _amount;
+    _totalSupply += _amount;
     // and totalgons of course is in gons, and so we multiply amount by gonsperfragment to get the amount of gons we must add to totalGons
     _totalGons += _amount * __gonsPerFragment;
     // emit both a mint and transfer event
@@ -192,12 +187,13 @@ contract USDA is Pausable, UFragments, IUSDA, ExponentialNoError, Roles {
     _burn(_msgSender(), _susdAmount);
   }
 
+  /// @dev burn a specific `amount` of tokens from the `target`
   function _burn(address _target, uint256 _amount) internal {
     uint256 __gonsPerFragment = _gonsPerFragment;
     // modify the gonbalances of the sender, subtracting the amount of gons, therefore amount * gonsperfragment
     _gonBalances[_target] -= (_amount * __gonsPerFragment);
     // modify totalSupply and totalGons
-    _totalSupply = _totalSupply - _amount;
+    _totalSupply -= _amount;
     _totalGons -= (_amount * __gonsPerFragment);
     // emit both a burn and transfer event
     emit Transfer(_target, address(0), _amount);
@@ -264,7 +260,7 @@ contract USDA is Pausable, UFragments, IUSDA, ExponentialNoError, Roles {
   /// @notice Function for distributing the donation to all USDA holders
   /// @param _amount The amount of USDA to donate
   function _donation(uint256 _amount) internal {
-    _totalSupply = _totalSupply + _amount;
+    _totalSupply += _amount;
     if (_totalSupply > MAX_SUPPLY) _totalSupply = MAX_SUPPLY;
     _gonsPerFragment = _totalGons / _totalSupply;
     emit Donation(_msgSender(), _amount, _totalSupply);

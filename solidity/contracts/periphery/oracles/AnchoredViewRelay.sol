@@ -52,7 +52,7 @@ contract AnchoredViewRelay is OracleRelay {
   /// @dev Implementation in getLastSecond
   /// @return _value The current value of oracle
   function currentValue() external view override returns (uint256 _value) {
-    return _getLastSecond();
+    _value = _getLastSecond();
   }
 
   /// @notice Compares the main value (chainlink) to the anchor value (uniswap v3)

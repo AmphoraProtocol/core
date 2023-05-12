@@ -245,7 +245,7 @@ contract GovernorCharlie is IGovernorCharlie {
       _newProposal.endBlock,
       _description
     );
-    return _newProposal.id;
+    _proposalId = _newProposal.id;
   }
 
   /**
@@ -474,7 +474,7 @@ contract GovernorCharlie is IGovernorCharlie {
     else if (_proposal.eta == 0) return ProposalState.Succeeded;
     else if (_proposal.executed) return ProposalState.Executed;
     else if (block.timestamp >= (_proposal.eta + GRACE_PERIOD)) return ProposalState.Expired;
-    return ProposalState.Queued;
+    _state = ProposalState.Queued;
   }
 
   /**
@@ -548,7 +548,7 @@ contract GovernorCharlie is IGovernorCharlie {
     _receipt.support = _support;
     _receipt.votes = _votes;
 
-    return _votes;
+    _numberOfVotes = _votes;
   }
 
   /**
@@ -725,13 +725,13 @@ contract GovernorCharlie is IGovernorCharlie {
   /// @notice Returns the chaid id of the blockchain
   /// @return _chainId The chain id
   function _getChainIdInternal() internal view returns (uint256 _chainId) {
-    return block.chainid;
+    _chainId = block.chainid;
   }
 
   /// @notice Returns the block timestamp
   /// @return _timestamp The block timestamp
   function _getBlockTimestamp() internal view returns (uint256 _timestamp) {
     // solium-disable-next-line security/no-block-members
-    return block.timestamp;
+    _timestamp = block.timestamp;
   }
 }

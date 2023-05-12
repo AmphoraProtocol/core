@@ -36,7 +36,7 @@ contract ChainlinkTokenOracleRelay is OracleRelay {
 
     uint256 _ethPrice = ETH_PRICE_FEED.currentValue();
 
-    return (_ethPrice * _priceInEth) / 1e18;
+    _value = (_ethPrice * _priceInEth) / 1e18;
   }
 
   /// @notice Returns last second value of the oracle
@@ -44,7 +44,6 @@ contract ChainlinkTokenOracleRelay is OracleRelay {
   function _getLastSecond() private view returns (uint256 _value) {
     int256 _latest = _AGGREGATOR.latestAnswer();
     if (_latest <= 0) revert ChainlinkOracle_PriceLessThanZero();
-    uint256 _scaled = (uint256(_latest) * MULTIPLY) / DIVIDE;
-    return _scaled;
+    _value = (uint256(_latest) * MULTIPLY) / DIVIDE;
   }
 }

@@ -52,7 +52,7 @@ contract E2EVaultControllerMigration is CommonE2EBase {
     vm.startPrank(bob);
     newVaultController.mintVault();
     bobVaultId = newVaultController.vaultsMinted();
-    bobVault = IVault(newVaultController.vaultAddress(uint96(bobVaultId)));
+    bobVault = IVault(newVaultController.vaultIdVaultAddress(uint96(bobVaultId)));
 
     weth.approve(address(bobVault), type(uint256).max);
     bobVault.depositERC20(WETH_ADDRESS, weth.balanceOf(bob));
@@ -72,7 +72,7 @@ contract E2EVaultControllerMigration is CommonE2EBase {
 
     // old vault manager should still work fine (users can borrow and get liquidated)
     carolVaultId = _mintVault(carol);
-    carolVault = IVault(vaultController.vaultAddress(uint96(carolVaultId)));
+    carolVault = IVault(vaultController.vaultIdVaultAddress(uint96(carolVaultId)));
 
     vm.startPrank(carol);
     uni.approve(address(carolVault), type(uint256).max);

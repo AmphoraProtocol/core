@@ -43,7 +43,7 @@ contract UniswapV3OracleRelay is OracleRelay {
   /// @dev Implementation in _getLastSecond
   /// @return _value The current value
   function currentValue() external view override returns (uint256 _value) {
-    return _getLastSeconds(LOOKBACK);
+    _value = _getLastSeconds(LOOKBACK);
   }
 
   /// @notice Returns last second value of the oracle

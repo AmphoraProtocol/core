@@ -19,7 +19,7 @@ contract E2EVault is CommonE2EBase {
     // Bob mints vault
     bobVaultId = _mintVault(bob);
     // Since we only have 1 vault the id: 1 is gonna be Bob's vault
-    bobVault = IVault(vaultController.vaultAddress(bobVaultId));
+    bobVault = IVault(vaultController.vaultIdVaultAddress(bobVaultId));
 
     vm.startPrank(bob);
     weth.approve(address(bobVault), bobDeposit);
@@ -66,14 +66,14 @@ contract E2EVault is CommonE2EBase {
     vm.stopPrank();
 
     uint256 _balanceAfterDeposit = usdtStableLP.balanceOf(bob);
-    assertEq(bobVault.tokenBalance(address(usdtStableLP)), _depositAmount);
+    assertEq(bobVault.balances(address(usdtStableLP)), _depositAmount);
     assertEq(_balanceAfterDeposit, bobWETH - _depositAmount);
     assertEq(usdtStableLP.balanceOf(USDT_LP_STAKED_CONTRACT), _stakedBalance + _depositAmount);
 
     // Withdraw and unstake
     vm.prank(bob);
     bobVault.withdrawERC20(address(usdtStableLP), _depositAmount);
-    assertEq(bobVault.tokenBalance(address(usdtStableLP)), 0);
+    assertEq(bobVault.balances(address(usdtStableLP)), 0);
     assertEq(_balanceAfterDeposit + _depositAmount, bobWETH);
     assertEq(usdtStableLP.balanceOf(USDT_LP_STAKED_CONTRACT), _stakedBalance);
   }
@@ -203,7 +203,7 @@ contract E2EVault is CommonE2EBase {
     // Withdraw and unstake usdtCurveLP
     vm.prank(bob);
     bobVault.withdrawERC20(address(usdtStableLP), _depositAmount);
-    assertEq(bobVault.tokenBalance(address(usdtStableLP)), 0);
+    assertEq(bobVault.balances(address(usdtStableLP)), 0);
     assertEq(usdtStableLP.balanceOf(bob), bobCurveLPBalance);
 
     IVault.Reward[] memory _rewards = bobVault.claimableRewards(address(usdtStableLP));
@@ -261,7 +261,7 @@ contract E2EVault is CommonE2EBase {
     vm.stopPrank();
 
     assertEq(threeCrvLP.balanceOf(address(bobVault)), 0);
-    assertEq(bobVault.tokenBalance(THREE_CRV_LP_ADDRESS), _depositAmount * 2);
+    assertEq(bobVault.balances(THREE_CRV_LP_ADDRESS), _depositAmount * 2);
     assertEq(threeCrvLP.balanceOf(THREE_CRV_LP_STAKED_CONTRACT), _stakedAmountInContract + _depositAmount * 2);
   }
 
@@ -294,7 +294,7 @@ contract E2EVault is CommonE2EBase {
     vm.stopPrank();
 
     assertEq(threeCrvLP.balanceOf(address(bobVault)), 0);
-    assertEq(bobVault.tokenBalance(THREE_CRV_LP_ADDRESS), _depositAmount);
+    assertEq(bobVault.balances(THREE_CRV_LP_ADDRESS), _depositAmount);
     assertEq(threeCrvLP.balanceOf(THREE_CRV_LP_STAKED_CONTRACT), _stakedAmountInContract + _depositAmount);
   }
 }

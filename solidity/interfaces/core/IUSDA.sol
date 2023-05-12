@@ -93,9 +93,6 @@ interface IUSDA is IERC20Metadata, IRoles {
   /// @notice Thrown when trying to deposit zero amount
   error USDA_ZeroAmount();
 
-  /// @notice Thrown when a transfer fails
-  error USDA_TransferFailed();
-
   /// @notice Thrown when trying to withdraw more than the balance
   error USDA_InsufficientFunds();
 
@@ -112,13 +109,13 @@ interface IUSDA is IERC20Metadata, IRoles {
                             VARIABLES
     //////////////////////////////////////////////////////////////*/
 
+  /// @notice Returns sUSD contract (reserve)
+  /// @return _sUSD The sUSD contract
+  function sUSD() external view returns (IERC20 _sUSD);
+
   /// @notice Returns the reserve ratio
   /// @return _reserveRatio The reserve ratio
   function reserveRatio() external view returns (uint192 _reserveRatio);
-
-  /// @notice Returns the reserve address
-  /// @return _reserveAddress The reserve address
-  function reserveAddress() external view returns (address _reserveAddress);
 
   /// @notice Returns the reserve amount
   /// @return _reserveAmount The reserve amount

@@ -25,7 +25,7 @@ contract E2EVaultController is CommonE2EBase {
     // Bob mints vault
     _mintVault(bob);
     // Since we only have 1 vault the id: 1 is gonna be Bob's vault
-    bobVault = IVault(vaultController.vaultAddress(bobsVaultId));
+    bobVault = IVault(vaultController.vaultIdVaultAddress(bobsVaultId));
 
     vm.startPrank(bob);
     weth.approve(address(bobVault), bobWETH);
@@ -35,7 +35,7 @@ contract E2EVaultController is CommonE2EBase {
     // Carol mints vault
     _mintVault(carol);
     // Since we only have 2 vaults the id: 2 is gonna be Carol's vault
-    carolVault = IVault(vaultController.vaultAddress(carolsVaultId));
+    carolVault = IVault(vaultController.vaultIdVaultAddress(carolsVaultId));
 
     vm.startPrank(carol);
     uni.approve(address(carolVault), carolUni);
@@ -43,7 +43,7 @@ contract E2EVaultController is CommonE2EBase {
     vm.stopPrank();
 
     _mintVault(dave);
-    daveVault = IVault(vaultController.vaultAddress(3));
+    daveVault = IVault(vaultController.vaultIdVaultAddress(3));
   }
 
   /**
@@ -146,7 +146,7 @@ contract E2EVaultController is CommonE2EBase {
     uint256 _maxTokens = ((_calculatedLiability - _borrowingPower) * 1 ether) / _denominator;
 
     if (_totalToLiquidate > _maxTokens) _finalTokensToLiquidate = _maxTokens;
-    uint256 _vaultTokenBalance = _vault.tokenBalance(_asset);
+    uint256 _vaultTokenBalance = _vault.balances(_asset);
     if (_finalTokensToLiquidate > _vaultTokenBalance) _finalTokensToLiquidate = _vaultTokenBalance;
   }
 
@@ -193,9 +193,9 @@ contract E2EVaultController is CommonE2EBase {
   }
 
   function testVaultDeposits() public {
-    assertEq(bobVault.tokenBalance(WETH_ADDRESS), bobWETH);
+    assertEq(bobVault.balances(WETH_ADDRESS), bobWETH);
 
-    assertEq(carolVault.tokenBalance(UNI_ADDRESS), carolUni);
+    assertEq(carolVault.balances(UNI_ADDRESS), carolUni);
   }
 
   function testCap() public {
@@ -390,7 +390,7 @@ contract E2EVaultController is CommonE2EBase {
     uint192 _borrowInterestFactor = vaultController.interestFactor();
     uint192 _if = _payInterestMath(_borrowInterestFactor);
     uint192 _accountBorrowingPower = vaultController.vaultBorrowingPower(bobsVaultId);
-    uint256 _vaultInitialWethBalance = bobVault.tokenBalance(WETH_ADDRESS);
+    uint256 _vaultInitialWethBalance = bobVault.balances(WETH_ADDRESS);
 
     // Borrow the maximum amount
     vm.prank(bob);
@@ -445,7 +445,7 @@ contract E2EVaultController is CommonE2EBase {
       assertEq(_newAccountBorrowingPower, 0);
 
       // Check that the vault is now empty
-      uint256 _vaultWethBalance = bobVault.tokenBalance(WETH_ADDRESS);
+      uint256 _vaultWethBalance = bobVault.balances(WETH_ADDRESS);
       uint256 _vaultWethBalanceOf = IERC20(WETH_ADDRESS).balanceOf(address(bobVault));
       assertEq(_vaultWethBalance, _vaultWethBalanceOf);
       assertEq(_vaultWethBalance, 0);
@@ -463,7 +463,7 @@ contract E2EVaultController is CommonE2EBase {
   }
 
   function testOverLiquidationAndLiquidateInsolventVault() public {
-    uint256 _carolVaultStartUniBalance = carolVault.tokenBalance(UNI_ADDRESS);
+    uint256 _carolVaultStartUniBalance = carolVault.balances(UNI_ADDRESS);
 
     uint192 _carolMaxBorrow = vaultController.vaultBorrowingPower(carolsVaultId);
 
@@ -512,8 +512,8 @@ contract E2EVaultController is CommonE2EBase {
     );
 
     // Carol's vault got some UNI tokens removed
-    assertEq(_carolVaultStartUniBalance - _liquidated, carolVault.tokenBalance(UNI_ADDRESS));
-    assertGt(carolVault.tokenBalance(UNI_ADDRESS), 0);
+    assertEq(_carolVaultStartUniBalance - _liquidated, carolVault.balances(UNI_ADDRESS));
+    assertGt(carolVault.balances(UNI_ADDRESS), 0);
   }
 
   function testLiquidateVaultWhenCollateralLosesValue() public {
@@ -537,7 +537,7 @@ contract E2EVaultController is CommonE2EBase {
 
   function testLiquidateVaultWhenPriceIsStale() public {
     uint192 _accountBorrowingPower = vaultController.vaultBorrowingPower(bobsVaultId);
-    uint256 _vaultInitialWethBalance = bobVault.tokenBalance(WETH_ADDRESS);
+    uint256 _vaultInitialWethBalance = bobVault.balances(WETH_ADDRESS);
 
     // Borrow the maximum amount
     vm.prank(bob);

@@ -39,7 +39,7 @@ contract ChainlinkOracleRelay is OracleRelay, Ownable {
   /// @dev Implementation in getLastSecond
   /// @return _value The current value
   function currentValue() external view override returns (uint256 _value) {
-    return _getLastSecond();
+    _value = _getLastSecond();
   }
 
   /// @notice Returns true if the price is stale

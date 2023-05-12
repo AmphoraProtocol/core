@@ -56,7 +56,7 @@ contract E2EUSDA is CommonE2EBase {
     /// Someone borrows
     bobVaultId = _mintVault(bob);
     vm.startPrank(bob);
-    bobVault = IVault(vaultController.vaultAddress(bobVaultId));
+    bobVault = IVault(vaultController.vaultIdVaultAddress(bobVaultId));
     weth.approve(address(bobVault), bobWETH);
     IVault(address(bobVault)).depositERC20(address(weth), bobWETH);
     uint256 _toBorrow = vaultController.vaultBorrowingPower(bobVaultId);
@@ -99,7 +99,7 @@ contract E2EUSDA is CommonE2EBase {
     /// Someone borrows
     bobVaultId = _mintVault(bob);
     vm.startPrank(bob);
-    bobVault = IVault(vaultController.vaultAddress(bobVaultId));
+    bobVault = IVault(vaultController.vaultIdVaultAddress(bobVaultId));
     weth.approve(address(bobVault), bobWETH);
     IVault(address(bobVault)).depositERC20(address(weth), bobWETH);
     uint256 _toBorrow = vaultController.vaultBorrowingPower(bobVaultId);

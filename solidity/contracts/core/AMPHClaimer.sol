@@ -173,7 +173,7 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
     uint256 _cvxTotalRewards,
     uint256 _crvTotalRewards
   ) internal view returns (uint256 _cvxAmountToSend, uint256 _crvAmountToSend, uint256 _claimableAmph) {
-    if (_sender != vaultController.vaultAddress(_vaultId)) return (0, 0, 0);
+    if (_sender != vaultController.vaultIdVaultAddress(_vaultId)) return (0, 0, 0);
 
     uint256 _amphBalance = AMPH.balanceOf(address(this));
 

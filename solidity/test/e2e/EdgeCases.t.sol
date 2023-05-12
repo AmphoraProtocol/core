@@ -23,7 +23,7 @@ contract E2EEdgeCases is CommonE2EBase {
   function testWithdrawATokenThatYouDontHave() public {
     // create vault
     bobVaultId = _mintVault(bob);
-    bobVault = IVault(vaultController.vaultAddress(bobVaultId));
+    bobVault = IVault(vaultController.vaultIdVaultAddress(bobVaultId));
 
     // try to withdraw token
     vm.expectRevert(stdError.arithmeticError);
@@ -34,7 +34,7 @@ contract E2EEdgeCases is CommonE2EBase {
   function testWithdrawMoreTokensThanYouHave() public {
     // create vault
     gusVaultId = _mintVault(gus);
-    gusVault = IVault(vaultController.vaultAddress(gusVaultId));
+    gusVault = IVault(vaultController.vaultIdVaultAddress(gusVaultId));
 
     // deposits tokens
     vm.startPrank(gus);
@@ -51,7 +51,7 @@ contract E2EEdgeCases is CommonE2EBase {
   function testWithdrawTokensWhichWouldLiquidateYourVault() public {
     // create vault
     gusVaultId = _mintVault(gus);
-    gusVault = IVault(vaultController.vaultAddress(gusVaultId));
+    gusVault = IVault(vaultController.vaultIdVaultAddress(gusVaultId));
 
     // deposits tokens
     vm.startPrank(gus);
@@ -73,7 +73,7 @@ contract E2EEdgeCases is CommonE2EBase {
   function testDepositTokenThatIsNotWhitelisted() public {
     // create vault
     bobVaultId = _mintVault(bob);
-    bobVault = IVault(vaultController.vaultAddress(bobVaultId));
+    bobVault = IVault(vaultController.vaultIdVaultAddress(bobVaultId));
 
     // deposits tokens
     vm.startPrank(bob);
@@ -85,7 +85,7 @@ contract E2EEdgeCases is CommonE2EBase {
   function testDepositATokenWhenItSurpassesTheCap() public {
     // create vault
     bobVaultId = _mintVault(bob);
-    bobVault = IVault(vaultController.vaultAddress(bobVaultId));
+    bobVault = IVault(vaultController.vaultIdVaultAddress(bobVaultId));
 
     // deposits tokens
     vm.startPrank(bob);
@@ -98,7 +98,7 @@ contract E2EEdgeCases is CommonE2EBase {
   function testClaimRewardsWhenTheVaultControllerIsChangedInTheClaimer() public {
     // create vault in vaultController A
     bobVaultId = _mintVault(bob);
-    bobVault = IVault(vaultController.vaultAddress(bobVaultId));
+    bobVault = IVault(vaultController.vaultIdVaultAddress(bobVaultId));
 
     // fill claimer with AMPH
     vm.prank(amphToken.owner());
@@ -132,7 +132,7 @@ contract E2EEdgeCases is CommonE2EBase {
   function testDepositAndRepayWhenUSDAIsPaused() public {
     // create vault
     gusVaultId = _mintVault(gus);
-    gusVault = IVault(vaultController.vaultAddress(gusVaultId));
+    gusVault = IVault(vaultController.vaultIdVaultAddress(gusVaultId));
 
     // deposits tokens
     vm.startPrank(gus);

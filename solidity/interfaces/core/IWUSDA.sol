@@ -29,6 +29,8 @@ interface IWUSDA is IERC20 {
   /*///////////////////////////////////////////////////////////////
                             VARIABLES
     //////////////////////////////////////////////////////////////*/
+  function USDA() external view returns (address _usda);
+
   function underlying() external view returns (address _underlying);
 
   function totalUnderlying() external view returns (uint256 _totalUnderlying);

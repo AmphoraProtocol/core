@@ -59,7 +59,7 @@ abstract contract Base is DSTestPlus, TestConstants {
     );
 
     vm.mockCall(
-      address(mockVaultController), abi.encodeWithSelector(IVaultController.booster.selector), abi.encode(BOOSTER)
+      address(mockVaultController), abi.encodeWithSelector(IVaultController.BOOSTER.selector), abi.encode(BOOSTER)
     );
     vm.mockCall(_token, abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
     vm.mockCall(BOOSTER, abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(true));
@@ -91,7 +91,7 @@ contract UnitVaultGetters is Base {
     vm.prank(vaultOwner);
     vault.depositERC20(address(_mockToken), _amount);
 
-    assertEq(vault.tokenBalance(address(_mockToken)), _amount);
+    assertEq(vault.balances(address(_mockToken)), _amount);
   }
 
   function testCRV() public {
@@ -166,7 +166,7 @@ contract UnitVaultDepositERC20 is Base {
       abi.encode(1)
     );
     vm.mockCall(
-      address(mockVaultController), abi.encodeWithSelector(IVaultController.booster.selector), abi.encode(BOOSTER)
+      address(mockVaultController), abi.encodeWithSelector(IVaultController.BOOSTER.selector), abi.encode(BOOSTER)
     );
     vm.mockCall(address(_mockToken), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
     vm.mockCall(BOOSTER, abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(false));
@@ -192,7 +192,7 @@ contract UnitVaultDepositERC20 is Base {
       abi.encode(1)
     );
     vm.mockCall(
-      address(mockVaultController), abi.encodeWithSelector(IVaultController.booster.selector), abi.encode(BOOSTER)
+      address(mockVaultController), abi.encodeWithSelector(IVaultController.BOOSTER.selector), abi.encode(BOOSTER)
     );
     vm.mockCall(address(_mockToken), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
     vm.mockCall(BOOSTER, abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(false));
@@ -216,7 +216,7 @@ contract UnitVaultDepositERC20 is Base {
       abi.encode(1)
     );
     vm.mockCall(
-      address(mockVaultController), abi.encodeWithSelector(IVaultController.booster.selector), abi.encode(BOOSTER)
+      address(mockVaultController), abi.encodeWithSelector(IVaultController.BOOSTER.selector), abi.encode(BOOSTER)
     );
     vm.mockCall(address(_mockToken), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
     vm.mockCall(BOOSTER, abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(true));
@@ -243,7 +243,7 @@ contract UnitVaultDepositERC20 is Base {
     emit Deposit(address(_mockToken), _amount);
     vm.prank(vaultOwner);
     vault.depositERC20(address(_mockToken), _amount);
-    assertEq(vault.tokenBalance(address(_mockToken)), _amount);
+    assertEq(vault.balances(address(_mockToken)), _amount);
   }
 
   function testDepositTokenAlreadyStaked(uint256 _amount) public {
@@ -262,7 +262,7 @@ contract UnitVaultDepositERC20 is Base {
       abi.encode(1)
     );
     vm.mockCall(
-      address(mockVaultController), abi.encodeWithSelector(IVaultController.booster.selector), abi.encode(BOOSTER)
+      address(mockVaultController), abi.encodeWithSelector(IVaultController.BOOSTER.selector), abi.encode(BOOSTER)
     );
     vm.mockCall(address(_mockToken), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
     vm.mockCall(BOOSTER, abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(true));
@@ -271,7 +271,7 @@ contract UnitVaultDepositERC20 is Base {
     vm.prank(vaultOwner);
     vault.depositERC20(address(_mockToken), _amount);
 
-    assertEq(vault.tokenBalance(address(_mockToken)), _amount * 2);
+    assertEq(vault.balances(address(_mockToken)), _amount * 2);
   }
 }
 
@@ -403,10 +403,10 @@ contract UnitVaultWithdrawERC20 is Base {
   function testWithdrawERC20() public {
     vm.expectEmit(false, false, false, true);
     emit Withdraw(address(_mockToken), 1 ether);
-    assertEq(vault.tokenBalance(address(_mockToken)), 1 ether);
+    assertEq(vault.balances(address(_mockToken)), 1 ether);
     vm.prank(vaultOwner);
     vault.withdrawERC20(address(_mockToken), 1 ether);
-    assertEq(vault.tokenBalance(address(_mockToken)), 0);
+    assertEq(vault.balances(address(_mockToken)), 0);
   }
 }
 
@@ -1089,7 +1089,7 @@ contract UnitVaultStakeCrvLPCollateral is Base {
       abi.encode(IVaultController.CollateralType.CurveLPStakedOnConvex)
     );
     vm.mockCall(
-      address(mockVaultController), abi.encodeWithSelector(IVaultController.booster.selector), abi.encode(BOOSTER)
+      address(mockVaultController), abi.encodeWithSelector(IVaultController.BOOSTER.selector), abi.encode(BOOSTER)
     );
     vm.mockCall(_token, abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
     vm.mockCall(BOOSTER, abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(false));
@@ -1114,7 +1114,7 @@ contract UnitVaultStakeCrvLPCollateral is Base {
       abi.encode(IVaultController.CollateralType.CurveLPStakedOnConvex)
     );
     vm.mockCall(
-      address(mockVaultController), abi.encodeWithSelector(IVaultController.booster.selector), abi.encode(BOOSTER)
+      address(mockVaultController), abi.encodeWithSelector(IVaultController.BOOSTER.selector), abi.encode(BOOSTER)
     );
     vm.mockCall(_token, abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
     vm.mockCall(BOOSTER, abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(true));
@@ -1143,7 +1143,7 @@ contract UnitVaultStakeCrvLPCollateral is Base {
       abi.encode(IVaultController.CollateralType.CurveLPStakedOnConvex)
     );
     vm.mockCall(
-      address(mockVaultController), abi.encodeWithSelector(IVaultController.booster.selector), abi.encode(BOOSTER)
+      address(mockVaultController), abi.encodeWithSelector(IVaultController.BOOSTER.selector), abi.encode(BOOSTER)
     );
     vm.mockCall(_token, abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
     vm.mockCall(BOOSTER, abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(true));
@@ -1199,7 +1199,7 @@ contract UnitVaultCanStake is Base {
       abi.encode(IVaultController.CollateralType.CurveLPStakedOnConvex)
     );
     vm.mockCall(
-      address(mockVaultController), abi.encodeWithSelector(IVaultController.booster.selector), abi.encode(BOOSTER)
+      address(mockVaultController), abi.encodeWithSelector(IVaultController.BOOSTER.selector), abi.encode(BOOSTER)
     );
     vm.mockCall(_token, abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
     vm.mockCall(BOOSTER, abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(true));

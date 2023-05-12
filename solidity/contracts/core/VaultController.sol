@@ -112,27 +112,20 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
   /// @notice Returns the latest interest factor
   /// @return _interestFactor The latest interest factor
   function interestFactor() external view override returns (uint192 _interestFactor) {
-    return interest.factor;
+    _interestFactor = interest.factor;
   }
 
   /// @notice Returns the block timestamp when pay interest was last called
   /// @return _lastInterestTime The block timestamp when pay interest was last called
   function lastInterestTime() external view override returns (uint64 _lastInterestTime) {
-    return interest.lastTime;
-  }
-
-  /// @notice Returns the address of a vault given it's id
-  /// @param _id The id of the vault to target
-  /// @return _vaultAddress The address of the targetted vault
-  function vaultAddress(uint96 _id) external view override returns (address _vaultAddress) {
-    return vaultIdVaultAddress[_id];
+    _lastInterestTime = interest.lastTime;
   }
 
   /// @notice Returns an array of all the vault ids a specific wallet has
   /// @param _wallet The address of the wallet to target
   /// @return _vaultIDs The ids of the vaults the wallet has
   function vaultIDs(address _wallet) external view override returns (uint96[] memory _vaultIDs) {
-    return walletVaultIDs[_wallet];
+    _vaultIDs = walletVaultIDs[_wallet];
   }
 
   /// @notice Returns an array of all enabled tokens
@@ -145,21 +138,21 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
   /// @param _tokenAddress The address of the token to target
   /// @return _tokenId The id of the token
   function tokenId(address _tokenAddress) external view override returns (uint256 _tokenId) {
-    return tokenAddressCollateralInfo[_tokenAddress].tokenId;
+    _tokenId = tokenAddressCollateralInfo[_tokenAddress].tokenId;
   }
 
   /// @notice Returns the oracle given a token's address
   /// @param _tokenAddress The id of the token
   /// @return _oracle The address of the token's oracle
   function tokensOracle(address _tokenAddress) external view override returns (IOracleRelay _oracle) {
-    return tokenAddressCollateralInfo[_tokenAddress].oracle;
+    _oracle = tokenAddressCollateralInfo[_tokenAddress].oracle;
   }
 
   /// @notice Returns the ltv of a given token address
   /// @param _tokenAddress The address of the token
   /// @return _ltv The loan-to-value of a token
   function tokenLTV(address _tokenAddress) external view override returns (uint256 _ltv) {
-    return tokenAddressCollateralInfo[_tokenAddress].ltv;
+    _ltv = tokenAddressCollateralInfo[_tokenAddress].ltv;
   }
 
   /// @notice Returns the liquidation incentive of an accepted token collateral
@@ -171,28 +164,28 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
     override
     returns (uint256 _liquidationIncentive)
   {
-    return tokenAddressCollateralInfo[_tokenAddress].liquidationIncentive;
+    _liquidationIncentive = tokenAddressCollateralInfo[_tokenAddress].liquidationIncentive;
   }
 
   /// @notice Returns the cap of a given token address
   /// @param _tokenAddress The address of the token
   /// @return _cap The cap of the token
   function tokenCap(address _tokenAddress) external view override returns (uint256 _cap) {
-    return tokenAddressCollateralInfo[_tokenAddress].cap;
+    _cap = tokenAddressCollateralInfo[_tokenAddress].cap;
   }
 
   /// @notice Returns the total deposited of a given token address
   /// @param _tokenAddress The address of the token
   /// @return _totalDeposited The total deposited of a token
   function tokenTotalDeposited(address _tokenAddress) external view override returns (uint256 _totalDeposited) {
-    return tokenAddressCollateralInfo[_tokenAddress].totalDeposited;
+    _totalDeposited = tokenAddressCollateralInfo[_tokenAddress].totalDeposited;
   }
 
   /// @notice Returns the collateral type of a token
   /// @param _tokenAddress The address of the token
   /// @return _type The collateral type of a token
   function tokenCollateralType(address _tokenAddress) external view override returns (CollateralType _type) {
-    return tokenAddressCollateralInfo[_tokenAddress].collateralType;
+    _type = tokenAddressCollateralInfo[_tokenAddress].collateralType;
   }
 
   /// @notice Returns the address of the crvRewards contract
@@ -204,7 +197,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
     override
     returns (IBaseRewardPool _crvRewardsContract)
   {
-    return tokenAddressCollateralInfo[_tokenAddress].crvRewardsContract;
+    _crvRewardsContract = tokenAddressCollateralInfo[_tokenAddress].crvRewardsContract;
   }
 
   /// @notice Returns the pool id of a curve LP type token
@@ -212,7 +205,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
   /// @param _tokenAddress The address of the token
   /// @return _poolId The pool id of a curve LP type token
   function tokenPoolId(address _tokenAddress) external view override returns (uint256 _poolId) {
-    return tokenAddressCollateralInfo[_tokenAddress].poolId;
+    _poolId = tokenAddressCollateralInfo[_tokenAddress].poolId;
   }
 
   /// @notice Returns the collateral info of a given token address
@@ -224,13 +217,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
     override
     returns (CollateralInfo memory _collateralInfo)
   {
-    return tokenAddressCollateralInfo[_tokenAddress];
-  }
-
-  /// @notice Returns the booster contract from convex
-  /// @return _booster The booster contract from convex
-  function booster() external view returns (IBooster _booster) {
-    return BOOSTER;
+    _collateralInfo = tokenAddressCollateralInfo[_tokenAddress];
   }
 
   /// @notice Returns the selected collaterals info. Will iterate from `_start` (included) until `_end` (not included)
@@ -247,8 +234,12 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
 
     _collateralsInfo = new CollateralInfo[](_end - _start);
 
-    for (uint256 _i = _start; _i < _end; _i++) {
+    for (uint256 _i = _start; _i < _end;) {
       _collateralsInfo[_i - _start] = tokenAddressCollateralInfo[enabledTokens[_i]];
+
+      unchecked {
+        ++_i;
+      }
     }
   }
 
@@ -258,7 +249,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
   function _migrateCollateralsFrom(IVaultController _oldVaultController, address[] memory _tokenAddresses) internal {
     uint256 _tokenId;
     uint256 _tokensRegistered;
-    for (uint256 _i = 0; _i < _tokenAddresses.length; _i++) {
+    for (uint256 _i; _i < _tokenAddresses.length;) {
       _tokenId = _oldVaultController.tokenId(_tokenAddresses[_i]);
       if (_tokenId == 0) revert VaultController_WrongCollateralAddress();
       _tokensRegistered++;
@@ -269,15 +260,21 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
 
       enabledTokens.push(_tokenAddresses[_i]);
       tokenAddressCollateralInfo[_tokenAddresses[_i]] = _collateral;
+
+      unchecked {
+        ++_i;
+      }
     }
     tokensRegistered += _tokensRegistered;
+
+    emit CollateralsMigratedFrom(_oldVaultController, _tokenAddresses);
   }
 
   /// @notice Creates a new vault and returns it's address
   /// @return _vaultAddress The address of the newly created vault
   function mintVault() public override whenNotPaused returns (address _vaultAddress) {
     // increment  minted vaults
-    vaultsMinted = vaultsMinted + 1;
+    vaultsMinted += 1;
     // mint the vault itself, deploying the contract
     _vaultAddress = _createVault(vaultsMinted, _msgSender());
     // add the vault to our system
@@ -447,7 +444,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
     // calculate the total liability of the vault
     uint256 _usdaLiability = _truncate((_vault.baseLiability() * interest.factor));
     // if the ltv >= liability, the vault is solvent
-    return (_totalLiquidityValue >= _usdaLiability);
+    _overCollateralized = (_totalLiquidityValue >= _usdaLiability);
   }
 
   /// @notice Borrows USDA from a vault. Only the vault minter may borrow from their vault
@@ -647,7 +644,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
     _vault.modifyLiability(false, (_usdaToRepurchase * 1e18) / interest.factor);
 
     // decrease the total base liability
-    totalBaseLiability = totalBaseLiability - _safeu192((_usdaToRepurchase * 1e18) / interest.factor);
+    totalBaseLiability -= _safeu192((_usdaToRepurchase * 1e18) / interest.factor);
 
     // decrease liquidator's USDA balance
     usda.vaultControllerBurn(_msgSender(), _usdaToRepurchase);
@@ -673,7 +670,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
     // emit the event
     emit Liquidate(_id, _assetAddress, _usdaToRepurchase, _tokensToLiquidate - _liquidationFee, _liquidationFee);
     // return the amount of tokens liquidated (including fee)
-    return _tokensToLiquidate;
+    _toLiquidate = _tokensToLiquidate;
   }
 
   /// @notice Returns the calculated amount of tokens to liquidate for a vault
@@ -729,9 +726,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
     if (_tokensToLiquidate > _maxTokensToLiquidate) _tokensToLiquidate = _maxTokensToLiquidate;
 
     //Cannot liquidate more collateral than there is in the vault
-    if (_tokensToLiquidate > _vault.tokenBalance(_assetAddress)) {
-      _tokensToLiquidate = _vault.tokenBalance(_assetAddress);
-    }
+    if (_tokensToLiquidate > _vault.balances(_assetAddress)) _tokensToLiquidate = _vault.balances(_assetAddress);
 
     _actualTokensToLiquidate = _tokensToLiquidate;
   }
@@ -752,21 +747,21 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
   /// @return _usdaToSolvency The amount of USDA needed to reach even solvency
   function amountToSolvency(uint96 _id) public view override returns (uint256 _usdaToSolvency) {
     if (checkVault(_id)) revert VaultController_VaultSolvent();
-    return _amountToSolvency(_id);
+    _usdaToSolvency = _amountToSolvency(_id);
   }
 
   /// @notice Bussiness logic for amountToSolvency
   /// @param _id The id of vault
   /// @return _usdaToSolvency The amount of USDA needed to reach even solvency
   function _amountToSolvency(uint96 _id) internal view returns (uint256 _usdaToSolvency) {
-    return _vaultLiability(_id) - _getVaultBorrowingPower(_getVault(_id));
+    _usdaToSolvency = _vaultLiability(_id) - _getVaultBorrowingPower(_getVault(_id));
   }
 
   /// @notice Returns vault liability of vault
   /// @param _id The id of vault
   /// @return _liability The amount of USDA the vault owes
   function vaultLiability(uint96 _id) external view override returns (uint192 _liability) {
-    return _vaultLiability(_id);
+    _liability = _vaultLiability(_id);
   }
 
   /// @notice Returns the liability of a vault
@@ -777,7 +772,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
     address _vaultAddress = vaultIdVaultAddress[_id];
     if (_vaultAddress == address(0)) revert VaultController_VaultDoesNotExist();
     IVault _vault = IVault(_vaultAddress);
-    return _safeu192(_truncate(_vault.baseLiability() * interest.factor));
+    _liability = _safeu192(_truncate(_vault.baseLiability() * interest.factor));
   }
 
   /// @notice Returns the vault borrowing power for vault
@@ -803,7 +798,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
       // note that index 0 of enabledTokens corresponds to a vaultId of 1, so we must subtract 1 from i to get the correct index
       address _tokenAddress = enabledTokens[_i - 1];
       // the balance is the vault's token balance of the current collateral token in the loop
-      uint256 _balance = _vault.tokenBalance(_tokenAddress);
+      uint256 _balance = _vault.balances(_tokenAddress);
       if (_balance == 0) continue;
       // the raw price is simply the oracle price of the token
       uint192 _rawPrice = _safeu192(_collateral.oracle.currentValue());
@@ -811,7 +806,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
       // the token value is equal to the price * balance * tokenLTV
       uint192 _tokenValue = _safeu192(_truncate(_truncate(_rawPrice * _balance * _collateral.ltv)));
       // increase the ltv of the vault by the token value
-      _borrowPower = _borrowPower + _tokenValue;
+      _borrowPower += _tokenValue;
     }
   }
 
@@ -819,7 +814,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
   /// @dev Implementation in payInterest
   /// @return _interest The increase amount of the interest factor
   function calculateInterest() external override returns (uint256 _interest) {
-    return _payInterest();
+    _interest = _payInterest();
   }
 
   /// @notice Accrue interest to borrowers and distribute it to USDA holders.
@@ -869,7 +864,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
     // emit the event
     emit InterestEvent(uint64(block.timestamp), _e18FactorIncrease, _curveVal);
     // return the interest factor increase
-    return _e18FactorIncrease;
+    _interest = _e18FactorIncrease;
   }
 
   /// @notice Deploys a new Vault
@@ -891,15 +886,23 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
   ) public view override returns (VaultSummary[] memory _vaultSummaries) {
     if (_stop > vaultsMinted) _stop = vaultsMinted;
     _vaultSummaries = new VaultSummary[](_stop - _start + 1);
-    for (uint96 _i = _start; _i <= _stop; _i++) {
+    for (uint96 _i = _start; _i <= _stop;) {
       IVault _vault = _getVault(_i);
       uint256[] memory _tokenBalances = new uint256[](enabledTokens.length);
 
-      for (uint256 _j = 0; _j < enabledTokens.length; _j++) {
-        _tokenBalances[_j] = _vault.tokenBalance(enabledTokens[_j]);
+      for (uint256 _j; _j < enabledTokens.length;) {
+        _tokenBalances[_j] = _vault.balances(enabledTokens[_j]);
+
+        unchecked {
+          ++_j;
+        }
       }
       _vaultSummaries[_i - _start] =
         VaultSummary(_i, _getVaultBorrowingPower(_vault), this.vaultLiability(_i), enabledTokens, _tokenBalances);
+
+      unchecked {
+        ++_i;
+      }
     }
   }
 

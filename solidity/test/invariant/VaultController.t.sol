@@ -187,7 +187,7 @@ contract InvariantVaultController is BaseInvariant, TestConstants {
     vaultController.MAX_INIT_BORROWING_FEE();
     vaultController.initialBorrowingFee();
     vaultController.liquidationFee();
-    vaultController.booster();
+    vaultController.BOOSTER();
     vaultController.claimerContract();
     vaultController.VAULT_DEPLOYER();
     vaultController.getEnabledTokens();

@@ -7,6 +7,7 @@ import {IBooster} from '@interfaces/utils/IBooster.sol';
 import {IBaseRewardPool} from '@interfaces/utils/IBaseRewardPool.sol';
 import {IVaultDeployer} from '@interfaces/core/IVaultDeployer.sol';
 import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
+import {IUSDA} from '@interfaces/core/IUSDA.sol';
 
 /// @title VaultController Interface
 interface IVaultController {
@@ -130,6 +131,13 @@ interface IVaultController {
    */
   event ChangedLiquidationFee(uint192 _oldLiquidationFee, uint192 _newLiquidationFee);
 
+  /**
+   * @notice Emited when collaterals are migrated from old vault controller
+   *  @param _oldVaultController The old vault controller migrated from
+   *  @param _tokenAddresses The list of new collaterals
+   */
+  event CollateralsMigratedFrom(IVaultController _oldVaultController, address[] _tokenAddresses);
+
   /*///////////////////////////////////////////////////////////////
                             ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -245,8 +253,6 @@ interface IVaultController {
 
   function liquidationFee() external view returns (uint192 _liquidationFee);
 
-  function vaultAddress(uint96 _id) external view returns (address _vaultAddress);
-
   function vaultIDs(address _wallet) external view returns (uint96[] memory _vaultIDs);
 
   function enabledTokens(uint256 _index) external view returns (address _enabledToken);
@@ -273,7 +279,7 @@ interface IVaultController {
 
   function tokenCollateralInfo(address _tokenAddress) external view returns (CollateralInfo memory _collateralInfo);
 
-  function booster() external view returns (IBooster _booster);
+  function BOOSTER() external view returns (IBooster _booster);
 
   function claimerContract() external view returns (IAMPHClaimer _claimerContract);
 
@@ -285,6 +291,32 @@ interface IVaultController {
     uint256 _start,
     uint256 _end
   ) external view returns (CollateralInfo[] memory _collateralsInfo);
+
+  /// @notice Returns the address of a vault given it's id
+  /// @param _vaultID The id of the vault to target
+  /// @return _vaultAddress The address of the targetted vault
+  function vaultIdVaultAddress(uint96 _vaultID) external view returns (address _vaultAddress);
+
+  // function walletVaultIDs(address _wallet) external view returns (uint96[] memory _vaultIDs); // TODO:
+
+  function tokenAddressCollateralInfo(address _token)
+    external
+    view
+    returns (
+      uint256 _tokenId,
+      uint256 _ltv,
+      uint256 _cap,
+      uint256 _totalDeposited,
+      uint256 _liquidationIncentive,
+      IOracleRelay _oracle,
+      CollateralType _collateralType,
+      IBaseRewardPool _crvRewardsContract,
+      uint256 _poolId
+    );
+
+  function interest() external view returns (uint64 _lastTime, uint192 _factor);
+
+  function usda() external view returns (IUSDA _usda);
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC
