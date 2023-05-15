@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.8.0;
+
+contract PoolAddresses {
+  // Pool addresses
+  address public constant USDC_WETH_POOL_ADDRESS = 0x8ad599c3A0ff1De082011EFDDc58f1908eb6e6D8;
+  address public constant USDC_UNI_POOL_ADDRESS = 0xD0fC8bA7E267f2bc56044A7715A489d851dC6D78;
+  address public constant AAVE_WETH_POOL_ADDRESS = 0x5aB53EE1d50eeF2C1DD3d5402789cd27bB52c1bB;
+  address public constant DYDX_WETH_POOL_ADDRESS = 0xe0CfA17aa9B8f930Fd936633c0252d5cB745C2C3;
+  address public constant USDC_WBTC_POOL_ADDRESS = 0x99ac8cA7087fA4A2A1FB6357269965A2014ABc35;
+  address public constant TRI_CRYPTO2_POOL_ADDRESS = 0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
+  address public constant USDT_USDC_POOL_ADDRESS = 0x3416cF6C708Da44DB2624D63ea0AAef7113527C6;
+  address public constant USDC_USDT_POOL_ADDRESS = 0x3416cF6C708Da44DB2624D63ea0AAef7113527C6;
+  address public constant DAI_USDC_POOL_ADDRESS = 0x5777d92f208679DB4b9778590Fa3CAB3aC9e2168;
+}

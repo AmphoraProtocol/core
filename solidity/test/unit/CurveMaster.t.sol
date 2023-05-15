@@ -134,9 +134,6 @@ contract UnitTestCurveMasterSetCurve is Base {
     vm.assume(_token != address(0));
     vm.assume(_curve != address(0));
 
-    vm.expectEmit(false, false, false, true);
-    emit CurveSet(curveMaster.curves(_token), _token, _curve);
-
     vm.prank(curveMaster.owner());
     curveMaster.setVaultController(address(_mockVaultController));
 
@@ -145,6 +142,9 @@ contract UnitTestCurveMasterSetCurve is Base {
       abi.encodeWithSelector(IVaultController.calculateInterest.selector),
       abi.encode(true)
     );
+
+    vm.expectEmit(false, false, false, true);
+    emit CurveSet(curveMaster.curves(_token), _token, _curve);
 
     vm.prank(curveMaster.owner());
     curveMaster.setCurve(_token, _curve);

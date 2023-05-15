@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.8.0;
+
+contract ChainlinkFeeds {
+  // Chainlink addresses
+  address public constant CHAINLINK_ETH_FEED_ADDRESS = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+  address public constant CHAINLINK_UNI_FEED_ADDRESS = 0x553303d460EE0afB37EdFf9bE42922D8FF63220e;
+  address public constant CHAINLINK_AAVE_FEED_ADDRESS = 0x547a514d5e3769680Ce22B2361c10Ea13619e8a9;
+  address public constant CHAINLINK_BTC_FEED_ADDRESS = 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c;
+  address public constant CHAINLINK_DYDX_FEED_ADDRESS = 0x478909D4D798f3a1F11fFB25E4920C959B4aDe0b;
+  address public constant CHAINLINK_USDT_FEED_ADDRESS = 0x3E7d1eAB13ad0104d2750B8863b489D65364e32D;
+  address public constant CHAINLINK_USDC_FEED_ADDRESS = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
+  address public constant CHAINLINK_DAI_FEED_ADDRESS = 0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9;
+}

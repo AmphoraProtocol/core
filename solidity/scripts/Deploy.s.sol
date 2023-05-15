@@ -20,6 +20,7 @@ import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {IVaultDeployer} from '@interfaces/core/IVaultDeployer.sol';
 import {TestConstants} from '@test/utils/TestConstants.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
+import {CreateOracles} from '@scripts/CreateOracles.sol';
 
 import {FakeBaseRewardPool} from '@scripts/fakes/FakeBaseRewardPool.sol';
 import {FakeBooster} from '@scripts/fakes/FakeBooster.sol';
@@ -41,7 +42,7 @@ struct DeployVars {
   bool giveOwnershipToGov;
 }
 
-abstract contract Deploy is Script, TestConstants {
+abstract contract Deploy is Script, TestConstants, CreateOracles {
   uint256 public constant initialAmphSupply = 100_000_000 ether;
 
   uint256 public constant cvxRate = 10 ether; // 10 AMPH per 1 CVX
@@ -213,21 +214,5 @@ abstract contract Deploy is Script, TestConstants {
     fakeLp1.mint(_minter, _amount);
     console.log('FAKE_LP', address(fakeLp1));
     _lpToken = address(fakeLp1);
-  }
-
-  function _createWethOracle() internal returns (address _wethOracle) {
-    // Deploy uniswapRelayEthUsdc oracle relay
-    UniswapV3OracleRelay _uniswapRelayEthUsdc =
-      new UniswapV3OracleRelay(7200, USDC_WETH_POOL_ADDRESS, true, 1_000_000_000_000, 1);
-    console.log('UNISWAP_ETH_USDC_ORACLE: ', address(_uniswapRelayEthUsdc));
-    // Deploy chainlinkEth oracle relay
-    ChainlinkOracleRelay _chainlinkEth =
-      new ChainlinkOracleRelay(CHAINLINK_ETH_FEED_ADDRESS, 10_000_000_000, 1, 1 hours);
-    console.log('CHAINLINK_ETH_FEED: ', address(_chainlinkEth));
-    // Deploy anchoredViewEth relay
-    AnchoredViewRelay _anchoredViewEth =
-      new AnchoredViewRelay(address(_uniswapRelayEthUsdc), address(_chainlinkEth), 20, 100, 10, 100);
-    console.log('ANCHORED_VIEW_RELAY: ', address(_anchoredViewEth));
-    _wethOracle = address(_anchoredViewEth);
   }
 }
