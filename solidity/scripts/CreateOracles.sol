@@ -6,6 +6,7 @@ import {console} from 'forge-std/console.sol';
 import {UniswapV3OracleRelay} from '@contracts/periphery/oracles/UniswapV3OracleRelay.sol';
 import {ChainlinkOracleRelay} from '@contracts/periphery/oracles/ChainlinkOracleRelay.sol';
 import {AnchoredViewRelay} from '@contracts/periphery/oracles/AnchoredViewRelay.sol';
+import {CTokenOracle} from '@contracts/periphery/oracles/CTokenOracle.sol';
 import {TestConstants} from '@test/utils/TestConstants.sol';
 
 abstract contract CreateOracles is TestConstants {
@@ -76,5 +77,29 @@ abstract contract CreateOracles is TestConstants {
       new AnchoredViewRelay(address(_uniswapRelayDaiUsdc), address(_chainlinkDai), 20, 100, 10, 100);
     console.log('ANCHORED_VIEW_RELAY: ', address(_anchoredViewDai));
     _daiOracle = address(_anchoredViewDai);
+  }
+
+  function _createCETHOracle(address _anchoredViewEth) internal returns (address _cETHOracleAddress) {
+    CTokenOracle _cETHOracle = new CTokenOracle(cETH_ADDRESS, _anchoredViewEth);
+    console.log('CTOKEN_ORACLE_ETH: ', address(_cETHOracle));
+    _cETHOracleAddress = address(_cETHOracle);
+  }
+
+  function _createCUSDCOracle(address _anchoredViewUsdc) internal returns (address _cUSDCOracleAddress) {
+    CTokenOracle _cUSDCOracle = new CTokenOracle(cUSDC_ADDRESS, _anchoredViewUsdc);
+    console.log('CTOKEN_ORACLE_USDC: ', address(_cUSDCOracle));
+    _cUSDCOracleAddress = address(_cUSDCOracle);
+  }
+
+  function _createCDAIOracle(address _anchoredViewDai) internal returns (address _cDAIOracleAddress) {
+    CTokenOracle _cDAIOracle = new CTokenOracle(cDAI_ADDRESS, _anchoredViewDai);
+    console.log('CTOKEN_ORACLE_DAI: ', address(_cDAIOracle));
+    _cDAIOracleAddress = address(_cDAIOracle);
+  }
+
+  function _createCUSDTOracle(address _anchoredViewUsdt) internal returns (address _cUSDTOracleAddress) {
+    CTokenOracle _cUSDTOracle = new CTokenOracle(cUSDT_ADDRESS, _anchoredViewUsdt);
+    console.log('CTOKEN_ORACLE_USDT: ', address(_cUSDTOracle));
+    _cUSDTOracleAddress = address(_cUSDTOracle);
   }
 }

@@ -4,13 +4,10 @@ pragma solidity >=0.8.4 <0.9.0;
 import {CommonE2EBase, IVault, console} from '@test/e2e/Common.sol';
 import {IUSDA} from '@interfaces/core/IUSDA.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import {ICToken} from '@interfaces/periphery/ICToken.sol';
 
 interface IThreeCRVForTest {
   function calc_token_amount(uint256[3] memory _amounts, bool _deposit) external view returns (uint256 _amount);
-}
-
-interface ICToken {
-  function exchangeRateStored() external view returns (uint256 _exchangeRate);
 }
 
 contract E2EThreeCurveOracle is CommonE2EBase {
