@@ -10,7 +10,7 @@ import {ChainlinkOracleRelay} from '@contracts/periphery/oracles/ChainlinkOracle
 import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
 import {AnchoredViewRelay} from '@contracts/periphery/oracles/AnchoredViewRelay.sol';
 import {USDA} from '@contracts/core/USDA.sol';
-import {ThreeCrvOracle} from '@contracts/periphery/oracles/ThreeCrvOracle.sol';
+import {StableCurveLpOracle} from '@contracts/periphery/oracles/StableCurveLpOracle.sol';
 import {ThreeLines0_100} from '@contracts/utils/ThreeLines0_100.sol';
 import {ExponentialNoError} from '@contracts/utils/ExponentialNoError.sol';
 
@@ -27,8 +27,8 @@ import {IVaultDeployer} from '@interfaces/core/IVaultDeployer.sol';
 
 import {DSTestPlus, console} from 'solidity-utils/test/DSTestPlus.sol';
 import {TestConstants} from '@test/utils/TestConstants.sol';
-
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import {CreateOracles} from '@scripts/CreateOracles.sol';
 
 contract VaultControllerForTest is VaultController {
   constructor(
@@ -60,7 +60,7 @@ contract VaultControllerForTest is VaultController {
   }
 }
 
-abstract contract Base is DSTestPlus, TestConstants {
+abstract contract Base is DSTestPlus, TestConstants, CreateOracles {
   address public governance = label(newAddress(), 'governance');
   address public alice = label(newAddress(), 'alice');
   address public vaultOwner = label(newAddress(), 'vaultOwner');
@@ -86,7 +86,7 @@ abstract contract Base is DSTestPlus, TestConstants {
   ChainlinkOracleRelay public chainLinkUni;
   AnchoredViewRelay public anchoredViewEth;
   AnchoredViewRelay public anchoredViewUni;
-  ThreeCrvOracle public threeCrvOracle;
+  StableCurveLpOracle public threeCrvOracle;
 
   uint256 public cap = 100 ether;
 
@@ -123,8 +123,17 @@ abstract contract Base is DSTestPlus, TestConstants {
     anchoredViewEth = new AnchoredViewRelay(address(uniswapRelayEthUsdc), address(chainlinkEth), 20, 100, 10, 100);
     anchoredViewUni = new AnchoredViewRelay(address(uniswapRelayUniUsdc), address(chainLinkUni), 40, 100, 10, 100);
 
+    /// Deploy usdc oracle relay
+    IOracleRelay _anchoredViewUsdc = IOracleRelay(_createUsdcOracle());
+    /// Deploy dai oracle relay
+    IOracleRelay _anchoredViewDai = IOracleRelay(_createDaiOracle());
+    /// Deploy usdt oracle relay
+    IOracleRelay _anchoredViewUsdt = IOracleRelay(_createUsdtOracle());
+
     // Deploy the ThreeCrvOracle
-    threeCrvOracle = new ThreeCrvOracle();
+    threeCrvOracle = StableCurveLpOracle(
+      _create3CrvOracle(THREE_CRV_POOL_ADDRESS, _anchoredViewDai, _anchoredViewUsdt, _anchoredViewUsdc)
+    );
 
     vm.stopPrank();
   }

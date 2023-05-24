@@ -4,8 +4,9 @@ pragma solidity >=0.8.0;
 import {ChainlinkFeeds} from './ChainlinkFeeds.sol';
 import {PoolAddresses} from './PoolAddresses.sol';
 import {TokenAddresses} from './TokenAddresses.sol';
+import {CurvePools} from './CurvePools.sol';
 
-contract TestConstants is ChainlinkFeeds, PoolAddresses, TokenAddresses {
+contract TestConstants is ChainlinkFeeds, PoolAddresses, TokenAddresses, CurvePools {
   // Curve rewards contract addresses
   address public constant USDT_LP_REWARDS_ADDRESS = 0x8B55351ea358e5Eda371575B031ee24F462d503e;
   address public constant BORING_DAO_LP_REWARDS_ADDRESS = 0xeeeCE77e0bc5e59c77fc408789A9A172A504bD2f;

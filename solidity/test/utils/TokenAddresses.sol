@@ -22,4 +22,6 @@ contract TokenAddresses {
   address public constant cDAI_ADDRESS = 0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643;
   address public constant cUSDC_ADDRESS = 0x39AA39c021dfbaE8faC545936693aC917d5E7563;
   address public constant cUSDT_ADDRESS = 0xf650C3d88D12dB855b8bf7D11Be6C55A4e07dCC9;
+  address public constant STE_CRV_ADDRESS = 0x06325440D014e39736583c165C2963BA99fAf14E;
+  address public constant CRV_FRAX_ADDRESS = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
 }

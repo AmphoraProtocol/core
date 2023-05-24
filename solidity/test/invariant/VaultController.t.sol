@@ -11,7 +11,6 @@ import {VaultDeployer} from '@contracts/core/VaultDeployer.sol';
 import {USDA} from '@contracts/core/USDA.sol';
 import {AmphoraProtocolToken} from '@contracts/governance/AmphoraProtocolToken.sol';
 import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
-import {ThreeCrvOracle} from '@contracts/periphery/oracles/ThreeCrvOracle.sol';
 import {ThreeLines0_100} from '@contracts/utils/ThreeLines0_100.sol';
 import {AMPHClaimer} from '@contracts/core/AMPHClaimer.sol';
 import {AnchoredViewRelay} from '@contracts/periphery/oracles/AnchoredViewRelay.sol';

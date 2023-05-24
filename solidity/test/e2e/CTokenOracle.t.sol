@@ -9,7 +9,7 @@ contract E2ECTokenOracle is CommonE2EBase {
   CTokenOracle public cETHOracle;
 
   function testOracleReturnsTheCorrectPrice() public {
-    cETHOracle = new CTokenOracle(cETH_ADDRESS, address(anchoredViewEth));
+    cETHOracle = new CTokenOracle(cETH_ADDRESS, anchoredViewEth);
 
     assertGt(cETHOracle.currentValue(), 0);
     assertEq(

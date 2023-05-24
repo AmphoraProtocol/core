@@ -24,7 +24,7 @@ abstract contract Base is DSTestPlus {
     vm.mockCall(address(_cToken), abi.encodeWithSelector(ICToken.decimals.selector), abi.encode(uint8(8)));
     vm.mockCall(address(_underlying), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(uint8(6)));
 
-    cTokenOracle = new CTokenOracle(address(_cToken), address(_underlyingAnchoredView));
+    cTokenOracle = new CTokenOracle(address(_cToken), IOracleRelay(_underlyingAnchoredView));
   }
 }
 
@@ -39,7 +39,7 @@ contract UnitCTokenOracleContructor is Base {
     _cToken = ICToken(mockContract(cTokenOracle.cETH_ADDRESS(), 'mockCToken'));
     vm.mockCall(address(_cToken), abi.encodeWithSelector(ICToken.decimals.selector), abi.encode(uint8(8)));
 
-    cTokenOracle = new CTokenOracle(address(_cToken), address(_underlyingAnchoredView));
+    cTokenOracle = new CTokenOracle(address(_cToken), IOracleRelay(_underlyingAnchoredView));
 
     assert(address(cTokenOracle.cToken()) == address(_cToken));
     assert(address(cTokenOracle.anchoredViewUnderlying()) == address(_underlyingAnchoredView));

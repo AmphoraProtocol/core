@@ -17,9 +17,9 @@ contract CTokenOracle is OracleRelay, Ownable {
   /// @notice The divisor to convert the underlying to the cToken
   uint256 public div;
 
-  constructor(address _cToken, address _anchoredViewUnderlying) OracleRelay(OracleType.Chainlink) {
+  constructor(address _cToken, IOracleRelay _anchoredViewUnderlying) OracleRelay(OracleType.Chainlink) {
     cToken = ICToken(_cToken);
-    anchoredViewUnderlying = IOracleRelay(_anchoredViewUnderlying);
+    anchoredViewUnderlying = _anchoredViewUnderlying;
 
     // If underlying is ETH, decimals are 18, if not, get the decimals from the underlying
     uint256 _underlyingDecimals = cETH_ADDRESS == _cToken ? 18 : IERC20Metadata(cToken.underlying()).decimals();

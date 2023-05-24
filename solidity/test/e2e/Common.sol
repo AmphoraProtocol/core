@@ -14,7 +14,7 @@ import {AnchoredViewRelay} from '@contracts/periphery/oracles/AnchoredViewRelay.
 import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
 import {UniswapV3OracleRelay} from '@contracts/periphery/oracles/UniswapV3OracleRelay.sol';
 import {UniswapV3TokenOracleRelay} from '@contracts/periphery/oracles/UniswapV3TokenOracleRelay.sol';
-import {ThreeCrvOracle} from '@contracts/periphery/oracles/ThreeCrvOracle.sol';
+import {StableCurveLpOracle} from '@contracts/periphery/oracles/StableCurveLpOracle.sol';
 import {TriCryptoOracle} from '@contracts/periphery/oracles/TriCryptoOracle.sol';
 import {ThreeLines0_100} from '@contracts/utils/ThreeLines0_100.sol';
 import {WUSDA} from '@contracts/core/WUSDA.sol';
@@ -30,9 +30,10 @@ import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
 import {TestConstants} from '@test/utils/TestConstants.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {ExponentialNoError} from '@contracts/utils/ExponentialNoError.sol';
+import {CreateOracles} from '@scripts/CreateOracles.sol';
 
 // solhint-disable-next-line max-states-count
-contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError {
+contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateOracles {
   uint256 public constant FORK_BLOCK = 15_452_788;
   /// 16442788;///;
   uint256 public constant DELTA = 100;
@@ -71,7 +72,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError {
   AnchoredViewRelay public anchoredViewDydx;
   AnchoredViewRelay public anchoredViewBtc;
   // Curve oracles
-  ThreeCrvOracle public threeCrvOracle;
+  StableCurveLpOracle public threeCrvOracle;
   TriCryptoOracle public triCryptoOracle;
   // Governance
   GovernorCharlie public governor;
@@ -225,8 +226,18 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError {
     anchoredViewDydx = new AnchoredViewRelay(address(uniswapRelayDydxWeth), address(chainlinkDydx), 20, 100, 10, 100);
     // Deploy anchoredViewEth relay
     anchoredViewBtc = new AnchoredViewRelay(address(uniswapRelayWbtcUsdc), address(chainlinkBtc), 20, 100, 10, 100);
+
+    /// Deploy usdc oracle relay
+    IOracleRelay _anchoredViewUsdc = IOracleRelay(_createUsdcOracle());
+    /// Deploy dai oracle relay
+    IOracleRelay _anchoredViewDai = IOracleRelay(_createDaiOracle());
+    /// Deploy usdt oracle relay
+    IOracleRelay _anchoredViewUsdt = IOracleRelay(_createUsdtOracle());
+
     // Deploy the ThreeCrvOracle
-    threeCrvOracle = new ThreeCrvOracle();
+    threeCrvOracle = StableCurveLpOracle(
+      _create3CrvOracle(THREE_CRV_POOL_ADDRESS, _anchoredViewDai, _anchoredViewUsdt, _anchoredViewUsdc)
+    );
     // Deploy the triCryptoOracle
     triCryptoOracle = new TriCryptoOracle();
 
