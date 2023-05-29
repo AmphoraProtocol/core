@@ -9,6 +9,7 @@ import {InvariantVaultController} from '@test/invariant/VaultController.t.sol';
 import {IAnchoredViewRelay} from '@interfaces/periphery/IAnchoredViewRelay.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
+import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
 
 import {TestConstants} from '@test/utils/TestConstants.sol';
 import {console} from 'solidity-utils/test/DSTestPlus.sol';
@@ -155,14 +156,14 @@ contract VaultControllerOwnerHandler is BaseHandler, TestConstants {
       : tokenOracle[address(susd)];
 
     /// Can't borrow
-    vm.mockCall(_oracle, abi.encodeWithSelector(IAnchoredViewRelay.currentValue.selector), abi.encode(1 ether));
+    vm.mockCall(_oracle, abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(1 ether));
     uint256 _borrowingPower = vaultController.vaultBorrowingPower(_id);
     uint256 _liability = vaultController.vaultLiability(_id);
     if (_borrowingPower <= _liability) return;
     _amount = bound(_amount, 1, _borrowingPower - _liability);
 
     /// Mock call the oracle price
-    vm.mockCall(_oracle, abi.encodeWithSelector(IAnchoredViewRelay.currentValue.selector), abi.encode(1 ether));
+    vm.mockCall(_oracle, abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(1 ether));
     /// Borrow
     vm.prank(owner);
     vaultController.borrowUSDA(_id, uint192(_amount));
@@ -184,14 +185,14 @@ contract VaultControllerOwnerHandler is BaseHandler, TestConstants {
       : tokenOracle[address(susd)];
 
     /// Can't borrow
-    vm.mockCall(_oracle, abi.encodeWithSelector(IAnchoredViewRelay.currentValue.selector), abi.encode(1 ether));
+    vm.mockCall(_oracle, abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(1 ether));
     uint256 _borrowingPower = vaultController.vaultBorrowingPower(_id);
     uint256 _liability = vaultController.vaultLiability(_id);
     if (_borrowingPower <= _liability) return;
     _amount = bound(_amount, 1, _borrowingPower - _liability);
 
     /// Mock call the oracle price
-    vm.mockCall(_oracle, abi.encodeWithSelector(IAnchoredViewRelay.currentValue.selector), abi.encode(1 ether));
+    vm.mockCall(_oracle, abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(1 ether));
 
     /// Borrow
     vm.prank(owner);

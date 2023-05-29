@@ -7,23 +7,19 @@ import {AnchoredViewRelay} from '@contracts/periphery/oracles/AnchoredViewRelay.
 import {StableCurveLpOracle} from '@contracts/periphery/oracles/StableCurveLpOracle.sol';
 import {CreateOracles} from '@scripts/CreateOracles.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
-import {ICurvePool} from '@interfaces/periphery/ICurvePool.sol';
+import {ICurvePool} from '@interfaces/utils/ICurvePool.sol';
 
 import {CommonE2EBase, console} from '@test/e2e/Common.sol';
 import {TestConstants} from '@test/utils/TestConstants.sol';
 
 contract E2ECurveLpOracle is TestConstants, CommonE2EBase {
   uint256 public constant POINT_ONE_PERCENT = 0.001e18;
-  uint256 public constant THREE_PERCENT = 0.03e18;
 
-  StableCurveLpOracle public steCrvOracle;
   StableCurveLpOracle public fraxCrvOracle;
   StableCurveLpOracle public frax3CrvOracle;
 
   function setUp() public virtual override {
     super.setUp();
-    /// Deploy StETH oracle relay
-    IOracleRelay _anchoredViewStETH = IOracleRelay(_createStEthOracle());
     /// Deploy FraxCrv oracle relay
     IOracleRelay _anchoredViewFrax = IOracleRelay(_createFraxOracle());
     /// Deploy usdc oracle relay
@@ -33,9 +29,6 @@ contract E2ECurveLpOracle is TestConstants, CommonE2EBase {
     /// Deploy usdt oracle relay
     IOracleRelay _anchoredViewUsdt = IOracleRelay(_createUsdtOracle());
 
-    steCrvOracle =
-      StableCurveLpOracle(_createSteCrvOracle(STE_CRV_POOL_ADDRESS, _anchoredViewStETH, IOracleRelay(anchoredViewEth)));
-
     fraxCrvOracle =
       StableCurveLpOracle(_createFraxCrvOracle(FRAX_USDC_CRV_POOL_ADDRESS, _anchoredViewFrax, _anchoredViewUsdc));
 
@@ -43,21 +36,6 @@ contract E2ECurveLpOracle is TestConstants, CommonE2EBase {
       _createFrax3CrvOracle(
         FRAX_3CRV_META_POOL_ADDRESS, _anchoredViewFrax, _anchoredViewDai, _anchoredViewUsdt, _anchoredViewUsdc
       )
-    );
-  }
-
-  function testSteCrvOracleReturnsTheCorrectPrice() public {
-    assertGt(steCrvOracle.currentValue(), 0);
-    assertEq(
-      steCrvOracle.currentValue(),
-      (steCrvOracle.anchoredUnderlyingTokens(0).currentValue() * steCrvOracle.CRV_POOL().get_virtual_price() / 1e18)
-    );
-
-    /// TODO: This assertion passes with 0.1% on a more recent block number
-    assertApproxEqRel(
-      steCrvOracle.currentValue(),
-      (steCrvOracle.anchoredUnderlyingTokens(1).currentValue() * steCrvOracle.CRV_POOL().get_virtual_price() / 1e18),
-      THREE_PERCENT
     );
   }
 

@@ -6,6 +6,7 @@ import {UniswapV3TokenOracleRelay} from '@contracts/periphery/oracles/UniswapV3T
 
 import {IUniswapV3PoolDerivedState} from '@uniswap/v3-core/contracts/interfaces/pool/IUniswapV3PoolDerivedState.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
+import {UniswapV3OracleRelay} from '@contracts/periphery/oracles/UniswapV3OracleRelay.sol';
 
 abstract contract Base is DSTestPlus {
   UniswapV3TokenOracleRelay public uniswapV3TokenOracleRelay;
@@ -22,15 +23,17 @@ abstract contract Base is DSTestPlus {
 
   IOracleRelay.OracleType public oracleType = IOracleRelay.OracleType(1); // 1 == Uniswap
 
+  UniswapV3OracleRelay internal _uniswapRelayEthUsdc = UniswapV3OracleRelay(newAddress());
+
   function setUp() public virtual {
     // Deploy contract
     uniswapV3TokenOracleRelay =
-      new UniswapV3TokenOracleRelay(lookback, address(_mockPool), quoteTokenIsToken0, mul, div);
+      new UniswapV3TokenOracleRelay(_uniswapRelayEthUsdc, lookback, address(_mockPool), quoteTokenIsToken0, mul, div);
 
     secondsPerLiquidityCumulativeX128s = new uint160[](0);
     tickCumulatives = new int56[](2);
 
-    _mockEthPriceFeed = IOracleRelay(mockContract(address(uniswapV3TokenOracleRelay.ETH_ORACLE()), 'mockEthPriceFeed'));
+    _mockEthPriceFeed = IOracleRelay(mockContract(address(_uniswapRelayEthUsdc), 'mockEthPriceFeed'));
   }
 }
 
@@ -68,7 +71,7 @@ contract UnitTestUniswapV3TokenOracleRelayCurrentValue is Base {
       abi.encode(tickCumulatives, secondsPerLiquidityCumulativeX128s)
     );
     vm.mockCall(
-      address(_mockEthPriceFeed), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(_ethPrice)
+      address(_mockEthPriceFeed), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(_ethPrice)
     );
 
     uint256 _price = uniswapV3TokenOracleRelay.currentValue();

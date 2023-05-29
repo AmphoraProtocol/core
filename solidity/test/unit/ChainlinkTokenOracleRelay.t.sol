@@ -61,7 +61,7 @@ contract UnitTestChainlinkTokenOracleRelayCurrentValue is Base {
       abi.encode(_latestAnswer)
     );
     vm.mockCall(
-      address(_mockEthPriceFeed), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(_ethPrice)
+      address(_mockEthPriceFeed), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(_ethPrice)
     );
 
     uint256 _response = chainlinkTokenOracleRelay.currentValue();

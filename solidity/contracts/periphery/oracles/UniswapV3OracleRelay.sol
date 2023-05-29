@@ -39,10 +39,18 @@ contract UniswapV3OracleRelay is OracleRelay {
     POOL = IUniswapV3PoolDerivedState(_poolAddress);
   }
 
+  /// @notice returns the price with 18 decimals without any state changes
+  /// @dev some oracles require a state change to get the exact current price.
+  ///      This is updated when calling other state changing functions that query the price
+  /// @return _price the current price
+  function peekValue() public view override returns (uint256 _price) {
+    _price = _get();
+  }
+
   /// @notice Returns the current reported value of the oracle
   /// @dev Implementation in _getLastSecond
   /// @return _value The current value
-  function currentValue() external view override returns (uint256 _value) {
+  function _get() internal view returns (uint256 _value) {
     _value = _getLastSeconds(LOOKBACK);
   }
 

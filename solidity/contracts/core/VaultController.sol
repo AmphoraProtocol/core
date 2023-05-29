@@ -434,9 +434,25 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
   }
 
   /// @notice Check a vault for over-collateralization
+  /// @dev This function calls peekVaultBorrowingPower so no state change is done
   /// @param _id The id of vault we want to target
   /// @return _overCollateralized Returns true if vault over-collateralized; false if vault under-collaterlized
-  function checkVault(uint96 _id) public view override returns (bool _overCollateralized) {
+  function peekCheckVault(uint96 _id) public view override returns (bool _overCollateralized) {
+    // grab the vault by id if part of our system. revert if not
+    IVault _vault = _getVault(_id);
+    // calculate the total value of the vault's liquidity
+    uint256 _totalLiquidityValue = _peekVaultBorrowingPower(_vault);
+    // calculate the total liability of the vault
+    uint256 _usdaLiability = _truncate((_vault.baseLiability() * interest.factor));
+    // if the ltv >= liability, the vault is solvent
+    _overCollateralized = (_totalLiquidityValue >= _usdaLiability);
+  }
+
+  /// @notice Check a vault for over-collateralization
+  /// @dev This function calls getVaultBorrowingPower to allow state changes to happen if an oracle need them
+  /// @param _id The id of vault we want to target
+  /// @return _overCollateralized Returns true if vault over-collateralized; false if vault under-collaterlized
+  function checkVault(uint96 _id) public returns (bool _overCollateralized) {
     // grab the vault by id if part of our system. revert if not
     IVault _vault = _getVault(_id);
     // calculate the total value of the vault's liquidity
@@ -605,7 +621,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
 
     // calculate the amount to liquidate and the 'bad fill price' using liquidationMath
     // see _liquidationMath for more detailed explaination of the math
-    (uint256 _tokenAmount, uint256 _badFillPrice) = _liquidationMath(_id, _assetAddress, _tokensToLiquidate);
+    (uint256 _tokenAmount, uint256 _badFillPrice) = _peekLiquidationMath(_id, _assetAddress, _tokensToLiquidate);
     // set _tokensToLiquidate to this calculated amount if the function does not fail
     _collateralLiquidated = _tokenAmount != 0 ? _tokenAmount : _tokensToLiquidate;
     // the USDA to repurchase is equal to the bad fill price multiplied by the amount of tokens to liquidate
@@ -686,7 +702,29 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
   ) external view override returns (uint256 _tokensToLiquidate) {
     (
       _tokensToLiquidate, // bad fill price
-    ) = _liquidationMath(_id, _assetAddress, 2 ** 256 - 1);
+    ) = _peekLiquidationMath(_id, _assetAddress, 2 ** 256 - 1);
+  }
+
+  /// @notice Internal function with business logic for liquidation math without any state changes
+  /// @param _id The vault to get info for
+  /// @param _assetAddress The token to calculate how many tokens to liquidate
+  /// @param _tokensToLiquidate The max amount of tokens one wishes to liquidate
+  /// @return _actualTokensToLiquidate The amount of tokens underwater this vault is
+  /// @return _badFillPrice The bad fill price for the token
+  function _peekLiquidationMath(
+    uint96 _id,
+    address _assetAddress,
+    uint256 _tokensToLiquidate
+  ) internal view returns (uint256 _actualTokensToLiquidate, uint256 _badFillPrice) {
+    //require that the vault is not solvent
+    if (peekCheckVault(_id)) revert VaultController_VaultSolvent();
+
+    CollateralInfo memory _collateral = tokenAddressCollateralInfo[_assetAddress];
+    uint256 _price = _collateral.oracle.peekValue();
+    uint256 _usdaToSolvency = _peekAmountToSolvency(_id);
+
+    (_actualTokensToLiquidate, _badFillPrice) =
+      _calculateTokensToLiquidate(_collateral, _id, _tokensToLiquidate, _assetAddress, _price, _usdaToSolvency);
   }
 
   /// @notice Internal function with business logic for liquidation math
@@ -699,16 +737,36 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
     uint96 _id,
     address _assetAddress,
     uint256 _tokensToLiquidate
-  ) internal view returns (uint256 _actualTokensToLiquidate, uint256 _badFillPrice) {
+  ) internal returns (uint256 _actualTokensToLiquidate, uint256 _badFillPrice) {
     //require that the vault is not solvent
     if (checkVault(_id)) revert VaultController_VaultSolvent();
 
-    IVault _vault = _getVault(_id);
-
     CollateralInfo memory _collateral = tokenAddressCollateralInfo[_assetAddress];
-
     uint256 _price = _collateral.oracle.currentValue();
+    uint256 _usdaToSolvency = _amountToSolvency(_id);
 
+    (_actualTokensToLiquidate, _badFillPrice) =
+      _calculateTokensToLiquidate(_collateral, _id, _tokensToLiquidate, _assetAddress, _price, _usdaToSolvency);
+  }
+
+  /// @notice Calculates the amount of tokens to liquidate for a vault
+  /// @param _collateral The collateral to liquidate
+  /// @param _id The vault to calculate the liquidation
+  /// @param _tokensToLiquidate The max amount of tokens one wishes to liquidate
+  /// @param _assetAddress The token to calculate how many tokens to liquidate
+  /// @param _price The price of the collateral
+  /// @param _usdaToSolvency The amount of USDA needed to make the vault solvent
+  /// @return _actualTokensToLiquidate The amount of tokens underwater this vault is
+  /// @return _badFillPrice The bad fill price for the token
+  function _calculateTokensToLiquidate(
+    CollateralInfo memory _collateral,
+    uint96 _id,
+    uint256 _tokensToLiquidate,
+    address _assetAddress,
+    uint256 _price,
+    uint256 _usdaToSolvency
+  ) internal view returns (uint256 _actualTokensToLiquidate, uint256 _badFillPrice) {
+    IVault _vault = _getVault(_id);
     // get price discounted by liquidation penalty
     // price * (100% - liquidationIncentive)
     _badFillPrice = _truncate(_price * (1e18 - _collateral.liquidationIncentive));
@@ -721,7 +779,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
 
     // the maximum amount of tokens to liquidate is the amount that will bring the vault to solvency
     // divided by the denominator
-    uint256 _maxTokensToLiquidate = (_amountToSolvency(_id) * 1e18) / _denominator;
+    uint256 _maxTokensToLiquidate = (_usdaToSolvency * 1e18) / _denominator;
     //Cannot liquidate more than is necessary to make vault over-collateralized
     if (_tokensToLiquidate > _maxTokensToLiquidate) _tokensToLiquidate = _maxTokensToLiquidate;
 
@@ -741,19 +799,26 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
     _vault = IVault(_vaultAddress);
   }
 
-  /// @notice Returns the amount of USDA needed to reach even solvency
+  /// @notice Returns the amount of USDA needed to reach even solvency without state changes
   /// @dev This amount is a moving target and changes with each block as payInterest is called
   /// @param _id The id of vault we want to target
   /// @return _usdaToSolvency The amount of USDA needed to reach even solvency
-  function amountToSolvency(uint96 _id) public view override returns (uint256 _usdaToSolvency) {
-    if (checkVault(_id)) revert VaultController_VaultSolvent();
-    _usdaToSolvency = _amountToSolvency(_id);
+  function amountToSolvency(uint96 _id) external view override returns (uint256 _usdaToSolvency) {
+    if (peekCheckVault(_id)) revert VaultController_VaultSolvent();
+    _usdaToSolvency = _peekAmountToSolvency(_id);
+  }
+
+  /// @notice Bussiness logic for amountToSolvency without any state changes
+  /// @param _id The id of vault
+  /// @return _usdaToSolvency The amount of USDA needed to reach even solvency
+  function _peekAmountToSolvency(uint96 _id) internal view returns (uint256 _usdaToSolvency) {
+    _usdaToSolvency = _vaultLiability(_id) - _peekVaultBorrowingPower(_getVault(_id));
   }
 
   /// @notice Bussiness logic for amountToSolvency
   /// @param _id The id of vault
   /// @return _usdaToSolvency The amount of USDA needed to reach even solvency
-  function _amountToSolvency(uint96 _id) internal view returns (uint256 _usdaToSolvency) {
+  function _amountToSolvency(uint96 _id) internal returns (uint256 _usdaToSolvency) {
     _usdaToSolvency = _vaultLiability(_id) - _getVaultBorrowingPower(_getVault(_id));
   }
 
@@ -780,7 +845,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
   /// @param _id The id of vault we want to target
   /// @return _borrowPower The amount of USDA the vault can borrow
   function vaultBorrowingPower(uint96 _id) external view override returns (uint192 _borrowPower) {
-    uint192 _bp = _getVaultBorrowingPower(_getVault(_id));
+    uint192 _bp = _peekVaultBorrowingPower(_getVault(_id));
     _borrowPower = _bp - getBorrowingFee(_bp);
   }
 
@@ -788,7 +853,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
   /// @param _vault The vault to get the borrowing power of
   /// @return _borrowPower The borrowing power of the vault
   //solhint-disable-next-line code-complexity
-  function _getVaultBorrowingPower(IVault _vault) private view returns (uint192 _borrowPower) {
+  function _getVaultBorrowingPower(IVault _vault) private returns (uint192 _borrowPower) {
     // loop over each registed token, adding the indivuduals ltv to the total ltv of the vault
     for (uint192 _i = 1; _i <= enabledTokens.length; ++_i) {
       CollateralInfo memory _collateral = tokenAddressCollateralInfo[enabledTokens[_i - 1]];
@@ -802,6 +867,32 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
       if (_balance == 0) continue;
       // the raw price is simply the oracle price of the token
       uint192 _rawPrice = _safeu192(_collateral.oracle.currentValue());
+      if (_rawPrice == 0) continue;
+      // the token value is equal to the price * balance * tokenLTV
+      uint192 _tokenValue = _safeu192(_truncate(_truncate(_rawPrice * _balance * _collateral.ltv)));
+      // increase the ltv of the vault by the token value
+      _borrowPower += _tokenValue;
+    }
+  }
+
+  /// @notice Returns the borrowing power of a vault without making state changes
+  /// @param _vault The vault to get the borrowing power of
+  /// @return _borrowPower The borrowing power of the vault
+  //solhint-disable-next-line code-complexity
+  function _peekVaultBorrowingPower(IVault _vault) private view returns (uint192 _borrowPower) {
+    // loop over each registed token, adding the indivuduals ltv to the total ltv of the vault
+    for (uint192 _i = 1; _i <= enabledTokens.length; ++_i) {
+      CollateralInfo memory _collateral = tokenAddressCollateralInfo[enabledTokens[_i - 1]];
+      // if the ltv is 0, continue
+      if (_collateral.ltv == 0) continue;
+      // get the address of the token through the array of enabled tokens
+      // note that index 0 of enabledTokens corresponds to a vaultId of 1, so we must subtract 1 from i to get the correct index
+      address _tokenAddress = enabledTokens[_i - 1];
+      // the balance is the vault's token balance of the current collateral token in the loop
+      uint256 _balance = _vault.balances(_tokenAddress);
+      if (_balance == 0) continue;
+      // the raw price is simply the oracle price of the token
+      uint192 _rawPrice = _safeu192(_collateral.oracle.peekValue());
       if (_rawPrice == 0) continue;
       // the token value is equal to the price * balance * tokenLTV
       uint192 _tokenValue = _safeu192(_truncate(_truncate(_rawPrice * _balance * _collateral.ltv)));
@@ -898,7 +989,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
         }
       }
       _vaultSummaries[_i - _start] =
-        VaultSummary(_i, _getVaultBorrowingPower(_vault), this.vaultLiability(_i), enabledTokens, _tokenBalances);
+        VaultSummary(_i, _peekVaultBorrowingPower(_vault), this.vaultLiability(_i), enabledTokens, _tokenBalances);
 
       unchecked {
         ++_i;

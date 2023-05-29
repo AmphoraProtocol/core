@@ -11,10 +11,14 @@ contract FakeWethOracle is OracleRelay {
     _owner = msg.sender;
   }
 
+  function peekValue() public view virtual override returns (uint256 _price) {
+    _price = _get();
+  }
+
   /// @notice the current reported value of the oracle
   /// @return _value the current value
   /// @dev implementation in getLastSecond
-  function currentValue() external view override returns (uint256 _value) {
+  function _get() internal view returns (uint256 _value) {
     _value = price;
   }
 

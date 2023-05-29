@@ -29,7 +29,7 @@ abstract contract Base is DSTestPlus {
 }
 
 contract UnitCTokenOracleContructor is Base {
-  function testCTokenOracleConstructorWhenUnderlyingIsUSDC() public {
+  function testCTokenOracleConstructorWhenUnderlyingIsUSDC() public view {
     assert(address(cTokenOracle.cToken()) == address(_cToken));
     assert(address(cTokenOracle.anchoredViewUnderlying()) == address(_underlyingAnchoredView));
     assert(cTokenOracle.div() == 10 ** (18 - 8 + 6));
@@ -59,7 +59,7 @@ contract UnitCTokenOracleCurrentValue is Base {
     );
     vm.mockCall(
       address(_underlyingAnchoredView),
-      abi.encodeWithSelector(IOracleRelay.currentValue.selector),
+      abi.encodeWithSelector(IOracleRelay.peekValue.selector),
       abi.encode(_anchoredViewValue)
     );
 

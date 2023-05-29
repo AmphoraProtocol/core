@@ -9,6 +9,7 @@ import {Deploy, DeployVars} from '@scripts/Deploy.s.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import {MintableToken} from '@scripts/fakes/MintableToken.sol';
 import {FakeBooster} from '@scripts/fakes/FakeBooster.sol';
+import {UniswapV3OracleRelay} from '@contracts/periphery/oracles/UniswapV3OracleRelay.sol';
 
 import {console} from 'forge-std/console.sol';
 
@@ -17,8 +18,9 @@ contract DeployGoerli is Deploy {
 
   function run() external {
     vm.startBroadcast(deployer);
+    UniswapV3OracleRelay _uniswapRelayEthUsdc = UniswapV3OracleRelay(_createEthUsdcTokenOracleRelay());
     // Deploy weth oracle first, can be removed if the user defines a valid oracle address
-    address _oracle = _createWethOracle();
+    address _oracle = _createWethOracle(_uniswapRelayEthUsdc);
 
     DeployVars memory _deployVars = DeployVars(
       deployer,

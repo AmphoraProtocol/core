@@ -28,13 +28,21 @@ contract ChainlinkTokenOracleRelay is OracleRelay {
     DIVIDE = _div;
   }
 
+  /// @notice returns the price with 18 decimals without any state changes
+  /// @dev some oracles require a state change to get the exact current price.
+  ///      This is updated when calling other state changing functions that query the price
+  /// @return _price the current price
+  function peekValue() public view override returns (uint256 _price) {
+    _price = _get();
+  }
+
   /// @notice The current reported value of the oracle
   /// @dev Implementation in getLastSecond
   /// @return _value The current value
-  function currentValue() external view override returns (uint256 _value) {
+  function _get() internal view returns (uint256 _value) {
     uint256 _priceInEth = _getLastSecond();
 
-    uint256 _ethPrice = ETH_PRICE_FEED.currentValue();
+    uint256 _ethPrice = ETH_PRICE_FEED.peekValue();
 
     _value = (_ethPrice * _priceInEth) / 1e18;
   }

@@ -12,7 +12,13 @@ interface IOracleRelay {
 
   /// @notice returns the price with 18 decimals
   /// @return _currentValue the current price
-  function currentValue() external view returns (uint256 _currentValue);
+  function currentValue() external returns (uint256 _currentValue);
+
+  /// @notice returns the price with 18 decimals without any state changes
+  /// @dev some oracles require a state change to get the exact current price.
+  ///      This is updated when calling other state changing functions that query the price
+  /// @return _price the current price
+  function peekValue() external view returns (uint256 _price);
 
   /// @notice returns the type of the oracle
   /// @return _type the type (Chainlink/Uniswap/Price)

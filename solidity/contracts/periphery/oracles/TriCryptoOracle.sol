@@ -39,7 +39,7 @@ contract TriCryptoOracle is OracleRelay, Ownable {
   /// @notice The current reported value of the oracle
   /// @dev Implementation in _get
   /// @return _value The current value
-  function currentValue() external view override returns (uint256 _value) {
+  function peekValue() public view override returns (uint256 _value) {
     _value = _get();
   }
 

@@ -408,6 +408,12 @@ contract UnitVaultWithdrawERC20 is Base {
     vault.withdrawERC20(address(_mockToken), 1 ether);
     assertEq(vault.balances(address(_mockToken)), 0);
   }
+
+  function testWithdrawERC20CallsCheckVault() public {
+    vm.expectCall(address(mockVaultController), abi.encodeWithSelector(IVaultController.checkVault.selector, 1));
+    vm.prank(vaultOwner);
+    vault.withdrawERC20(address(_mockToken), 1 ether);
+  }
 }
 
 contract UnitVaultControllerTransfer is Base {

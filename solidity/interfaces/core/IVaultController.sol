@@ -330,7 +330,9 @@ interface IVaultController {
 
   function tokensToLiquidate(uint96 _id, address _token) external view returns (uint256 _tokensToLiquidate);
 
-  function checkVault(uint96 _id) external view returns (bool _overCollateralized);
+  function peekCheckVault(uint96 _id) external view returns (bool _overCollateralized);
+
+  function checkVault(uint96 _id) external returns (bool _overCollateralized);
 
   function vaultSummaries(uint96 _start, uint96 _stop) external view returns (VaultSummary[] memory _vaultSummaries);
 

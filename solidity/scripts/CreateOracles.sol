@@ -8,6 +8,8 @@ import {UniswapV3TokenOracleRelay} from '@contracts/periphery/oracles/UniswapV3T
 import {ChainlinkOracleRelay} from '@contracts/periphery/oracles/ChainlinkOracleRelay.sol';
 import {AnchoredViewRelay} from '@contracts/periphery/oracles/AnchoredViewRelay.sol';
 import {StableCurveLpOracle} from '@contracts/periphery/oracles/StableCurveLpOracle.sol';
+import {EthSafeStableCurveOracle} from '@contracts/periphery/oracles/EthSafeStableCurveOracle.sol';
+
 import {CTokenOracle} from '@contracts/periphery/oracles/CTokenOracle.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
 
@@ -20,11 +22,15 @@ abstract contract CreateOracles is TestConstants {
   uint256 public constant SIX_DECIMALS_MUL_DIV = 1e12;
   uint256 public constant EIGHT_DECIMALS_MUL_DIV = 1e10;
 
-  function _createWethOracle() internal returns (address _wethOracle) {
+  function _createEthUsdcTokenOracleRelay() internal returns (address _ethUsdcTokenOracleRelay) {
     // Deploy uniswapRelayEthUsdc oracle relay
     UniswapV3OracleRelay _uniswapRelayEthUsdc =
       new UniswapV3OracleRelay(TWO_HOURS, USDC_WETH_POOL_ADDRESS, true, SIX_DECIMALS_MUL_DIV, 1);
     console.log('UNISWAP_ETH_USDC_ORACLE: ', address(_uniswapRelayEthUsdc));
+    _ethUsdcTokenOracleRelay = address(_uniswapRelayEthUsdc);
+  }
+
+  function _createWethOracle(UniswapV3OracleRelay _uniswapRelayEthUsdc) internal returns (address _wethOracle) {
     // Deploy chainlinkEth oracle relay
     ChainlinkOracleRelay _chainlinkEth =
       new ChainlinkOracleRelay(CHAINLINK_ETH_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_HOUR);
@@ -107,10 +113,10 @@ abstract contract CreateOracles is TestConstants {
     _cUSDTOracleAddress = address(_cUSDTOracle);
   }
 
-  function _createStEthOracle() internal returns (address _stEthOracle) {
+  function _createStEthOracle(UniswapV3OracleRelay _uniswapRelayEthUsdc) internal returns (address _stEthOracle) {
     // Deploy uniswapRelayWstEthWEth oracle relay
     UniswapV3TokenOracleRelay _uniswapRelayWstEthWEth =
-      new UniswapV3TokenOracleRelay(TWO_HOURS, WSTETH_WETH_POOL_ADDRESS, false, 1, 1);
+      new UniswapV3TokenOracleRelay(_uniswapRelayEthUsdc, TWO_HOURS, WSTETH_WETH_POOL_ADDRESS, false, 1, 1);
     console.log('UNISWAP_WSTETH_WETH_ORACLE: ', address(_uniswapRelayWstEthWEth));
     // Deploy _chainlinkStETH oracle relay
     ChainlinkOracleRelay _chainlinkStETH =
@@ -148,7 +154,7 @@ abstract contract CreateOracles is TestConstants {
     _anchoredUnderlyingTokens[0] = _stEthAnchorOracle;
     _anchoredUnderlyingTokens[1] = _wethAnchorOracle;
 
-    StableCurveLpOracle _steCrvLpOracle = new StableCurveLpOracle(_crvPool, _anchoredUnderlyingTokens);
+    EthSafeStableCurveOracle _steCrvLpOracle = new EthSafeStableCurveOracle(_crvPool, _anchoredUnderlyingTokens);
     _steCrvLpOracleAddress = address(_steCrvLpOracle);
     console.log('STE_CRV_ORACLE: ', _steCrvLpOracleAddress);
   }

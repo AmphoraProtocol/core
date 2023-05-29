@@ -15,7 +15,6 @@ import {ThreeLines0_100} from '@contracts/utils/ThreeLines0_100.sol';
 import {ExponentialNoError} from '@contracts/utils/ExponentialNoError.sol';
 
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
-import {IAnchoredViewRelay} from '@interfaces/periphery/IAnchoredViewRelay.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {IUSDA} from '@interfaces/core/IUSDA.sol';
@@ -123,17 +122,8 @@ abstract contract Base is DSTestPlus, TestConstants, CreateOracles {
     anchoredViewEth = new AnchoredViewRelay(address(uniswapRelayEthUsdc), address(chainlinkEth), 20, 100, 10, 100);
     anchoredViewUni = new AnchoredViewRelay(address(uniswapRelayUniUsdc), address(chainLinkUni), 40, 100, 10, 100);
 
-    /// Deploy usdc oracle relay
-    IOracleRelay _anchoredViewUsdc = IOracleRelay(_createUsdcOracle());
-    /// Deploy dai oracle relay
-    IOracleRelay _anchoredViewDai = IOracleRelay(_createDaiOracle());
-    /// Deploy usdt oracle relay
-    IOracleRelay _anchoredViewUsdt = IOracleRelay(_createUsdtOracle());
-
     // Deploy the ThreeCrvOracle
-    threeCrvOracle = StableCurveLpOracle(
-      _create3CrvOracle(THREE_CRV_POOL_ADDRESS, _anchoredViewDai, _anchoredViewUsdt, _anchoredViewUsdc)
-    );
+    threeCrvOracle = StableCurveLpOracle(mockContract(newAddress(), 'threeCrvOracle'));
 
     vm.stopPrank();
   }
@@ -195,8 +185,9 @@ abstract contract VaultBase is Base {
     );
 
     vm.mockCall(
-      address(anchoredViewEth), abi.encodeWithSelector(IAnchoredViewRelay.currentValue.selector), abi.encode(1 ether)
+      address(anchoredViewEth), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(1 ether)
     );
+    vm.mockCall(address(anchoredViewEth), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(1 ether));
   }
 
   function testOwnerVaultIds() public {
@@ -783,6 +774,7 @@ contract UnitVaultControllerLiquidateVault is VaultBase, ExponentialNoError {
     vm.mockCall(
       address(threeCrvOracle), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(1 ether)
     );
+    vm.mockCall(address(threeCrvOracle), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(1 ether));
 
     // borrow a few usda
     vm.startPrank(vaultOwner);
@@ -799,6 +791,9 @@ contract UnitVaultControllerLiquidateVault is VaultBase, ExponentialNoError {
     (, uint192 _factor) = vaultController.interest();
     uint256 _liability = (_truncate(_badFillPrice * _tokensToLiquidate) * 1e18) / _factor;
 
+    address _owner = vaultController.owner();
+    uint256 _liqFee = vaultController.getLiquidationFee(uint192(_tokensToLiquidate), address(usdtLp));
+
     vm.expectCall(address(_vault), abi.encodeWithSelector(IVault.modifyLiability.selector, false, _liability));
     vm.expectCall(
       address(_crvRewards),
@@ -807,20 +802,11 @@ contract UnitVaultControllerLiquidateVault is VaultBase, ExponentialNoError {
     vm.expectCall(
       address(_vault),
       abi.encodeWithSelector(
-        IVault.controllerTransfer.selector,
-        address(usdtLp),
-        address(this),
-        _tokensToLiquidate - vaultController.getLiquidationFee(uint192(_tokensToLiquidate), address(usdtLp))
+        IVault.controllerTransfer.selector, address(usdtLp), address(this), _tokensToLiquidate - _liqFee
       )
     );
     vm.expectCall(
-      address(_vault),
-      abi.encodeWithSelector(
-        IVault.controllerTransfer.selector,
-        address(usdtLp),
-        address(vaultController.owner()),
-        vaultController.getLiquidationFee(uint192(_tokensToLiquidate), address(usdtLp))
-      )
+      address(_vault), abi.encodeWithSelector(IVault.controllerTransfer.selector, address(usdtLp), _owner, _liqFee)
     );
 
     vaultController.liquidateVault(_vaultId, address(usdtLp), 10 ether);
@@ -841,6 +827,7 @@ contract UnitVaultControllerLiquidateVault is VaultBase, ExponentialNoError {
     vm.mockCall(
       address(threeCrvOracle), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(1 ether)
     );
+    vm.mockCall(address(threeCrvOracle), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(1 ether));
 
     // set liquidation fee in zero
     vm.prank(vaultController.owner());
@@ -861,6 +848,8 @@ contract UnitVaultControllerLiquidateVault is VaultBase, ExponentialNoError {
     (, uint192 _factor) = vaultController.interest();
     uint256 _liability = (_truncate(_badFillPrice * _tokensToLiquidate) * 1e18) / _factor;
 
+    address _owner = vaultController.owner();
+
     vm.expectCall(address(_vault), abi.encodeWithSelector(IVault.modifyLiability.selector, false, _liability));
     vm.expectCall(
       address(_crvRewards),
@@ -871,8 +860,7 @@ contract UnitVaultControllerLiquidateVault is VaultBase, ExponentialNoError {
       abi.encodeWithSelector(IVault.controllerTransfer.selector, address(usdtLp), address(this), _tokensToLiquidate)
     );
     vm.expectCall(
-      address(_vault),
-      abi.encodeWithSelector(IVault.controllerTransfer.selector, address(usdtLp), address(vaultController.owner()), 0)
+      address(_vault), abi.encodeWithSelector(IVault.controllerTransfer.selector, address(usdtLp), _owner, 0)
     );
 
     vaultController.liquidateVault(_vaultId, address(usdtLp), 10 ether);
@@ -893,6 +881,8 @@ contract UnitVaultControllerLiquidateVault is VaultBase, ExponentialNoError {
     (, uint192 _factor) = vaultController.interest();
     uint256 _liability = (_truncate(_badFillPrice * _tokensToLiquidate) * 1e18) / _factor;
 
+    uint256 _liqFee = vaultController.getLiquidationFee(uint192(_tokensToLiquidate), WETH_ADDRESS);
+
     vm.expectCall(address(_vault), abi.encodeWithSelector(IVault.modifyLiability.selector, false, _liability));
     vm.expectCall(
       address(usdaToken),
@@ -900,13 +890,11 @@ contract UnitVaultControllerLiquidateVault is VaultBase, ExponentialNoError {
         IUSDA.vaultControllerBurn.selector, address(this), _truncate(_badFillPrice * _tokensToLiquidate)
       )
     );
+    vm.expectCall(address(anchoredViewEth), abi.encodeWithSelector(IOracleRelay.currentValue.selector));
     vm.expectCall(
       address(_vault),
       abi.encodeWithSelector(
-        IVault.controllerTransfer.selector,
-        WETH_ADDRESS,
-        address(this),
-        _tokensToLiquidate - vaultController.getLiquidationFee(uint192(_tokensToLiquidate), WETH_ADDRESS)
+        IVault.controllerTransfer.selector, WETH_ADDRESS, address(this), _tokensToLiquidate - _liqFee
       )
     );
     vaultController.liquidateVault(_vaultId, WETH_ADDRESS, 10 ether);
@@ -971,7 +959,7 @@ contract UnitVaultControllerSimulateLiquidateVault is VaultBase, ExponentialNoEr
     vaultController.simulateLiquidateVault(_vaultId, WETH_ADDRESS, _tokensToLiquidate);
   }
 
-  function testSimulate() public {
+  function testSimulateLiquidateVault() public {
     vm.mockCall(address(usdtLp), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
 
     vm.mockCall(address(vaultController.BOOSTER()), abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(true));
@@ -983,6 +971,7 @@ contract UnitVaultControllerSimulateLiquidateVault is VaultBase, ExponentialNoEr
       address(_crvRewards), abi.encodeWithSelector(IBaseRewardPool.withdrawAndUnwrap.selector), abi.encode(true)
     );
 
+    vm.mockCall(address(threeCrvOracle), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(1 ether));
     vm.mockCall(
       address(threeCrvOracle), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(1 ether)
     );
@@ -1030,14 +1019,17 @@ contract UnitVaultControllerCheckVault is VaultBase {
     assertTrue(vaultController.checkVault(_vaultId));
   }
 
+  function testCheckVaultCallsCurrentValue() public {
+    vm.expectCall(address(anchoredViewEth), abi.encodeWithSelector(IOracleRelay.currentValue.selector));
+    vaultController.checkVault(_vaultId);
+  }
+
   function testCheckVaultInsolvent() public {
     vm.prank(vaultOwner);
     vaultController.borrowUSDA(_vaultId, _borrowAmount);
 
     vm.mockCall(
-      address(anchoredViewEth),
-      abi.encodeWithSelector(IAnchoredViewRelay.currentValue.selector),
-      abi.encode(1 ether / 4)
+      address(anchoredViewEth), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(1 ether / 4)
     );
     assertFalse(vaultController.checkVault(_vaultId));
   }
@@ -1115,6 +1107,12 @@ contract UnitVaultControllerBorrow is VaultBase {
 
     assertEq(usdaToken.balanceOf(vaultOwner), _usdaBalanceBefore + _borrowAmount);
     assertEq(usdaToken.balanceOf(vaultController.owner()), _usdaBalanceTreasuryBefore);
+  }
+
+  function testBorrowUSDACallsCurrentValue() public {
+    vm.expectCall(address(anchoredViewEth), abi.encodeWithSelector(IOracleRelay.currentValue.selector));
+    vm.prank(vaultOwner);
+    vaultController.borrowUSDA(_vaultId, _borrowAmount);
   }
 }
 
@@ -1346,9 +1344,7 @@ contract UnitVaultControllerTokensToLiquidate is VaultBase {
 
   function testTokensToLiquidate() public {
     vm.mockCall(
-      address(anchoredViewEth),
-      abi.encodeWithSelector(IAnchoredViewRelay.currentValue.selector),
-      abi.encode(1 ether / 4)
+      address(anchoredViewEth), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(1 ether / 4)
     );
     assertEq(vaultController.tokensToLiquidate(_vaultId, WETH_ADDRESS), _vaultDeposit);
   }
@@ -1420,9 +1416,7 @@ contract UnitVaultControllerVaultBorrowingPower is VaultBase {
   }
 
   function testVaultBorrowingPowerWhenOracleReturnsZero() public {
-    vm.mockCall(
-      address(anchoredViewEth), abi.encodeWithSelector(IAnchoredViewRelay.currentValue.selector), abi.encode(0)
-    );
+    vm.mockCall(address(anchoredViewEth), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(0));
     assertEq(vaultController.vaultBorrowingPower(_vaultId), 0);
   }
 
@@ -1439,12 +1433,8 @@ contract UnitVaultControllerVaultBorrowingPower is VaultBase {
     _vault.depositERC20(UNI_ADDRESS, _vaultDeposit);
     vm.stopPrank();
 
-    vm.mockCall(
-      address(anchoredViewEth), abi.encodeWithSelector(IAnchoredViewRelay.currentValue.selector), abi.encode(1 ether)
-    );
-    vm.mockCall(
-      address(anchoredViewUni), abi.encodeWithSelector(IAnchoredViewRelay.currentValue.selector), abi.encode(1 ether)
-    );
+    vm.mockCall(address(anchoredViewEth), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(1 ether));
+    vm.mockCall(address(anchoredViewUni), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(1 ether));
 
     // we calculate only for weth since uni borrowing power should be 0
     uint256 _borrowingPower = (_vaultDeposit * WETH_LTV) / 1 ether;
@@ -1469,12 +1459,8 @@ contract UnitVaultControllerVaultBorrowingPower is VaultBase {
     _vault.depositERC20(UNI_ADDRESS, _vaultDeposit);
     vm.stopPrank();
 
-    vm.mockCall(
-      address(anchoredViewEth), abi.encodeWithSelector(IAnchoredViewRelay.currentValue.selector), abi.encode(1 ether)
-    );
-    vm.mockCall(
-      address(anchoredViewUni), abi.encodeWithSelector(IAnchoredViewRelay.currentValue.selector), abi.encode(1 ether)
-    );
+    vm.mockCall(address(anchoredViewEth), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(1 ether));
+    vm.mockCall(address(anchoredViewUni), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(1 ether));
 
     uint256 _borrowingPower = (_vaultDeposit * WETH_LTV + _vaultDeposit * UNI_LTV) / 1 ether;
     assertEq(

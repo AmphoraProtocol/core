@@ -68,13 +68,13 @@ contract UnitTestCurveLpOracleCurrentValue is Base {
 
     vm.mockCall(
       address(_oracleRelayToken1),
-      abi.encodeWithSelector(IOracleRelay.currentValue.selector),
+      abi.encodeWithSelector(IOracleRelay.peekValue.selector),
       abi.encode(_anchorToken1CurrentPrice)
     );
 
     vm.mockCall(
       address(_oracleRelayToken2),
-      abi.encodeWithSelector(IOracleRelay.currentValue.selector),
+      abi.encodeWithSelector(IOracleRelay.peekValue.selector),
       abi.encode(_anchorToken2CurrentPrice)
     );
 

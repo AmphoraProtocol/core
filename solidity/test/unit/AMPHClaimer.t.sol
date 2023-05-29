@@ -393,7 +393,7 @@ contract UnitAMPHClaimerGovernanceFunctions is Base {
 }
 
 contract UnitAMPHClaimerConvertFunctions is Base {
-  function testTokenAmountToAmph(uint256 _tokenAmount, uint256 _tokenRate) public {
+  function testTokenAmountToAmph(uint256 _tokenAmount, uint256 _tokenRate) public view {
     vm.assume(_tokenAmount >= 1); // NOTE: I had to do this to prevent an error: "Division or modulo by 0" in some of the assumes below (but you can send a zero amount in production)
 
     vm.assume(_tokenRate >= 1); // minimum rate
@@ -405,7 +405,7 @@ contract UnitAMPHClaimerConvertFunctions is Base {
     amphMath.tokenAmountToAmph(_tokenAmount, _tokenRate);
   }
 
-  function testTotalToFraction(uint256 _totalAmount, uint256 _fraction) public {
+  function testTotalToFraction(uint256 _totalAmount, uint256 _fraction) public view {
     vm.assume(_totalAmount >= 1); // NOTE: I had to do this to prevent an error: "Division or modulo by 0" in some of the assumes below (but you can send a zero amount in production)
 
     vm.assume(_fraction >= 1); // minimum fraction

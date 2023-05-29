@@ -39,15 +39,15 @@ contract UnitTestAnchoredViewRelayOracleType is Base {
 
 contract UnitTestAnchoredViewRelayCurrentValue is Base {
   function testCurrentValueRevertWithInvalidOracleValue() public {
-    vm.mockCall(address(_mockMainRelay), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(0));
+    vm.mockCall(address(_mockMainRelay), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(0));
 
     vm.expectRevert('invalid oracle value');
     anchoredViewRelay.currentValue();
   }
 
   function testCurrentValueRevertWithInvalidAnchorValue() public {
-    vm.mockCall(address(_mockMainRelay), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(1));
-    vm.mockCall(address(_mockAnchorRelay), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(0));
+    vm.mockCall(address(_mockMainRelay), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(1));
+    vm.mockCall(address(_mockAnchorRelay), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(0));
 
     vm.expectRevert('invalid anchor value');
     anchoredViewRelay.currentValue();
@@ -64,10 +64,10 @@ contract UnitTestAnchoredViewRelayCurrentValue is Base {
     vm.assume(_anchorPrice + _buffer < _mainPrice);
 
     vm.mockCall(
-      address(_mockMainRelay), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(_mainPrice)
+      address(_mockMainRelay), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(_mainPrice)
     );
     vm.mockCall(
-      address(_mockAnchorRelay), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(_anchorPrice)
+      address(_mockAnchorRelay), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(_anchorPrice)
     );
     vm.mockCall(
       address(_mockMainRelay), abi.encodeWithSelector(IChainlinkOracleRelay.isStale.selector), abi.encode(false)
@@ -88,10 +88,10 @@ contract UnitTestAnchoredViewRelayCurrentValue is Base {
     vm.assume(_anchorPrice - _buffer > _mainPrice);
 
     vm.mockCall(
-      address(_mockMainRelay), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(_mainPrice)
+      address(_mockMainRelay), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(_mainPrice)
     );
     vm.mockCall(
-      address(_mockAnchorRelay), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(_anchorPrice)
+      address(_mockAnchorRelay), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(_anchorPrice)
     );
     vm.mockCall(
       address(_mockMainRelay), abi.encodeWithSelector(IChainlinkOracleRelay.isStale.selector), abi.encode(false)
@@ -112,10 +112,10 @@ contract UnitTestAnchoredViewRelayCurrentValue is Base {
     vm.assume(_anchorPrice + _buffer < _mainPrice);
 
     vm.mockCall(
-      address(_mockMainRelay), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(_mainPrice)
+      address(_mockMainRelay), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(_mainPrice)
     );
     vm.mockCall(
-      address(_mockAnchorRelay), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(_anchorPrice)
+      address(_mockAnchorRelay), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(_anchorPrice)
     );
     vm.mockCall(
       address(_mockMainRelay), abi.encodeWithSelector(IChainlinkOracleRelay.isStale.selector), abi.encode(true)
@@ -136,10 +136,10 @@ contract UnitTestAnchoredViewRelayCurrentValue is Base {
     vm.assume(_anchorPrice - _buffer > _mainPrice);
 
     vm.mockCall(
-      address(_mockMainRelay), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(_mainPrice)
+      address(_mockMainRelay), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(_mainPrice)
     );
     vm.mockCall(
-      address(_mockAnchorRelay), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(_anchorPrice)
+      address(_mockAnchorRelay), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(_anchorPrice)
     );
     vm.mockCall(
       address(_mockMainRelay), abi.encodeWithSelector(IChainlinkOracleRelay.isStale.selector), abi.encode(true)

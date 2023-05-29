@@ -10,5 +10,10 @@ abstract contract OracleRelay is IOracleRelay {
     oracleType = _oracleType;
   }
 
-  function currentValue() external view virtual returns (uint256 _currentValue);
+  /// @dev Most oracles don't require a state change for pricing, for those who do, override this function
+  function currentValue() external virtual returns (uint256 _currentValue) {
+    _currentValue = peekValue();
+  }
+
+  function peekValue() public view virtual override returns (uint256 _price);
 }

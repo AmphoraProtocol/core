@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.5.0 <0.9.0;
 
-import {IOracleRelay, OracleRelay} from '@contracts/periphery/oracles/OracleRelay.sol';
+import {OracleRelay} from '@contracts/periphery/oracles/OracleRelay.sol';
 import {IUniswapV3PoolDerivedState} from '@uniswap/v3-core/contracts/interfaces/pool/IUniswapV3PoolDerivedState.sol';
 import {TickMath} from '@uniswap/v3-core/contracts/libraries/TickMath.sol';
+import {UniswapV3OracleRelay} from '@contracts/periphery/oracles/UniswapV3OracleRelay.sol';
 
 /// @notice Oracle that wraps a univ3 pool
 /// @dev This oracle is for tokens that do not have a stable Uniswap V3 pair against sUSD
@@ -13,7 +14,7 @@ contract UniswapV3TokenOracleRelay is OracleRelay {
   /// @notice Thrown when the tick time diff fails
   error UniswapV3OracleRelay_TickTimeDiffTooLarge();
 
-  IOracleRelay public constant ETH_ORACLE = IOracleRelay(0x22B01826063564CBe01Ef47B96d623b739F82Bf2);
+  UniswapV3OracleRelay public immutable ETH_ORACLE;
 
   bool public immutable QUOTE_TOKEN_IS_TOKEN0;
 
@@ -24,18 +25,21 @@ contract UniswapV3TokenOracleRelay is OracleRelay {
   uint256 public immutable DIV;
 
   /// @notice All values set at construction time
+  /// @param _ethOracle The uniswap oracle for ethusdc
   /// @param _lookback How many seconds to twap for
-  /// @param _poolAddress The address of chainlink feed
+  /// @param _poolAddress The address of uniswap feed
   /// @param _quoteTokenIsToken0 Boolean, true if eth is token 0, or false if eth is token 1
   /// @param _mul The numerator of scalar
   /// @param _div The denominator of scalar
   constructor(
+    UniswapV3OracleRelay _ethOracle,
     uint32 _lookback,
     address _poolAddress,
     bool _quoteTokenIsToken0,
     uint256 _mul,
     uint256 _div
   ) OracleRelay(OracleType.Uniswap) {
+    ETH_ORACLE = _ethOracle;
     LOOKBACK = _lookback;
     MUL = _mul;
     DIV = _div;
@@ -43,14 +47,18 @@ contract UniswapV3TokenOracleRelay is OracleRelay {
     POOL = IUniswapV3PoolDerivedState(_poolAddress);
   }
 
+  function peekValue() public view virtual override returns (uint256 _price) {
+    _price = _get();
+  }
+
   /// @notice Returns the current reported value of the oracle
   /// @dev Implementation in _getLastSeconds
   /// @return _usdPrice The price in USD terms
-  function currentValue() external view override returns (uint256 _usdPrice) {
+  function _get() internal view returns (uint256 _usdPrice) {
     uint256 _priceInEth = _getLastSeconds(LOOKBACK);
 
     //get price of eth to convert _priceInEth to USD terms
-    uint256 _ethPrice = ETH_ORACLE.currentValue();
+    uint256 _ethPrice = ETH_ORACLE.peekValue();
 
     _usdPrice = (_ethPrice * _priceInEth) / 1e18;
   }

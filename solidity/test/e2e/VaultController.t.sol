@@ -6,7 +6,7 @@ import {CommonE2EBase, IERC20} from '@test/e2e/Common.sol';
 import {VaultController} from '@contracts/core/VaultController.sol';
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
-import {IAnchoredViewRelay} from '@interfaces/periphery/IAnchoredViewRelay.sol';
+import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
 import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
 import {IVaultDeployer} from '@interfaces/core/IVaultDeployer.sol';
 import {ChainlinkStalePriceLib} from '@contracts/periphery/oracles/ChainlinkStalePriceLib.sol';
@@ -135,7 +135,7 @@ contract E2EVaultController is CommonE2EBase {
     address _asset,
     uint256 _totalToLiquidate,
     uint256 _calculatedLiability
-  ) internal view returns (uint256 _finalTokensToLiquidate) {
+  ) internal returns (uint256 _finalTokensToLiquidate) {
     uint256 _assetPrice = vaultController.tokensOracle(_asset).currentValue();
     uint256 _ltv = WETH_LTV;
 
@@ -159,7 +159,7 @@ contract E2EVaultController is CommonE2EBase {
   function _calculateUSDAToRepurchase(
     address _asset,
     uint256 _tokensToLiquidate
-  ) internal view returns (uint256 _usdaToRepurchase) {
+  ) internal returns (uint256 _usdaToRepurchase) {
     uint256 _assetPrice = vaultController.tokensOracle(_asset).currentValue();
     uint256 _badFillPrice = ((_assetPrice * 1 ether) - LIQUIDATION_INCENTIVE) / 1 ether;
     _usdaToRepurchase = (_badFillPrice * _tokensToLiquidate) / 1 ether;
@@ -529,7 +529,10 @@ contract E2EVaultController is CommonE2EBase {
 
     // moch the value of the token to make vault insolvent
     vm.mockCall(
-      address(anchoredViewEth), abi.encodeWithSelector(IAnchoredViewRelay.currentValue.selector), abi.encode(0.5 ether)
+      address(anchoredViewEth), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(0.5 ether)
+    );
+    vm.mockCall(
+      address(anchoredViewEth), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(0.5 ether)
     );
     _tokensToLiquidate = vaultController.tokensToLiquidate(bobsVaultId, WETH_ADDRESS);
     assertEq(_tokensToLiquidate, bobWETH);

@@ -30,24 +30,28 @@ contract StableCurveLpOracle is OracleRelay, Ownable {
 
   /// @notice The current reported value of the oracle
   /// @dev Implementation in _get()
-  /// @return _value The current value
-  function currentValue() external view override returns (uint256 _value) {
-    _value = _get();
+  /// @return _price The current value
+  function peekValue() public view virtual override returns (uint256 _price) {
+    _price = _get();
   }
 
   /// @notice Calculates the lastest exchange rate
   function _get() internal view returns (uint256 _value) {
     // As the price should never be negative, the unchecked conversion is acceptable
-    uint256 _minStable = anchoredUnderlyingTokens[0].currentValue();
+    uint256 _minStable = anchoredUnderlyingTokens[0].peekValue();
     for (uint256 _i = 1; _i < anchoredUnderlyingTokens.length;) {
-      _minStable = Math.min(_minStable, anchoredUnderlyingTokens[_i].currentValue());
+      _minStable = Math.min(_minStable, anchoredUnderlyingTokens[_i].peekValue());
       unchecked {
         ++_i;
       }
     }
 
-    uint256 _lpPrice = CRV_POOL.get_virtual_price() * _minStable;
+    uint256 _lpPrice = _getVirtualPrice() * _minStable;
 
     _value = _lpPrice / 1e18;
+  }
+
+  function _getVirtualPrice() internal view virtual returns (uint256 _value) {
+    _value = CRV_POOL.get_virtual_price();
   }
 }

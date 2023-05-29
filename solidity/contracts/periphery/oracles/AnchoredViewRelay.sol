@@ -48,11 +48,12 @@ contract AnchoredViewRelay is OracleRelay {
     staleWidthDenominator = _staleWidthDenominator;
   }
 
-  /// @notice Returns current value of oracle
-  /// @dev Implementation in getLastSecond
-  /// @return _value The current value of oracle
-  function currentValue() external view override returns (uint256 _value) {
-    _value = _getLastSecond();
+  /// @notice returns the price with 18 decimals without any state changes
+  /// @dev some oracles require a state change to get the exact current price.
+  ///      This is updated when calling other state changing functions that query the price
+  /// @return _price the current price
+  function peekValue() public view override returns (uint256 _price) {
+    _price = _getLastSecond();
   }
 
   /// @notice Compares the main value (chainlink) to the anchor value (uniswap v3)
@@ -60,10 +61,10 @@ contract AnchoredViewRelay is OracleRelay {
   /// @return _mainValue The current value of oracle
   function _getLastSecond() private view returns (uint256 _mainValue) {
     // get the main price
-    _mainValue = mainRelay.currentValue();
+    _mainValue = mainRelay.peekValue();
     require(_mainValue > 0, 'invalid oracle value');
 
-    uint256 _anchorPrice = anchorRelay.currentValue();
+    uint256 _anchorPrice = anchorRelay.peekValue();
     require(_anchorPrice > 0, 'invalid anchor value');
 
     uint256 _buffer;
