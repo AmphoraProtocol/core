@@ -4,6 +4,9 @@ pragma solidity ^0.8.9;
 /// @title OracleRelay Interface
 /// @notice Interface for interacting with OracleRelay
 interface IOracleRelay {
+  /// @notice Emited when the underlyings are different in the anchored view
+  error OracleRelay_DifferentUnderlyings();
+
   enum OracleType {
     Chainlink,
     Uniswap,
@@ -23,4 +26,8 @@ interface IOracleRelay {
   /// @notice returns the type of the oracle
   /// @return _type the type (Chainlink/Uniswap/Price)
   function oracleType() external view returns (OracleType _type);
+
+  /// @notice returns the underlying asset the oracle is pricing
+  /// @return _underlying the address of the underlying asset
+  function underlying() external view returns (address _underlying);
 }

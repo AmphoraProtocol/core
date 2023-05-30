@@ -35,7 +35,7 @@ abstract contract CreateOracles is TestConstants {
   function _createWethOracle(UniswapV3OracleRelay _uniswapRelayEthUsdc) internal returns (address _wethOracle) {
     // Deploy chainlinkEth oracle relay
     ChainlinkOracleRelay _chainlinkEth =
-      new ChainlinkOracleRelay(CHAINLINK_ETH_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_HOUR);
+      new ChainlinkOracleRelay(WETH_ADDRESS, CHAINLINK_ETH_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_HOUR);
     console.log('CHAINLINK_ETH_FEED: ', address(_chainlinkEth));
     // Deploy anchoredViewEth relay
     AnchoredViewRelay _anchoredViewEth =
@@ -50,7 +50,7 @@ abstract contract CreateOracles is TestConstants {
     console.log('UNISWAP_USDT_USDC_ORACLE: ', address(_uniswapRelayUsdtUsdc));
     // Deploy chainlinkUsdt oracle relay
     ChainlinkOracleRelay _chainlinkUsdt =
-      new ChainlinkOracleRelay(CHAINLINK_USDT_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_DAY);
+      new ChainlinkOracleRelay(USDT_ADDRESS, CHAINLINK_USDT_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_DAY);
     console.log('CHAINLINK_USDT_FEED: ', address(_chainlinkUsdt));
     // Deploy anchoredViewUsdt relay
     AnchoredViewRelay _anchoredViewUsdt =
@@ -67,12 +67,13 @@ abstract contract CreateOracles is TestConstants {
 
     // Deploy chainlinkWbtcBtc oracle relay
     ChainlinkOracleRelay _chainlinkWbtcBtc =
-      new ChainlinkOracleRelay(CHAINLINK_WBTC_BTC_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_DAY);
+      new ChainlinkOracleRelay(WBTC_ADDRESS, CHAINLINK_WBTC_BTC_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_DAY);
     // Deploy chainlinkBtcUsd oracle relay
     ChainlinkOracleRelay _chainlinkBtcUsd =
-      new ChainlinkOracleRelay(CHAINLINK_BTC_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_HOUR);
+      new ChainlinkOracleRelay(WBTC_ADDRESS, CHAINLINK_BTC_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_HOUR);
     // Deploy chainlinkWbtc oracle relay with twice the 8 decimal mul div because there are two feed at 8 decimals multiplied
-    ChainlinkTokenOracleRelay _chainlinkWbtc = new ChainlinkTokenOracleRelay(_chainlinkWbtcBtc,_chainlinkBtcUsd);
+    ChainlinkTokenOracleRelay _chainlinkWbtc =
+      new ChainlinkTokenOracleRelay(WBTC_ADDRESS, _chainlinkWbtcBtc,_chainlinkBtcUsd);
     console.log('CHAINLINK_WBTC_FEED: ', address(_chainlinkWbtc));
 
     // Deploy anchoredViewUsdt relay
@@ -89,7 +90,7 @@ abstract contract CreateOracles is TestConstants {
     console.log('UNISWAP_USDC_USDT_ORACLE: ', address(_uniswapRelayUsdcUsdt));
     // Deploy chainlinkUsdc oracle relay
     ChainlinkOracleRelay _chainlinkUsdc =
-      new ChainlinkOracleRelay(CHAINLINK_USDC_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_DAY);
+      new ChainlinkOracleRelay(USDC_ADDRESS, CHAINLINK_USDC_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_DAY);
     console.log('CHAINLINK_USDC_FEED: ', address(_chainlinkUsdc));
     // Deploy anchoredViewUsdc relay
     AnchoredViewRelay _anchoredViewUsdt =
@@ -105,7 +106,7 @@ abstract contract CreateOracles is TestConstants {
     console.log('UNISWAP_DAI_USDC_ORACLE: ', address(_uniswapRelayDaiUsdc));
     // Deploy _chainlinkDai oracle relay
     ChainlinkOracleRelay _chainlinkDai =
-      new ChainlinkOracleRelay(CHAINLINK_DAI_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_HOUR);
+      new ChainlinkOracleRelay(DAI_ADDRESS, CHAINLINK_DAI_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_HOUR);
     console.log('CHAINLINK_DAI_FEED: ', address(_chainlinkDai));
     // Deploy anchoredViewDai relay
     AnchoredViewRelay _anchoredViewDai =
@@ -145,7 +146,7 @@ abstract contract CreateOracles is TestConstants {
     console.log('UNISWAP_WSTETH_WETH_ORACLE: ', address(_uniswapRelayWstEthWEth));
     // Deploy _chainlinkStETH oracle relay
     ChainlinkOracleRelay _chainlinkStETH =
-      new ChainlinkOracleRelay(CHAINLINK_STETH_USD_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_HOUR);
+      new ChainlinkOracleRelay(WSETH_ADDRESS, CHAINLINK_STETH_USD_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_HOUR);
     console.log('CHAINLINK_STETH_FEED: ', address(_chainlinkStETH));
     // Deploy anchoredViewStEth relay
     AnchoredViewRelay _anchoredViewStETH =
@@ -161,7 +162,7 @@ abstract contract CreateOracles is TestConstants {
     console.log('UNISWAP_FRAX_USDC_ORACLE: ', address(_uniswapRelayFraxUsdc));
     // Deploy _chainlinkFrax oracle relay
     ChainlinkOracleRelay _chainlinkFrax =
-      new ChainlinkOracleRelay(CHAINLINK_FRAX_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_HOUR);
+      new ChainlinkOracleRelay(FRAX_ADDRESS, CHAINLINK_FRAX_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_HOUR);
     console.log('CHAINLINK_FRAX_FEED: ', address(_chainlinkFrax));
     // Deploy anchoredViewFrax relay
     AnchoredViewRelay _anchoredViewFrax =

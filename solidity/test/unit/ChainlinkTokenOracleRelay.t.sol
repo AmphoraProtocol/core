@@ -10,6 +10,9 @@ import {ChainlinkOracleRelay} from '@contracts/periphery/oracles/ChainlinkOracle
 
 abstract contract Base is DSTestPlus {
   ChainlinkTokenOracleRelay public chainlinkTokenOracleRelay;
+
+  address internal _mockWETH = mockContract(newAddress(), 'mockWETH');
+
   ChainlinkOracleRelay internal _mockAggregator = ChainlinkOracleRelay(mockContract(newAddress(), 'mockAggregator'));
   ChainlinkOracleRelay internal _mockBaseAggregator =
     ChainlinkOracleRelay(mockContract(newAddress(), 'mockBaseAggregator'));
@@ -18,7 +21,13 @@ abstract contract Base is DSTestPlus {
 
   function setUp() public virtual {
     // Deploy contract
-    chainlinkTokenOracleRelay = new ChainlinkTokenOracleRelay(_mockAggregator, _mockBaseAggregator);
+    chainlinkTokenOracleRelay = new ChainlinkTokenOracleRelay(_mockWETH, _mockAggregator, _mockBaseAggregator);
+  }
+}
+
+contract UnitTestChainlinkTokenOracleRelayUnderlyingIsSet is Base {
+  function testUnderlyingIsSet() public {
+    assertEq(address(_mockWETH), chainlinkTokenOracleRelay.underlying());
   }
 }
 

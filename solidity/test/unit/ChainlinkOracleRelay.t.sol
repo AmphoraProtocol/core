@@ -11,6 +11,8 @@ import {ChainlinkStalePriceLib} from '@contracts/periphery/oracles/ChainlinkStal
 abstract contract Base is DSTestPlus {
   ChainlinkOracleRelay public chainlinkOracleRelay;
   AggregatorV3Interface internal _mockAggregator = AggregatorV3Interface(mockContract(newAddress(), 'mockAggregator'));
+  address internal _mockWETH = mockContract(newAddress(), 'mockWETH');
+  IOracleRelay internal _mockEthPriceFeed;
 
   uint256 public mul = 10_000_000_000;
   uint256 public div = 1;
@@ -20,8 +22,14 @@ abstract contract Base is DSTestPlus {
 
   function setUp() public virtual {
     // Deploy contract
-    chainlinkOracleRelay = new ChainlinkOracleRelay(address(_mockAggregator), mul, div, stalePeriod);
+    chainlinkOracleRelay = new ChainlinkOracleRelay(_mockWETH, address(_mockAggregator), mul, div, stalePeriod);
     vm.warp(block.timestamp + stalePeriod + 1);
+  }
+}
+
+contract UnitTestChainlinkOracleRelayUnderlyingIsSet is Base {
+  function testUnderlyingIsSet() public {
+    assertEq(address(_mockWETH), chainlinkOracleRelay.underlying());
   }
 }
 

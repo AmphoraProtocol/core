@@ -15,14 +15,22 @@ abstract contract Base is DSTestPlus {
   AnchoredViewRelay internal _underlyingAnchoredView;
   IERC20Metadata internal _underlying;
 
+  address internal constant _wETH_ADDRESS = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+  address internal constant _USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+
   function setUp() public virtual {
     _cToken = ICToken(mockContract(newAddress(), 'mockCToken'));
     _underlyingAnchoredView = AnchoredViewRelay(mockContract(newAddress(), 'mockUnderlyingAnchoredView'));
-    _underlying = IERC20Metadata(mockContract(newAddress(), 'mockUnderlying'));
+    _underlying = IERC20Metadata(mockContract(_USDC_ADDRESS, 'mockUnderlying'));
 
     vm.mockCall(address(_cToken), abi.encodeWithSelector(ICToken.underlying.selector), abi.encode(address(_underlying)));
     vm.mockCall(address(_cToken), abi.encodeWithSelector(ICToken.decimals.selector), abi.encode(uint8(8)));
     vm.mockCall(address(_underlying), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(uint8(6)));
+    vm.mockCall(
+      address(_underlyingAnchoredView),
+      abi.encodeWithSelector(IOracleRelay.underlying.selector),
+      abi.encode(_USDC_ADDRESS)
+    );
 
     cTokenOracle = new CTokenOracle(address(_cToken), IOracleRelay(_underlyingAnchoredView));
   }
@@ -33,17 +41,24 @@ contract UnitCTokenOracleContructor is Base {
     assert(address(cTokenOracle.cToken()) == address(_cToken));
     assert(address(cTokenOracle.anchoredViewUnderlying()) == address(_underlyingAnchoredView));
     assert(cTokenOracle.div() == 10 ** (18 - 8 + 6));
+    assert(cTokenOracle.underlying() == address(_cToken));
   }
 
   function testCTokenOracleConstructorWhenUnderlyingIsETH() public {
     _cToken = ICToken(mockContract(cTokenOracle.cETH_ADDRESS(), 'mockCToken'));
     vm.mockCall(address(_cToken), abi.encodeWithSelector(ICToken.decimals.selector), abi.encode(uint8(8)));
+    vm.mockCall(
+      address(_underlyingAnchoredView),
+      abi.encodeWithSelector(IOracleRelay.underlying.selector),
+      abi.encode(_wETH_ADDRESS)
+    );
 
     cTokenOracle = new CTokenOracle(address(_cToken), IOracleRelay(_underlyingAnchoredView));
 
     assert(address(cTokenOracle.cToken()) == address(_cToken));
     assert(address(cTokenOracle.anchoredViewUnderlying()) == address(_underlyingAnchoredView));
     assert(cTokenOracle.div() == 10 ** (18 - 8 + 18));
+    assert(cTokenOracle.underlying() == address(_cToken));
   }
 }
 

@@ -15,5 +15,6 @@ contract E2ECTokenOracle is CommonE2EBase {
     assertEq(
       cETHOracle.currentValue(), (anchoredViewEth.currentValue() * ICToken(cETH_ADDRESS).exchangeRateStored() / 1e28)
     );
+    assertEq(cETHOracle.underlying(), cETH_ADDRESS);
   }
 }

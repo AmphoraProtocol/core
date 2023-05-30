@@ -64,11 +64,12 @@ contract DeployGoerliOpenDeployment is Deploy {
     console.log('sUSD_COPY: ', address(susdCopy));
 
     // Chainlink ETH/USD
-    ChainlinkOracleRelay _chainlinkEth = new ChainlinkOracleRelay(ethUSD, 10_000_000_000, 1, chainlinkStalePriceDelay);
+    ChainlinkOracleRelay _chainlinkEth =
+      new ChainlinkOracleRelay(wethGoerli, ethUSD, 10_000_000_000, 1, chainlinkStalePriceDelay);
     console.log('CHAINLINK_ETH_FEED: ', address(_chainlinkEth));
 
     // Chainlink LINK/USD
-    ChainlinkOracleRelay _chainlinkLink = new ChainlinkOracleRelay(linkUSD, 10_000_000_000, 1, 100 days);
+    ChainlinkOracleRelay _chainlinkLink = new ChainlinkOracleRelay(linkGoerli, linkUSD, 10_000_000_000, 1, 100 days);
     console.log('CHAINLINK_LINK_FEED: ', address(_chainlinkLink));
     // Deploy and set up curve lp rewards
     uint256 _pid = _addFakeCurveLPRewards(cvx, crv, fakeBooster, linkGoerli);

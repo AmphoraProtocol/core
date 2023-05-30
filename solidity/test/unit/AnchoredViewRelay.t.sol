@@ -12,6 +12,8 @@ abstract contract Base is DSTestPlus {
   IOracleRelay internal _mockMainRelay = IOracleRelay(mockContract(newAddress(), 'mockMainRelay'));
   IOracleRelay internal _mockAnchorRelay = IOracleRelay(mockContract(newAddress(), 'mockAnchorRelay'));
 
+  address internal _mockToken = mockContract(newAddress(), 'mockToken');
+
   uint256 public widthNumerator = 10;
   uint256 public widthDenominator = 100;
 
@@ -25,8 +27,35 @@ abstract contract Base is DSTestPlus {
       address(_mockMainRelay), abi.encodeWithSelector(IOracleRelay.oracleType.selector), abi.encode(oracleType)
     );
 
+    vm.mockCall(
+      address(_mockMainRelay), abi.encodeWithSelector(IOracleRelay.underlying.selector), abi.encode(_mockToken)
+    );
+    vm.mockCall(
+      address(_mockAnchorRelay), abi.encodeWithSelector(IOracleRelay.underlying.selector), abi.encode(_mockToken)
+    );
+
     // Deploy contract
     anchoredViewRelay =
+    new AnchoredViewRelay(address(_mockAnchorRelay), address(_mockMainRelay), widthNumerator, widthDenominator, staleWidthNumerator, staleWidthDenominator);
+  }
+}
+
+contract UnitTestAnchoredViewRelayUnderlyingIsSet is Base {
+  function testUnderlyingIsSet() public {
+    assertEq(address(_mockToken), anchoredViewRelay.underlying());
+  }
+}
+
+contract UnitTestAnchoredViewRelayRevertWhenDifferentUnderlying is Base {
+  function testRevertWhenDifferentUnderlying() public {
+    vm.mockCall(
+      address(_mockMainRelay), abi.encodeWithSelector(IOracleRelay.underlying.selector), abi.encode(newAddress())
+    );
+    vm.mockCall(
+      address(_mockAnchorRelay), abi.encodeWithSelector(IOracleRelay.underlying.selector), abi.encode(newAddress())
+    );
+
+    vm.expectRevert(IOracleRelay.OracleRelay_DifferentUnderlyings.selector);
     new AnchoredViewRelay(address(_mockAnchorRelay), address(_mockMainRelay), widthNumerator, widthDenominator, staleWidthNumerator, staleWidthDenominator);
   }
 }

@@ -5,9 +5,10 @@ import {IOracleRelay, OracleRelay} from '@contracts/periphery/oracles/OracleRela
 import {ICurvePool} from '@interfaces/utils/ICurvePool.sol';
 import {Math} from '@openzeppelin/contracts/utils/math/Math.sol';
 import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
+import {CurveRegistryUtils} from '@contracts/periphery/oracles/CurveRegistryUtils.sol';
 
 /// @notice Oracle Relay for crv lps
-contract StableCurveLpOracle is OracleRelay, Ownable {
+contract StableCurveLpOracle is OracleRelay, CurveRegistryUtils, Ownable {
   /// @notice Thrown when there are too few anchored oracles
   error StableCurveLpOracle_TooFewAnchoredOracles();
 
@@ -26,6 +27,8 @@ contract StableCurveLpOracle is OracleRelay, Ownable {
         ++_i;
       }
     }
+
+    _setUnderlying(_getLpAddress(_crvPool));
   }
 
   /// @notice The current reported value of the oracle

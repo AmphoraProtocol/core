@@ -37,7 +37,6 @@ contract InvariantVaultController is BaseInvariant, TestConstants {
   AmphoraProtocolToken public amphoraToken;
   ThreeLines0_100 public threeLines;
 
-  UniswapV3OracleRelay public uniswapRelayEthUsdc;
   ChainlinkOracleRelay public chainlinkEth;
   AnchoredViewRelay public anchoredViewEth;
 
@@ -79,12 +78,10 @@ contract InvariantVaultController is BaseInvariant, TestConstants {
     susd = new MockSUSD('sUSD', 'sUSD');
     usdaToken = new USDA(susd);
 
-    // Deploy uniswapRelayEthUsdc oracle relay
-    uniswapRelayEthUsdc = new UniswapV3OracleRelay(7200, USDC_WETH_POOL_ADDRESS, true, 1_000_000_000_000, 1);
     // Deploy chainlinkEth oracle relay
-    chainlinkEth = new ChainlinkOracleRelay(CHAINLINK_ETH_FEED_ADDRESS, 10_000_000_000, 1, staleTime);
+    chainlinkEth = new ChainlinkOracleRelay(WETH_ADDRESS, CHAINLINK_ETH_FEED_ADDRESS, 10_000_000_000, 1, staleTime);
     // Deploy anchoredViewEth relay
-    anchoredViewEth = new AnchoredViewRelay(address(uniswapRelayEthUsdc), address(chainlinkEth), 20, 100, 10, 100);
+    anchoredViewEth = new AnchoredViewRelay(address(chainlinkEth), address(chainlinkEth), 20, 100, 10, 100);
 
     // Register an acceptable erc20 to vault controller
     // TODO: Create a mock WETH and change address
@@ -114,7 +111,6 @@ contract InvariantVaultController is BaseInvariant, TestConstants {
     excludeContract(address(threeLines));
     excludeContract(address(susd));
     excludeContract(address(usdaToken));
-    excludeContract(address(uniswapRelayEthUsdc));
     excludeContract(address(chainlinkEth));
     excludeContract(address(anchoredViewEth));
 

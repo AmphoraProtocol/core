@@ -209,15 +209,16 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateO
     // Deploy uniswapRelayUniUsdc oracle relay
     uniswapRelayWbtcUsdc = new UniswapV3OracleRelay(7200, USDC_WBTC_POOL_ADDRESS, false, 1_000_000_000_000, 1);
     // Deploy chainLinkUni oracle relay
-    chainLinkUni = new ChainlinkOracleRelay(CHAINLINK_UNI_FEED_ADDRESS, 10_000_000_000, 1, staleTime);
+    chainLinkUni = new ChainlinkOracleRelay(UNI_ADDRESS, CHAINLINK_UNI_FEED_ADDRESS, 10_000_000_000, 1, staleTime);
     // Deploy chainlinkEth oracle relay
-    chainlinkEth = new ChainlinkOracleRelay(CHAINLINK_ETH_FEED_ADDRESS, 10_000_000_000, 1, staleTime);
+    chainlinkEth = new ChainlinkOracleRelay(WETH_ADDRESS, CHAINLINK_ETH_FEED_ADDRESS, 10_000_000_000, 1, staleTime);
     // Deploy chainlinkAave oracle relay
-    chainlinkAave = new ChainlinkOracleRelay(CHAINLINK_AAVE_FEED_ADDRESS, 10_000_000_000, 1, staleTime);
+    chainlinkAave = new ChainlinkOracleRelay(AAVE_ADDRESS, CHAINLINK_AAVE_FEED_ADDRESS, 10_000_000_000, 1, staleTime);
     // Deploy chainlinkAave oracle relay
-    chainlinkDydx = new ChainlinkOracleRelay(CHAINLINK_DYDX_FEED_ADDRESS, 10_000_000_000, 1, staleTime);
+    chainlinkDydx = new ChainlinkOracleRelay(DYDX_ADDRESS, CHAINLINK_DYDX_FEED_ADDRESS, 10_000_000_000, 1, staleTime);
     // Deploy chainlinkWbtc oracle relay
-    chainlinkBtc = new ChainlinkOracleRelay(CHAINLINK_BTC_FEED_ADDRESS, 100_000_000_000_000_000_000, 1, staleTime);
+    chainlinkBtc =
+      new ChainlinkOracleRelay(WBTC_ADDRESS, CHAINLINK_BTC_FEED_ADDRESS, 100_000_000_000_000_000_000, 1, staleTime);
     // Deploy anchoredViewEth relay
     anchoredViewEth = new AnchoredViewRelay(address(uniswapRelayEthUsdc), address(chainlinkEth), 20, 100, 10, 100);
     // Deploy anchoredViewUni relay

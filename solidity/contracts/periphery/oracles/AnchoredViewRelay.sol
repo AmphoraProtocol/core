@@ -41,6 +41,12 @@ contract AnchoredViewRelay is OracleRelay {
     mainAddress = _mainAddress;
     mainRelay = IOracleRelay(_mainAddress);
 
+    /// Ensure the two relays have the same underlying
+    if (anchorRelay.underlying() != mainRelay.underlying()) revert OracleRelay_DifferentUnderlyings();
+
+    /// Set the underlying
+    _setUnderlying(anchorRelay.underlying());
+
     widthNumerator = _widthNumerator;
     widthDenominator = _widthDenominator;
 

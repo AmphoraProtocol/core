@@ -26,6 +26,13 @@ contract CTokenOracle is OracleRelay, Ownable {
 
     // Save the divisor to convert the underlying to the cToken
     div = 10 ** (18 + _underlyingDecimals - cToken.decimals());
+
+    // If the underlying is different, revert
+    address _underlying = cETH_ADDRESS == _cToken ? wETH_ADDRESS : cToken.underlying();
+    if (_underlying != anchoredViewUnderlying.underlying()) revert OracleRelay_DifferentUnderlyings();
+
+    // Set the underlying address
+    _setUnderlying(_cToken);
   }
 
   /// @notice returns the price with 18 decimals without any state changes

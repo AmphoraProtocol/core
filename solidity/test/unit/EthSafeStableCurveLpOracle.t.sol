@@ -6,6 +6,7 @@ import {EthSafeStableCurveOracle} from '@contracts/periphery/oracles/EthSafeStab
 
 import {ICurvePool} from '@interfaces/utils/ICurvePool.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
+import {ICurveAddressesProvider, ICurveRegistry} from '@interfaces/periphery/ICurveAddressesProvider.sol';
 
 abstract contract Base is DSTestPlus {
   EthSafeStableCurveOracle public curveOracle;
@@ -15,12 +16,31 @@ abstract contract Base is DSTestPlus {
   IOracleRelay internal _oracleRelayToken1;
   IOracleRelay internal _oracleRelayToken2;
   uint256 internal _initialVirtualPrice = 1 ether;
+  ICurveAddressesProvider internal _curveAddressesProvider;
+  ICurveRegistry internal _curveRegistry;
+  address internal _lpToken;
 
   function setUp() public virtual {
     // mock curve pool & oracles
     _mockCurvePool = ICurvePool(mockContract(address(newAddress()), 'mockCurvePool'));
     _oracleRelayToken1 = IOracleRelay(mockContract(address(newAddress()), 'anchorOracle1'));
     _oracleRelayToken2 = IOracleRelay(mockContract(address(newAddress()), 'anchorOracle2'));
+    _curveAddressesProvider = ICurveAddressesProvider(
+      mockContract(address(0x0000000022D53366457F9d5E68Ec105046FC4383), 'curveAddressesProvider')
+    );
+    _curveRegistry = ICurveRegistry(mockContract(address(newAddress()), 'curveRegistry'));
+
+    // Mock curve addresses provider
+    vm.mockCall(
+      address(_curveAddressesProvider),
+      abi.encodeWithSelector(ICurveAddressesProvider.get_registry.selector),
+      abi.encode(address(_curveRegistry))
+    );
+
+    // Mock curve registry
+    vm.mockCall(
+      address(_curveRegistry), abi.encodeWithSelector(ICurveRegistry.get_lp_token.selector), abi.encode(_lpToken)
+    );
 
     _anchoredUnderlyingTokens = new IOracleRelay[](2);
     _anchoredUnderlyingTokens[0] = _oracleRelayToken1;
@@ -64,6 +84,10 @@ contract UnitTestEthSafeStableCurveLpOracleConstructor is Base {
     assertEq(address(_anchoredUnderlyingTokens[0]), address(_oracleRelayToken1));
     assertEq(address(_anchoredUnderlyingTokens[1]), address(_oracleRelayToken2));
     assertEq(curveOracle.virtualPrice(), _initialVirtualPrice);
+  }
+
+  function testUnderlying() public {
+    assertEq(curveOracle.underlying(), _lpToken);
   }
 }
 

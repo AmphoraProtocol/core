@@ -64,9 +64,12 @@ abstract contract Base is DSTestPlus, TestConstants, CreateOracles {
   address public alice = label(newAddress(), 'alice');
   address public vaultOwner = label(newAddress(), 'vaultOwner');
   address public vaultOwner2 = label(newAddress(), 'vaultOwner2');
-  address public booster = (mockContract(newAddress(), 'booster'));
+  address public booster = mockContract(newAddress(), 'booster');
   IERC20 public cvx = IERC20(mockContract(newAddress(), 'cvx'));
   IERC20 public crv = IERC20(mockContract(newAddress(), 'crv'));
+
+  AnchoredViewRelay public anchoredViewEth = AnchoredViewRelay(mockContract(newAddress(), 'anchoredViewEth'));
+  AnchoredViewRelay public anchoredViewUni = AnchoredViewRelay(mockContract(newAddress(), 'anchoredViewUni'));
 
   IERC20 public mockToken = IERC20(mockContract(newAddress(), 'mockToken'));
   IERC20 public usdtLp = IERC20(mockContract(newAddress(), 'usdtLpAddress'));
@@ -79,12 +82,6 @@ abstract contract Base is DSTestPlus, TestConstants, CreateOracles {
   CurveMaster public curveMaster;
   ThreeLines0_100 public threeLines;
 
-  UniswapV3OracleRelay public uniswapRelayEthUsdc;
-  UniswapV3OracleRelay public uniswapRelayUniUsdc;
-  ChainlinkOracleRelay public chainlinkEth;
-  ChainlinkOracleRelay public chainLinkUni;
-  AnchoredViewRelay public anchoredViewEth;
-  AnchoredViewRelay public anchoredViewUni;
   StableCurveLpOracle public threeCrvOracle;
 
   uint256 public cap = 100 ether;
@@ -109,18 +106,6 @@ abstract contract Base is DSTestPlus, TestConstants, CreateOracles {
 
     usdaToken.setPauser(governance);
     usdaToken.addVaultController(address(vaultController));
-
-    // Deploy uniswapRelayEthUsdc & uniswapRelayUniUsdc oracle relay
-    uniswapRelayEthUsdc = new UniswapV3OracleRelay(7200, USDC_WETH_POOL_ADDRESS, true, 1_000_000_000_000, 1);
-    uniswapRelayUniUsdc = new UniswapV3OracleRelay(14400, USDC_UNI_POOL_ADDRESS, false, 1_000_000_000_000, 1);
-
-    // Deploy chainlinkEth oracle & chainLinkUni relay
-    chainlinkEth = new ChainlinkOracleRelay(CHAINLINK_ETH_FEED_ADDRESS, 10_000_000_000, 1, 1 hours);
-    chainLinkUni = new ChainlinkOracleRelay(CHAINLINK_UNI_FEED_ADDRESS, 10_000_000_000, 1, 1 hours);
-
-    // Deploy anchoredViewEth & anchoredViewUni relay
-    anchoredViewEth = new AnchoredViewRelay(address(uniswapRelayEthUsdc), address(chainlinkEth), 20, 100, 10, 100);
-    anchoredViewUni = new AnchoredViewRelay(address(uniswapRelayUniUsdc), address(chainLinkUni), 40, 100, 10, 100);
 
     // Deploy the ThreeCrvOracle
     threeCrvOracle = StableCurveLpOracle(mockContract(newAddress(), 'threeCrvOracle'));

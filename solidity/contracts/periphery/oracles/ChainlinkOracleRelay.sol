@@ -20,10 +20,13 @@ contract ChainlinkOracleRelay is OracleRelay, Ownable {
   uint256 public stalePriceDelay;
 
   /// @notice All values set at construction time
-  /// @param  _feedAddress The address of chainlink feed
+  /// @param _underlying The underlying address
+  /// @param _feedAddress The address of chainlink feed
   /// @param _mul The numerator of scalar
   /// @param _div The denominator of scalar
+  /// @param _stalePriceDelay The delay before the price is considered stale
   constructor(
+    address _underlying,
     address _feedAddress,
     uint256 _mul,
     uint256 _div,
@@ -33,6 +36,8 @@ contract ChainlinkOracleRelay is OracleRelay, Ownable {
     MULTIPLY = _mul;
     DIVIDE = _div;
     stalePriceDelay = _stalePriceDelay;
+
+    _setUnderlying(_underlying);
   }
 
   /// @notice The current reported value of the oracle

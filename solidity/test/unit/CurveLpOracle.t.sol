@@ -6,6 +6,7 @@ import {StableCurveLpOracle} from '@contracts/periphery/oracles/StableCurveLpOra
 
 import {ICurvePool} from '@interfaces/utils/ICurvePool.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
+import {ICurveAddressesProvider, ICurveRegistry} from '@interfaces/periphery/ICurveAddressesProvider.sol';
 
 abstract contract Base is DSTestPlus {
   StableCurveLpOracle public curveOracle;
@@ -14,12 +15,31 @@ abstract contract Base is DSTestPlus {
   IOracleRelay[] internal _anchoredUnderlyingTokens;
   IOracleRelay internal _oracleRelayToken1;
   IOracleRelay internal _oracleRelayToken2;
+  ICurveAddressesProvider internal _curveAddressesProvider;
+  ICurveRegistry internal _curveRegistry;
+  address internal _lpToken;
 
   function setUp() public virtual {
     // mock curve pool & oracles
     _mockCurvePool = ICurvePool(mockContract(address(newAddress()), 'mockCurvePool'));
     _oracleRelayToken1 = IOracleRelay(mockContract(address(newAddress()), 'anchorOracle1'));
     _oracleRelayToken2 = IOracleRelay(mockContract(address(newAddress()), 'anchorOracle2'));
+    _curveAddressesProvider = ICurveAddressesProvider(
+      mockContract(address(0x0000000022D53366457F9d5E68Ec105046FC4383), 'curveAddressesProvider')
+    );
+    _curveRegistry = ICurveRegistry(mockContract(address(newAddress()), 'curveRegistry'));
+
+    // Mock curve addresses provider
+    vm.mockCall(
+      address(_curveAddressesProvider),
+      abi.encodeWithSelector(ICurveAddressesProvider.get_registry.selector),
+      abi.encode(address(_curveRegistry))
+    );
+
+    // Mock curve registry
+    vm.mockCall(
+      address(_curveRegistry), abi.encodeWithSelector(ICurveRegistry.get_lp_token.selector), abi.encode(_lpToken)
+    );
 
     _anchoredUnderlyingTokens = new IOracleRelay[](2);
     _anchoredUnderlyingTokens[0] = _oracleRelayToken1;
@@ -46,6 +66,10 @@ contract UnitTestCurveLpOracleConstructor is Base {
 
     vm.expectRevert(StableCurveLpOracle.StableCurveLpOracle_TooFewAnchoredOracles.selector);
     new StableCurveLpOracle(address(_mockCurvePool), _anchoredUnderlyingTokens);
+  }
+
+  function testUnderlying() public {
+    assertEq(curveOracle.underlying(), _lpToken);
   }
 }
 

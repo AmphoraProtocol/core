@@ -4,6 +4,7 @@ pragma solidity >=0.5.0 <0.9.0;
 import {IOracleRelay, OracleRelay} from '@contracts/periphery/oracles/OracleRelay.sol';
 import {IUniswapV3PoolDerivedState} from '@uniswap/v3-core/contracts/interfaces/pool/IUniswapV3PoolDerivedState.sol';
 import {TickMath} from '@uniswap/v3-core/contracts/libraries/TickMath.sol';
+import {IUniswapV3Pool} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
 
 /// @notice Oracle that wraps a univ3 pool
 /// @dev The oracle returns (univ3) * mul / div
@@ -37,6 +38,8 @@ contract UniswapV3OracleRelay is OracleRelay {
     DIV = _div;
     QUOTE_TOKEN_IS_TOKEN0 = _quoteTokenIsToken0;
     POOL = IUniswapV3PoolDerivedState(_poolAddress);
+
+    _setUnderlying(_quoteTokenIsToken0 ? IUniswapV3Pool(_poolAddress).token1() : IUniswapV3Pool(_poolAddress).token0());
   }
 
   /// @notice returns the price with 18 decimals without any state changes
