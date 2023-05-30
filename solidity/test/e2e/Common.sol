@@ -15,7 +15,7 @@ import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
 import {UniswapV3OracleRelay} from '@contracts/periphery/oracles/UniswapV3OracleRelay.sol';
 import {UniswapV3TokenOracleRelay} from '@contracts/periphery/oracles/UniswapV3TokenOracleRelay.sol';
 import {StableCurveLpOracle} from '@contracts/periphery/oracles/StableCurveLpOracle.sol';
-import {TriCryptoOracle} from '@contracts/periphery/oracles/TriCryptoOracle.sol';
+import {TriCrypto2Oracle} from '@contracts/periphery/oracles/TriCrypto2Oracle.sol';
 import {ThreeLines0_100} from '@contracts/utils/ThreeLines0_100.sol';
 import {WUSDA} from '@contracts/core/WUSDA.sol';
 import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
@@ -73,7 +73,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateO
   AnchoredViewRelay public anchoredViewBtc;
   // Curve oracles
   StableCurveLpOracle public threeCrvOracle;
-  TriCryptoOracle public triCryptoOracle;
+  TriCrypto2Oracle public triCryptoOracle;
   // Governance
   GovernorCharlie public governor;
 
@@ -235,13 +235,15 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateO
     IOracleRelay _anchoredViewDai = IOracleRelay(_createDaiOracle());
     /// Deploy usdt oracle relay
     IOracleRelay _anchoredViewUsdt = IOracleRelay(_createUsdtOracle());
+    // Deploy wbtc oracle relay
+    IOracleRelay _anchoredViewWbtc = IOracleRelay(_createWbtcOracle(uniswapRelayEthUsdc));
 
     // Deploy the ThreeCrvOracle
     threeCrvOracle = StableCurveLpOracle(
       _create3CrvOracle(THREE_CRV_POOL_ADDRESS, _anchoredViewDai, _anchoredViewUsdt, _anchoredViewUsdc)
     );
     // Deploy the triCryptoOracle
-    triCryptoOracle = new TriCryptoOracle();
+    triCryptoOracle = TriCrypto2Oracle(_createTriCrypto2Oracle(anchoredViewEth, _anchoredViewUsdt, _anchoredViewWbtc));
 
     // Register WETH as acceptable erc20 to vault controller
     vaultController.registerErc20(

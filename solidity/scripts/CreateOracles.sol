@@ -6,12 +6,14 @@ import {console} from 'forge-std/console.sol';
 import {UniswapV3OracleRelay} from '@contracts/periphery/oracles/UniswapV3OracleRelay.sol';
 import {UniswapV3TokenOracleRelay} from '@contracts/periphery/oracles/UniswapV3TokenOracleRelay.sol';
 import {ChainlinkOracleRelay} from '@contracts/periphery/oracles/ChainlinkOracleRelay.sol';
+import {ChainlinkTokenOracleRelay} from '@contracts/periphery/oracles/ChainlinkTokenOracleRelay.sol';
 import {AnchoredViewRelay} from '@contracts/periphery/oracles/AnchoredViewRelay.sol';
 import {StableCurveLpOracle} from '@contracts/periphery/oracles/StableCurveLpOracle.sol';
 import {EthSafeStableCurveOracle} from '@contracts/periphery/oracles/EthSafeStableCurveOracle.sol';
 
 import {CTokenOracle} from '@contracts/periphery/oracles/CTokenOracle.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
+import {TriCrypto2Oracle} from '@contracts/periphery/oracles/TriCrypto2Oracle.sol';
 
 import {TestConstants} from '@test/utils/TestConstants.sol';
 
@@ -55,6 +57,29 @@ abstract contract CreateOracles is TestConstants {
       new AnchoredViewRelay(address(_uniswapRelayUsdtUsdc), address(_chainlinkUsdt), 20, 100, 10, 100);
     console.log('ANCHORED_VIEW_RELAY: ', address(_anchoredViewUsdt));
     _usdtOracle = address(_anchoredViewUsdt);
+  }
+
+  function _createWbtcOracle(UniswapV3OracleRelay _uniswapRelayEthUsdc) internal returns (address _wbtcOracke) {
+    // Deploy uniswapRelayWbtcUsdc oracle relay
+    UniswapV3TokenOracleRelay _uniswapRelayWbtcUsdc =
+      new UniswapV3TokenOracleRelay(_uniswapRelayEthUsdc, TWO_HOURS, WBTC_ETH_POOL_ADDRESS, false, 1, 1e10);
+    console.log('UNISWAP_WBTC_USDC_ORACLE: ', address(_uniswapRelayWbtcUsdc));
+
+    // Deploy chainlinkWbtcBtc oracle relay
+    ChainlinkOracleRelay _chainlinkWbtcBtc =
+      new ChainlinkOracleRelay(CHAINLINK_WBTC_BTC_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_DAY);
+    // Deploy chainlinkBtcUsd oracle relay
+    ChainlinkOracleRelay _chainlinkBtcUsd =
+      new ChainlinkOracleRelay(CHAINLINK_BTC_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_HOUR);
+    // Deploy chainlinkWbtc oracle relay with twice the 8 decimal mul div because there are two feed at 8 decimals multiplied
+    ChainlinkTokenOracleRelay _chainlinkWbtc = new ChainlinkTokenOracleRelay(_chainlinkWbtcBtc,_chainlinkBtcUsd);
+    console.log('CHAINLINK_WBTC_FEED: ', address(_chainlinkWbtc));
+
+    // Deploy anchoredViewUsdt relay
+    AnchoredViewRelay _anchoredViewWbtc =
+      new AnchoredViewRelay(address(_uniswapRelayWbtcUsdc), address(_chainlinkWbtc), 20, 100, 10, 100);
+    console.log('ANCHORED_VIEW_RELAY: ', address(_anchoredViewWbtc));
+    _wbtcOracke = address(_anchoredViewWbtc);
   }
 
   function _createUsdcOracle() internal returns (address _usdcOracle) {
@@ -205,5 +230,16 @@ abstract contract CreateOracles is TestConstants {
     StableCurveLpOracle _frax3CrvOracle = new StableCurveLpOracle(_crvPool, _anchoredUnderlyingTokens);
     _frax3CrvOracleAddress = address(_frax3CrvOracle);
     console.log('FRAX_3_CRV_ORACLE: ', _frax3CrvOracleAddress);
+  }
+
+  function _createTriCrypto2Oracle(
+    IOracleRelay _wethAnchorOracle,
+    IOracleRelay _usdtAnchorOracle,
+    IOracleRelay _wbtcAnchorOracle
+  ) internal returns (address _triCrypto2OracleAddress) {
+    TriCrypto2Oracle _triCrypto2Oracle =
+      new TriCrypto2Oracle(TRI_CRYPTO_2_POOL_ADDRESS, _wethAnchorOracle, _usdtAnchorOracle, _wbtcAnchorOracle);
+    _triCrypto2OracleAddress = address(_triCrypto2Oracle);
+    console.log('TRI_CRYPTO_2_ORACLE: ', _triCrypto2OracleAddress);
   }
 }

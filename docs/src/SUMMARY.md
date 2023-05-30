@@ -21,7 +21,7 @@
         - [ChainlinkTokenOracleRelay](solidity/contracts/periphery/oracles/ChainlinkTokenOracleRelay.sol/contract.ChainlinkTokenOracleRelay.md)
         - [OracleRelay](solidity/contracts/periphery/oracles/OracleRelay.sol/abstract.OracleRelay.md)
         - [ThreeCrvOracle](solidity/contracts/periphery/oracles/ThreeCrvOracle.sol/contract.ThreeCrvOracle.md)
-        - [TriCryptoOracle](solidity/contracts/periphery/oracles/TriCryptoOracle.sol/contract.TriCryptoOracle.md)
+        - [TriCrypto2Oracle](solidity/contracts/periphery/oracles/TriCrypto2Oracle.sol/contract.TriCrypto2Oracle.md)
         - [UniswapV3OracleRelay](solidity/contracts/periphery/oracles/UniswapV3OracleRelay.sol/contract.UniswapV3OracleRelay.md)
         - [UniswapV3TokenOracleRelay](solidity/contracts/periphery/oracles/UniswapV3TokenOracleRelay.sol/contract.UniswapV3TokenOracleRelay.md)
       - [CurveMaster](solidity/contracts/periphery/CurveMaster.sol/contract.CurveMaster.md)

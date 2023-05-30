@@ -2,7 +2,7 @@
 pragma solidity >=0.8.4 <0.9.0;
 
 import {WUSDA} from '@contracts/core/WUSDA.sol';
-import {TriCryptoOracle} from '@contracts/periphery/oracles/TriCryptoOracle.sol';
+import {TriCrypto2Oracle} from '@contracts/periphery/oracles/TriCrypto2Oracle.sol';
 
 import {ICurvePool} from '@interfaces/utils/ICurvePool.sol';
 
@@ -12,26 +12,20 @@ import {AggregatorInterface} from '@chainlink/interfaces/AggregatorInterface.sol
 import {FixedPointMathLib} from 'solady/utils/FixedPointMathLib.sol';
 import {AggregatorV3Interface} from '@chainlink/interfaces/AggregatorV3Interface.sol';
 import {ChainlinkStalePriceLib} from '@contracts/periphery/oracles/ChainlinkStalePriceLib.sol';
+import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
 
 abstract contract Base is DSTestPlus {
   uint256 public constant POINT_ONE_PERCENT = 0.001e18;
 
-  TriCryptoOracle public triCryptoOracle;
-  ICurvePool public curvePool;
-  AggregatorInterface public btcFeed;
-  AggregatorInterface public ethFeed;
-  AggregatorInterface public usdtFeed;
-  AggregatorInterface public wbtcFeed;
+  ICurvePool public curvePool = ICurvePool(mockContract(newAddress(), 'curvePool'));
+  IOracleRelay public wbtcFeed = IOracleRelay(mockContract(newAddress(), 'btcFeed'));
+  IOracleRelay public ethFeed = IOracleRelay(mockContract(newAddress(), 'ethFeed'));
+  IOracleRelay public usdtFeed = IOracleRelay(mockContract(newAddress(), 'usdtFeed'));
+
+  TriCrypto2Oracle public triCryptoOracle;
 
   function setUp() public virtual {
-    triCryptoOracle = new TriCryptoOracle();
-    curvePool = ICurvePool(mockContract(address(triCryptoOracle.TRI_CRYPTO()), 'triCryptoPool'));
-    btcFeed = AggregatorInterface(mockContract(address(triCryptoOracle.BTC_FEED()), 'btcFeed'));
-    ethFeed = AggregatorInterface(mockContract(address(triCryptoOracle.ETH_FEED()), 'ethFeed'));
-    usdtFeed = AggregatorInterface(mockContract(address(triCryptoOracle.USDT_FEED()), 'usdtFeed'));
-    wbtcFeed = AggregatorInterface(mockContract(address(triCryptoOracle.WBTC_FEED()), 'wbtcFeed'));
-
-    vm.warp(block.timestamp + 365 days);
+    triCryptoOracle = new TriCrypto2Oracle(address(curvePool), ethFeed, usdtFeed, wbtcFeed);
   }
 }
 
@@ -56,327 +50,23 @@ contract UnitRoot is Base {
 }
 
 contract UnitCurrentValue is Base {
-  function testCurrentValueWbtc1(uint32 _btcPrice, uint32 _ethPrice, uint32 _usdtPrice) public {
-    vm.assume(_btcPrice > 0.1e8);
+  function testCurrentValue(uint32 _wbtcPrice, uint32 _ethPrice, uint32 _usdtPrice) public {
+    vm.assume(_wbtcPrice > 0.1e8);
     vm.assume(_ethPrice > 0.1e8);
     vm.assume(_usdtPrice > 0.1e8);
     uint256 _vp = 1.1e18;
 
     // mockCall to get_virtual_price
     vm.mockCall(address(curvePool), abi.encodeWithSelector(ICurvePool.get_virtual_price.selector), abi.encode(_vp));
-    vm.mockCall(
-      address(curvePool), abi.encodeWithSelector(ICurvePool.gamma.selector), abi.encode(triCryptoOracle.GAMMA0())
-    );
-    vm.mockCall(address(curvePool), abi.encodeWithSelector(ICurvePool.A.selector), abi.encode(triCryptoOracle.A0()));
 
     // mockCall to feed latestAnswers
-    vm.mockCall(
-      address(btcFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, _btcPrice, 0, block.timestamp, 0)
-    );
+    vm.mockCall(address(ethFeed), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(_ethPrice));
 
-    vm.mockCall(
-      address(ethFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, _ethPrice, 0, block.timestamp, 0)
-    );
+    vm.mockCall(address(usdtFeed), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(_usdtPrice));
 
-    vm.mockCall(
-      address(usdtFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, _usdtPrice, 0, block.timestamp, 0)
-    );
+    vm.mockCall(address(wbtcFeed), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(_wbtcPrice));
 
-    vm.mockCall(
-      address(wbtcFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, 1e8, 0, block.timestamp, 0)
-    );
-
-    uint256 _basePrices = (uint256(_btcPrice) * 1e10 * _ethPrice * 1e10 * _usdtPrice * 1e10);
-
-    uint256 _maxPrice = (3 * _vp * FixedPointMathLib.cbrt(_basePrices)) / 1 ether;
-
-    assertEq(triCryptoOracle.currentValue(), _maxPrice);
-  }
-
-  function testCurrentValueWbtcDepegDown(uint32 _btcPrice, uint32 _wbtcPrice) public {
-    vm.assume(_wbtcPrice > 0.01e8 && _wbtcPrice < 1e8);
-    vm.assume(_btcPrice > 0.1e8);
-    uint256 _usdtPrice = 1e8;
-    uint256 _ethPrice = 1000e8;
-    uint256 _vp = 1.1e18;
-
-    // mockCall to get_virtual_price
-    vm.mockCall(address(curvePool), abi.encodeWithSelector(ICurvePool.get_virtual_price.selector), abi.encode(_vp));
-    vm.mockCall(
-      address(curvePool), abi.encodeWithSelector(ICurvePool.gamma.selector), abi.encode(triCryptoOracle.GAMMA0())
-    );
-    vm.mockCall(address(curvePool), abi.encodeWithSelector(ICurvePool.A.selector), abi.encode(triCryptoOracle.A0()));
-
-    // mockCall to feed latestAnswers
-    vm.mockCall(
-      address(btcFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, _btcPrice, 0, block.timestamp, 0)
-    );
-
-    vm.mockCall(
-      address(ethFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, _ethPrice, 0, block.timestamp, 0)
-    );
-
-    vm.mockCall(
-      address(usdtFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, _usdtPrice, 0, block.timestamp, 0)
-    );
-
-    vm.mockCall(
-      address(wbtcFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, _wbtcPrice, 0, block.timestamp, 0)
-    );
-
-    uint256 _minWbtc = (uint256(_btcPrice) * 1e10 * _wbtcPrice * 1e10) / 1e18;
-
-    uint256 _basePrices = (_minWbtc * _ethPrice * 1e10 * _usdtPrice * 1e10);
-
-    uint256 _maxPrice = (3 * _vp * FixedPointMathLib.cbrt(_basePrices)) / 1 ether;
-
-    assertEq(triCryptoOracle.currentValue(), _maxPrice);
-  }
-
-  function testCurrentValueWbtcDepegUp(uint32 _btcPrice, uint32 _wbtcPrice) public {
-    vm.assume(_wbtcPrice > 1e8);
-    vm.assume(_btcPrice > 0.1e8);
-    uint256 _usdtPrice = 1e8;
-    uint256 _ethPrice = 1000e8;
-    uint256 _vp = 1.1e18;
-
-    // mockCall to get_virtual_price
-    vm.mockCall(address(curvePool), abi.encodeWithSelector(ICurvePool.get_virtual_price.selector), abi.encode(_vp));
-    vm.mockCall(
-      address(curvePool), abi.encodeWithSelector(ICurvePool.gamma.selector), abi.encode(triCryptoOracle.GAMMA0())
-    );
-    vm.mockCall(address(curvePool), abi.encodeWithSelector(ICurvePool.A.selector), abi.encode(triCryptoOracle.A0()));
-
-    // mockCall to feed latestAnswers
-    vm.mockCall(
-      address(btcFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, _btcPrice, 0, block.timestamp, 0)
-    );
-
-    vm.mockCall(
-      address(ethFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, _ethPrice, 0, block.timestamp, 0)
-    );
-
-    vm.mockCall(
-      address(usdtFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, _usdtPrice, 0, block.timestamp, 0)
-    );
-
-    vm.mockCall(
-      address(wbtcFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, _wbtcPrice, 0, block.timestamp, 0)
-    );
-
-    uint256 _basePrices = (uint256(_btcPrice) * 1e10 * _ethPrice * 1e10 * _usdtPrice * 1e10);
-
-    uint256 _maxPrice = (3 * _vp * FixedPointMathLib.cbrt(_basePrices)) / 1 ether;
-
-    assertEq(triCryptoOracle.currentValue(), _maxPrice);
-  }
-
-  function testCurrentValueWhenBtcPriceStale(uint32 _btcPrice) public {
-    vm.assume(_btcPrice > 0.1e8);
-    uint256 _usdtPrice = 1e8;
-    uint256 _ethPrice = 1000e8;
-    uint256 _vp = 1.1e18;
-
-    // mockCall to get_virtual_price
-    vm.mockCall(address(curvePool), abi.encodeWithSelector(ICurvePool.get_virtual_price.selector), abi.encode(_vp));
-    vm.mockCall(
-      address(curvePool), abi.encodeWithSelector(ICurvePool.gamma.selector), abi.encode(triCryptoOracle.GAMMA0())
-    );
-    vm.mockCall(address(curvePool), abi.encodeWithSelector(ICurvePool.A.selector), abi.encode(triCryptoOracle.A0()));
-
-    uint256 _btcStaleDelay = triCryptoOracle.btcStaleDelay();
-
-    // mockCall to feed latestAnswers
-    vm.mockCall(
-      address(btcFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, _btcPrice, 0, block.timestamp - _btcStaleDelay - 1, 0)
-    );
-
-    vm.mockCall(
-      address(ethFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, _ethPrice, 0, block.timestamp, 0)
-    );
-
-    vm.mockCall(
-      address(usdtFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, _usdtPrice, 0, block.timestamp, 0)
-    );
-
-    vm.mockCall(
-      address(wbtcFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, 1e8, 0, block.timestamp, 0)
-    );
-
-    uint256 _basePrices = (uint256(_btcPrice) * 1e10 * _ethPrice * 1e10 * _usdtPrice * 1e10);
-
-    uint256 _maxPrice = (3 * _vp * FixedPointMathLib.cbrt(_basePrices)) / 1 ether;
-
-    assertEq(triCryptoOracle.currentValue(), _maxPrice);
-  }
-
-  function testCurrentValueRevertsWhenEthPriceStale(uint32 _ethPrice) public {
-    vm.assume(_ethPrice > 0.1e8);
-    uint256 _usdtPrice = 1e8;
-    uint256 _btcPrice = 0.1e8;
-    uint256 _vp = 1.1e18;
-
-    // mockCall to get_virtual_price
-    vm.mockCall(address(curvePool), abi.encodeWithSelector(ICurvePool.get_virtual_price.selector), abi.encode(_vp));
-    vm.mockCall(
-      address(curvePool), abi.encodeWithSelector(ICurvePool.gamma.selector), abi.encode(triCryptoOracle.GAMMA0())
-    );
-    vm.mockCall(address(curvePool), abi.encodeWithSelector(ICurvePool.A.selector), abi.encode(triCryptoOracle.A0()));
-
-    uint256 _ethStaleDelay = triCryptoOracle.ethStaleDelay();
-
-    // mockCall to feed latestAnswers
-    vm.mockCall(
-      address(btcFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, _btcPrice, 0, block.timestamp, 0)
-    );
-
-    vm.mockCall(
-      address(ethFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, _ethPrice, 0, block.timestamp - _ethStaleDelay - 1, 0)
-    );
-
-    vm.mockCall(
-      address(usdtFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, _usdtPrice, 0, block.timestamp, 0)
-    );
-
-    vm.mockCall(
-      address(wbtcFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, 1e8, 0, block.timestamp, 0)
-    );
-
-    uint256 _basePrices = (uint256(_btcPrice) * 1e10 * _ethPrice * 1e10 * _usdtPrice * 1e10);
-
-    uint256 _maxPrice = (3 * _vp * FixedPointMathLib.cbrt(_basePrices)) / 1 ether;
-
-    assertEq(triCryptoOracle.currentValue(), _maxPrice);
-  }
-
-  function testCurrentValueWhenUsdtPriceStale(uint32 _usdtPrice) public {
-    vm.assume(_usdtPrice > 0.1e8);
-    uint256 _btcPrice = 0.1e8;
-    uint256 _ethPrice = 1000e8;
-    uint256 _vp = 1.1e18;
-
-    // mockCall to get_virtual_price
-    vm.mockCall(address(curvePool), abi.encodeWithSelector(ICurvePool.get_virtual_price.selector), abi.encode(_vp));
-    vm.mockCall(
-      address(curvePool), abi.encodeWithSelector(ICurvePool.gamma.selector), abi.encode(triCryptoOracle.GAMMA0())
-    );
-    vm.mockCall(address(curvePool), abi.encodeWithSelector(ICurvePool.A.selector), abi.encode(triCryptoOracle.A0()));
-
-    uint256 _usdtStaleDelay = triCryptoOracle.usdtStaleDelay();
-
-    // mockCall to feed latestAnswers
-    vm.mockCall(
-      address(btcFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, _btcPrice, 0, block.timestamp, 0)
-    );
-
-    vm.mockCall(
-      address(ethFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, _ethPrice, 0, block.timestamp, 0)
-    );
-
-    vm.mockCall(
-      address(usdtFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, _usdtPrice, 0, block.timestamp - _usdtStaleDelay - 1, 0)
-    );
-
-    vm.mockCall(
-      address(wbtcFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, 1e8, 0, block.timestamp, 0)
-    );
-
-    uint256 _basePrices = (uint256(_btcPrice) * 1e10 * _ethPrice * 1e10 * _usdtPrice * 1e10);
-
-    uint256 _maxPrice = (3 * _vp * FixedPointMathLib.cbrt(_basePrices)) / 1 ether;
-
-    assertEq(triCryptoOracle.currentValue(), _maxPrice);
-  }
-
-  function testCurrentValueRevertsWhenWbtcPriceStale(uint32 _btcPrice, uint32 _ethPrice, uint32 _usdtPrice) public {
-    vm.assume(_btcPrice > 0.1e8);
-    vm.assume(_ethPrice > 0.1e8);
-    vm.assume(_usdtPrice > 0.1e8);
-    uint256 _vp = 1.1e18;
-
-    // mockCall to get_virtual_price
-    vm.mockCall(address(curvePool), abi.encodeWithSelector(ICurvePool.get_virtual_price.selector), abi.encode(_vp));
-    vm.mockCall(
-      address(curvePool), abi.encodeWithSelector(ICurvePool.gamma.selector), abi.encode(triCryptoOracle.GAMMA0())
-    );
-    vm.mockCall(address(curvePool), abi.encodeWithSelector(ICurvePool.A.selector), abi.encode(triCryptoOracle.A0()));
-
-    uint256 _wbtcStaleDelay = triCryptoOracle.wbtcStaleDelay();
-
-    // mockCall to feed latestAnswers
-    vm.mockCall(
-      address(btcFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, _btcPrice, 0, block.timestamp, 0)
-    );
-
-    vm.mockCall(
-      address(ethFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, _ethPrice, 0, block.timestamp, 0)
-    );
-
-    vm.mockCall(
-      address(usdtFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, _usdtPrice, 0, block.timestamp, 0)
-    );
-
-    vm.mockCall(
-      address(wbtcFeed),
-      abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-      abi.encode(0, 1e8, 0, block.timestamp - _wbtcStaleDelay - 1, 0)
-    );
-
-    uint256 _basePrices = (uint256(_btcPrice) * 1e10 * _ethPrice * 1e10 * _usdtPrice * 1e10);
+    uint256 _basePrices = (uint256(_wbtcPrice) * _ethPrice * _usdtPrice);
 
     uint256 _maxPrice = (3 * _vp * FixedPointMathLib.cbrt(_basePrices)) / 1 ether;
 
@@ -384,72 +74,38 @@ contract UnitCurrentValue is Base {
   }
 }
 
-contract UnitSetDelays is Base {
-  function testSetBtcDelayRevertsIfNotOwner(uint256 _btcDelay) public {
-    vm.expectRevert('Ownable: caller is not the owner');
-    vm.prank(newAddress());
-    triCryptoOracle.setBtcStaleDelay(_btcDelay);
+contract UnitTriCryptoOracleExternalCalls is Base {
+  uint256 internal _vp = 1 ether;
+  uint256 internal _ethPrice = 2000 ether;
+  uint256 internal _usdtPrice = 1 ether;
+  uint256 internal _wbtcPrice = 20_000 ether;
+
+  function setUp() public virtual override {
+    super.setUp();
+
+    // mockCall to get_virtual_price
+    vm.mockCall(address(curvePool), abi.encodeWithSelector(ICurvePool.get_virtual_price.selector), abi.encode(_vp));
+
+    // mockCall to feed latestAnswers
+    vm.mockCall(address(ethFeed), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(_ethPrice));
+
+    vm.mockCall(address(usdtFeed), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(_usdtPrice));
+
+    vm.mockCall(address(wbtcFeed), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(_wbtcPrice));
   }
 
-  function testSetEthDelayRevertsIfNotOwner(uint256 _ethDelay) public {
-    vm.expectRevert('Ownable: caller is not the owner');
-    vm.prank(newAddress());
-    triCryptoOracle.setEthStaleDelay(_ethDelay);
+  function testCallsPeekValueOnEthFeed() public {
+    vm.expectCall(address(ethFeed), abi.encodeWithSelector(IOracleRelay.peekValue.selector));
+    triCryptoOracle.currentValue();
   }
 
-  function testSetUsdtDelayRevertsIfNotOwner(uint256 _usdtDelay) public {
-    vm.expectRevert('Ownable: caller is not the owner');
-    vm.prank(newAddress());
-    triCryptoOracle.setUsdtStaleDelay(_usdtDelay);
+  function testCallsPeekValueOnUsdtFeed() public {
+    vm.expectCall(address(usdtFeed), abi.encodeWithSelector(IOracleRelay.peekValue.selector));
+    triCryptoOracle.currentValue();
   }
 
-  function testSetWbtcDelayRevertsIfNotOwner(uint256 _wbtcDelay) public {
-    vm.expectRevert('Ownable: caller is not the owner');
-    vm.prank(newAddress());
-    triCryptoOracle.setWbtcStaleDelay(_wbtcDelay);
-  }
-
-  function testSetBtcDelay(uint256 _btcDelay) public {
-    vm.assume(_btcDelay > 0);
-    triCryptoOracle.setBtcStaleDelay(_btcDelay);
-    assertEq(triCryptoOracle.btcStaleDelay(), _btcDelay);
-  }
-
-  function testSetEthDelay(uint256 _ethDelay) public {
-    vm.assume(_ethDelay > 0);
-    triCryptoOracle.setEthStaleDelay(_ethDelay);
-    assertEq(triCryptoOracle.ethStaleDelay(), _ethDelay);
-  }
-
-  function testSetUsdtDelay(uint256 _usdtDelay) public {
-    vm.assume(_usdtDelay > 0);
-    triCryptoOracle.setUsdtStaleDelay(_usdtDelay);
-    assertEq(triCryptoOracle.usdtStaleDelay(), _usdtDelay);
-  }
-
-  function testSetWbtcDelay(uint256 _wbtcDelay) public {
-    vm.assume(_wbtcDelay > 0);
-    triCryptoOracle.setWbtcStaleDelay(_wbtcDelay);
-    assertEq(triCryptoOracle.wbtcStaleDelay(), _wbtcDelay);
-  }
-
-  function testSetBtcDelayRevertsIfZero() public {
-    vm.expectRevert(TriCryptoOracle.TriCryptoOracle_ZeroAmount.selector);
-    triCryptoOracle.setBtcStaleDelay(0);
-  }
-
-  function testSetEthDelayRevertsIfZero() public {
-    vm.expectRevert(TriCryptoOracle.TriCryptoOracle_ZeroAmount.selector);
-    triCryptoOracle.setEthStaleDelay(0);
-  }
-
-  function testSetUsdtDelayRevertsIfZero() public {
-    vm.expectRevert(TriCryptoOracle.TriCryptoOracle_ZeroAmount.selector);
-    triCryptoOracle.setUsdtStaleDelay(0);
-  }
-
-  function testSetWbtcDelayRevertsIfZero() public {
-    vm.expectRevert(TriCryptoOracle.TriCryptoOracle_ZeroAmount.selector);
-    triCryptoOracle.setWbtcStaleDelay(0);
+  function testCallsPeekValueOnWbtcFeed() public {
+    vm.expectCall(address(wbtcFeed), abi.encodeWithSelector(IOracleRelay.peekValue.selector));
+    triCryptoOracle.currentValue();
   }
 }

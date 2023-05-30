@@ -6,22 +6,19 @@ import {ChainlinkTokenOracleRelay} from '@contracts/periphery/oracles/ChainlinkT
 
 import {AggregatorInterface} from '@chainlink/interfaces/AggregatorInterface.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
+import {ChainlinkOracleRelay} from '@contracts/periphery/oracles/ChainlinkOracleRelay.sol';
 
 abstract contract Base is DSTestPlus {
   ChainlinkTokenOracleRelay public chainlinkTokenOracleRelay;
-  AggregatorInterface internal _mockAggregator = AggregatorInterface(mockContract(newAddress(), 'mockAggregator'));
-  IOracleRelay internal _mockEthPriceFeed;
-
-  uint256 public mul = 10_000_000_000;
-  uint256 public div = 1;
+  ChainlinkOracleRelay internal _mockAggregator = ChainlinkOracleRelay(mockContract(newAddress(), 'mockAggregator'));
+  ChainlinkOracleRelay internal _mockBaseAggregator =
+    ChainlinkOracleRelay(mockContract(newAddress(), 'mockBaseAggregator'));
 
   IOracleRelay.OracleType public oracleType = IOracleRelay.OracleType(0); // 0 == Chainlink
 
   function setUp() public virtual {
     // Deploy contract
-    chainlinkTokenOracleRelay = new ChainlinkTokenOracleRelay(address(_mockAggregator), mul, div);
-    _mockEthPriceFeed =
-      IOracleRelay(mockContract(address(chainlinkTokenOracleRelay.ETH_PRICE_FEED()), 'mockEthPriceFeed'));
+    chainlinkTokenOracleRelay = new ChainlinkTokenOracleRelay(_mockAggregator, _mockBaseAggregator);
   }
 }
 
@@ -32,39 +29,78 @@ contract UnitTestChainlinkTokenOracleRelayOracleType is Base {
 }
 
 contract UnitTestChainlinkTokenOracleRelayCurrentValue is Base {
-  function testChainlinkTokenOracleRelayRevertWithPriceLessThanZero(int256 _latestAnswer) public {
-    vm.assume(_latestAnswer < 0);
-
-    vm.mockCall(
-      address(_mockAggregator),
-      abi.encodeWithSelector(AggregatorInterface.latestAnswer.selector),
-      abi.encode(_latestAnswer)
-    );
-
-    vm.expectRevert(ChainlinkTokenOracleRelay.ChainlinkOracle_PriceLessThanZero.selector);
-    chainlinkTokenOracleRelay.currentValue();
-  }
-
-  function testChainlinkTokenOracleRelay(int256 _latestAnswer, uint256 _ethPrice) public {
+  function testChainlinkTokenOracleRelay(uint256 _latestAnswer, uint256 _baseLatestAnswer) public {
     vm.assume(_latestAnswer > 0);
-    vm.assume(_ethPrice > 0);
-    vm.assume(uint256(_latestAnswer) < type(uint256).max / mul);
-
-    uint256 _priceInEth = (uint256(_latestAnswer) * mul) / div;
-
-    vm.assume(_ethPrice < type(uint256).max / _priceInEth);
-    vm.assume(_ethPrice * _priceInEth >= 1e18);
+    vm.assume(_baseLatestAnswer > 0);
+    vm.assume(uint256(_latestAnswer) < type(uint256).max / _baseLatestAnswer);
 
     vm.mockCall(
       address(_mockAggregator),
-      abi.encodeWithSelector(AggregatorInterface.latestAnswer.selector),
+      abi.encodeWithSelector(ChainlinkOracleRelay.peekValue.selector),
       abi.encode(_latestAnswer)
     );
+
     vm.mockCall(
-      address(_mockEthPriceFeed), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(_ethPrice)
+      address(_mockBaseAggregator),
+      abi.encodeWithSelector(ChainlinkOracleRelay.peekValue.selector),
+      abi.encode(_baseLatestAnswer)
     );
 
     uint256 _response = chainlinkTokenOracleRelay.currentValue();
-    assertEq(_response, (_ethPrice * _priceInEth) / 1e18);
+    assertEq(_response, (_latestAnswer * _baseLatestAnswer) / 1e18);
+  }
+}
+
+contract UnitTestChainlinkTokenOracleRelayIsStale is Base {
+  function testChainlinkTokenOracleRelayIsNotStaleIfNonAreStale() public {
+    vm.mockCall(
+      address(_mockAggregator), abi.encodeWithSelector(ChainlinkOracleRelay.isStale.selector), abi.encode(false)
+    );
+
+    vm.mockCall(
+      address(_mockBaseAggregator), abi.encodeWithSelector(ChainlinkOracleRelay.isStale.selector), abi.encode(false)
+    );
+
+    bool _response = chainlinkTokenOracleRelay.isStale();
+    assertFalse(_response);
+  }
+
+  function testChainlinkTokenOracleRelayIsStaleIfFeedIsStale() public {
+    vm.mockCall(
+      address(_mockAggregator), abi.encodeWithSelector(ChainlinkOracleRelay.isStale.selector), abi.encode(true)
+    );
+
+    vm.mockCall(
+      address(_mockBaseAggregator), abi.encodeWithSelector(ChainlinkOracleRelay.isStale.selector), abi.encode(false)
+    );
+
+    bool _response = chainlinkTokenOracleRelay.isStale();
+    assertTrue(_response);
+  }
+
+  function testChainlinkTokenOracleRelayIsStaleIfBaseIsStale() public {
+    vm.mockCall(
+      address(_mockAggregator), abi.encodeWithSelector(ChainlinkOracleRelay.isStale.selector), abi.encode(false)
+    );
+
+    vm.mockCall(
+      address(_mockBaseAggregator), abi.encodeWithSelector(ChainlinkOracleRelay.isStale.selector), abi.encode(true)
+    );
+
+    bool _response = chainlinkTokenOracleRelay.isStale();
+    assertTrue(_response);
+  }
+
+  function testChainlinkTokenOracleRelayIsStaleIfBothAreStale() public {
+    vm.mockCall(
+      address(_mockAggregator), abi.encodeWithSelector(ChainlinkOracleRelay.isStale.selector), abi.encode(true)
+    );
+
+    vm.mockCall(
+      address(_mockBaseAggregator), abi.encodeWithSelector(ChainlinkOracleRelay.isStale.selector), abi.encode(true)
+    );
+
+    bool _response = chainlinkTokenOracleRelay.isStale();
+    assertTrue(_response);
   }
 }

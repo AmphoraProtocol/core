@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.4 <0.9.0;
 
-import {CommonE2EBase, IVault, console} from '@test/e2e/Common.sol';
+import {CommonE2EBase, IVault, console, TestConstants} from '@test/e2e/Common.sol';
 import {IUSDA} from '@interfaces/core/IUSDA.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import {AggregatorV2V3Interface} from '@chainlink/interfaces/AggregatorV2V3Interface.sol';
 
 interface ITriCryptoPool {
   function calc_token_amount(uint256[3] memory _amounts, bool _deposit) external view returns (uint256 _amount);
@@ -32,9 +33,9 @@ contract E2ETriCryptoOracle is CommonE2EBase {
     uint256 _wethBalance = weth.balanceOf(address(triCryptoPool));
 
     // Get the price of the tokens from chainlink
-    uint256 _wbtcPrice = uint256(triCryptoOracle.BTC_FEED().latestAnswer()) * 10 ** 10;
-    uint256 _usdtPrice = uint256(triCryptoOracle.USDT_FEED().latestAnswer()) * 10 ** 10;
-    uint256 _wethPrice = uint256(triCryptoOracle.ETH_FEED().latestAnswer()) * 10 ** 10;
+    uint256 _wbtcPrice = uint256(AggregatorV2V3Interface(CHAINLINK_BTC_FEED_ADDRESS).latestAnswer()) * 10 ** 10;
+    uint256 _usdtPrice = uint256(AggregatorV2V3Interface(CHAINLINK_USDT_FEED_ADDRESS).latestAnswer()) * 10 ** 10;
+    uint256 _wethPrice = uint256(AggregatorV2V3Interface(CHAINLINK_ETH_FEED_ADDRESS).latestAnswer()) * 10 ** 10;
 
     // Calculate the usd value of the whole pool
     uint256 _poolValue = ((_wbtcBalanceE18 * _wbtcPrice) + (_usdtBalanceE18 * _usdtPrice) + (_wethBalance * _wethPrice));
