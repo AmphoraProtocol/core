@@ -34,7 +34,7 @@ import {CreateOracles} from '@scripts/CreateOracles.sol';
 
 // solhint-disable-next-line max-states-count
 contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateOracles {
-  uint256 public constant FORK_BLOCK = 15_452_788;
+  uint256 public constant FORK_BLOCK = 17_300_000;
   /// 16442788;///;
   uint256 public constant DELTA = 100;
 
@@ -71,6 +71,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateO
   AnchoredViewRelay public anchoredViewAave;
   AnchoredViewRelay public anchoredViewDydx;
   AnchoredViewRelay public anchoredViewBtc;
+  AnchoredViewRelay public anchoredViewStEth;
   // Curve oracles
   StableCurveLpOracle public threeCrvOracle;
   TriCrypto2Oracle public triCryptoOracle;
@@ -85,8 +86,8 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateO
   IERC20 public dydx = IERC20(label(DYDX_ADDRESS, 'DYDX'));
   IERC20 public usdtStableLP = IERC20(label(USDT_LP_ADDRESS, 'USDT_LP'));
   IERC20 public threeCrvLP = IERC20(label(THREE_CRV_LP_ADDRESS, 'THREE_CRV_LP'));
-  /// boringDaoLP is a curveLP token that provides extra rewards compared to usdtLP
-  IERC20 public boringDaoLP = IERC20(label(BORING_DAO_LP_ADDRESS, 'BORING_DAO_LP'));
+  /// gearLP is a curveLP token that provides extra rewards compared to usdtLP
+  IERC20 public gearLP = IERC20(label(GEAR_LP_ADDRESS, 'GEAR_LP'));
   // frank is the Frank and master of USDA, and symbolizes the power of governance
   address public frank = label(newAddress(), 'frank');
   // andy is a susd holder. He wishes to deposit his sUSD to hold USDA
@@ -153,7 +154,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateO
     deal(address(wbtc), gus, gusWBTC);
     deal(address(uni), gus, gusUni);
     deal(address(usdtStableLP), bob, bobCurveLPBalance);
-    deal(address(boringDaoLP), bob, bobCurveLPBalance);
+    deal(address(gearLP), bob, bobCurveLPBalance);
     deal(address(threeCrvLP), bob, 1000 ether);
     deal(dave, 1000 ether);
 
@@ -229,6 +230,8 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateO
     anchoredViewDydx = new AnchoredViewRelay(address(uniswapRelayDydxWeth), address(chainlinkDydx), 20, 100, 10, 100);
     // Deploy anchoredViewEth relay
     anchoredViewBtc = new AnchoredViewRelay(address(uniswapRelayWbtcUsdc), address(chainlinkBtc), 20, 100, 10, 100);
+    // Deploy anchoredViewsTEth relay
+    anchoredViewStEth = AnchoredViewRelay(_createStEthOracle(uniswapRelayEthUsdc));
 
     /// Deploy usdc oracle relay
     IOracleRelay _anchoredViewUsdc = IOracleRelay(_createUsdcOracle());
@@ -264,10 +267,8 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateO
     vaultController.registerErc20(
       USDT_LP_ADDRESS, OTHER_LTV, address(threeCrvOracle), LIQUIDATION_INCENTIVE, type(uint256).max, 1
     );
-
-    // TODO: change anchoredViewUni
     vaultController.registerErc20(
-      BORING_DAO_LP_ADDRESS, OTHER_LTV, address(anchoredViewUni), LIQUIDATION_INCENTIVE, type(uint256).max, 20
+      GEAR_LP_ADDRESS, OTHER_LTV, address(anchoredViewUni), LIQUIDATION_INCENTIVE, type(uint256).max, 136
     );
 
     // Register the triCrypto2 pool as collateral

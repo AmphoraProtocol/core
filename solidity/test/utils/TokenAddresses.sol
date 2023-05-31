@@ -11,10 +11,9 @@ contract TokenAddresses {
   address public constant DYDX_ADDRESS = 0x92D6C1e31e14520e676a687F0a93788B716BEff5;
   address public constant WBTC_ADDRESS = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
   address public constant USDT_LP_ADDRESS = 0x9fC689CCaDa600B6DF723D9E47D84d76664a1F23;
-  address public constant BOR_DAO_ADDRESS = 0x3c9d6c1C73b31c837832c72E04D3152f051fc1A9;
   address public constant THREE_CRV_LP_ADDRESS = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
-  address public constant BORING_DAO_ADDRESS = 0xBC19712FEB3a26080eBf6f2F7849b417FdD792CA;
-  address public constant BORING_DAO_LP_ADDRESS = 0x2fE94ea3d5d4a175184081439753DE15AeF9d614;
+  address public constant GEAR_ADDRESS = 0xBa3335588D9403515223F109EdC4eB7269a9Ab5D;
+  address public constant GEAR_LP_ADDRESS = 0x5Be6C45e2d074fAa20700C49aDA3E88a1cc0025d;
   address public constant CVX_ADDRESS = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
   address public constant CRV_ADDRESS = 0xD533a949740bb3306d119CC777fa900bA034cd52;
   address public constant TRI_CRYPTO_LP_TOKEN = 0xc4AD29ba4B3c580e6D59105FFf484999997675Ff;
@@ -29,4 +28,6 @@ contract TokenAddresses {
   address public constant FRAX_ADDRESS = 0x853d955aCEf822Db058eb8505911ED77F175b99e;
   address public constant STETH_ADDRESS = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
   address public constant WSETH_ADDRESS = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0;
+  address public constant CBETH_ADDRESS = 0xBe9895146f7AF43049ca1c1AE358B0541Ea49704;
+  address public constant SNX_ADDRESS = 0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F;
 }

@@ -536,7 +536,7 @@ contract UnitVaultClaimRewards is Base {
       liquidationIncentive: 0,
       oracle: IOracleRelay(address(0)),
       collateralType: IVaultController.CollateralType.CurveLPStakedOnConvex,
-      crvRewardsContract: IBaseRewardPool(BORING_DAO_LP_REWARDS_ADDRESS),
+      crvRewardsContract: IBaseRewardPool(GEAR_LP_REWARDS_ADDRESS),
       poolId: 15
     });
 
@@ -546,12 +546,10 @@ contract UnitVaultClaimRewards is Base {
       abi.encode(collateralInfo)
     );
 
-    vm.mockCall(
-      BORING_DAO_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.getReward.selector), abi.encode(true)
-    );
+    vm.mockCall(GEAR_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.getReward.selector), abi.encode(true));
 
     vm.mockCall(
-      BORING_DAO_LP_REWARDS_ADDRESS,
+      GEAR_LP_REWARDS_ADDRESS,
       abi.encodeWithSelector(IBaseRewardPool.earned.selector, address(vault)),
       abi.encode(1 ether)
     );
@@ -617,7 +615,7 @@ contract UnitVaultClaimRewards is Base {
     address[] memory _tokens = new address[](1);
     _tokens[0] = address(_mockToken);
     vm.mockCall(
-      BORING_DAO_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(0)
+      GEAR_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(0)
     );
 
     vm.mockCall(
@@ -636,11 +634,11 @@ contract UnitVaultClaimRewards is Base {
     address[] memory _tokens = new address[](1);
     _tokens[0] = address(_mockToken);
     vm.mockCall(
-      BORING_DAO_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(1)
+      GEAR_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(1)
     );
 
     vm.mockCall(
-      BORING_DAO_LP_REWARDS_ADDRESS,
+      GEAR_LP_REWARDS_ADDRESS,
       abi.encodeWithSelector(IBaseRewardPool.extraRewards.selector, 0),
       abi.encode(mockVirtualRewardsPool)
     );
@@ -693,7 +691,7 @@ contract UnitVaultClaimRewards is Base {
     vm.mockCall(
       address(mockVaultController),
       abi.encodeWithSelector(IVaultController.tokenCrvRewardsContract.selector, address(otherMockToken)),
-      abi.encode(BORING_DAO_LP_REWARDS_ADDRESS)
+      abi.encode(GEAR_LP_REWARDS_ADDRESS)
     );
 
     vm.mockCall(
@@ -702,12 +700,10 @@ contract UnitVaultClaimRewards is Base {
       abi.encode(1 ether)
     );
 
-    vm.mockCall(
-      BORING_DAO_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.getReward.selector), abi.encode(true)
-    );
+    vm.mockCall(GEAR_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.getReward.selector), abi.encode(true));
 
     vm.mockCall(
-      BORING_DAO_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(0)
+      GEAR_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(0)
     );
 
     vm.mockCall(
@@ -739,11 +735,11 @@ contract UnitVaultClaimRewards is Base {
     address[] memory _tokens = new address[](1);
     _tokens[0] = address(_mockToken);
     vm.mockCall(
-      BORING_DAO_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(1)
+      GEAR_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(1)
     );
 
     vm.mockCall(
-      BORING_DAO_LP_REWARDS_ADDRESS,
+      GEAR_LP_REWARDS_ADDRESS,
       abi.encodeWithSelector(IBaseRewardPool.extraRewards.selector, 0),
       abi.encode(mockVirtualRewardsPool)
     );
@@ -782,17 +778,15 @@ contract UnitVaultClaimRewards is Base {
     _tokens[0] = address(_mockToken);
 
     vm.mockCall(
-      BORING_DAO_LP_REWARDS_ADDRESS,
-      abi.encodeWithSelector(IBaseRewardPool.earned.selector, address(vault)),
-      abi.encode(0)
+      GEAR_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.earned.selector, address(vault)), abi.encode(0)
     );
 
     vm.mockCall(
-      BORING_DAO_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(1)
+      GEAR_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(1)
     );
 
     vm.mockCall(
-      BORING_DAO_LP_REWARDS_ADDRESS,
+      GEAR_LP_REWARDS_ADDRESS,
       abi.encodeWithSelector(IBaseRewardPool.extraRewards.selector, 0),
       abi.encode(mockVirtualRewardsPool)
     );
@@ -817,11 +811,11 @@ contract UnitVaultClaimRewards is Base {
     address[] memory _tokens = new address[](1);
     _tokens[0] = address(_mockToken);
     vm.mockCall(
-      BORING_DAO_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(1)
+      GEAR_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(1)
     );
 
     vm.mockCall(
-      BORING_DAO_LP_REWARDS_ADDRESS,
+      GEAR_LP_REWARDS_ADDRESS,
       abi.encodeWithSelector(IBaseRewardPool.extraRewards.selector, 0),
       abi.encode(mockVirtualRewardsPool)
     );
@@ -874,11 +868,11 @@ contract UnitVaultClaimableRewards is Base {
     vm.mockCall(
       address(mockVaultController),
       abi.encodeWithSelector(IVaultController.tokenCrvRewardsContract.selector, address(_mockToken)),
-      abi.encode(BORING_DAO_LP_REWARDS_ADDRESS)
+      abi.encode(GEAR_LP_REWARDS_ADDRESS)
     );
 
     vm.mockCall(
-      BORING_DAO_LP_REWARDS_ADDRESS,
+      GEAR_LP_REWARDS_ADDRESS,
       abi.encodeWithSelector(IBaseRewardPool.earned.selector, address(vault)),
       abi.encode(1 ether)
     );
@@ -913,11 +907,11 @@ contract UnitVaultClaimableRewards is Base {
 
   function testClaimableRewards() public {
     vm.mockCall(
-      BORING_DAO_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(1)
+      GEAR_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(1)
     );
 
     vm.mockCall(
-      BORING_DAO_LP_REWARDS_ADDRESS,
+      GEAR_LP_REWARDS_ADDRESS,
       abi.encodeWithSelector(IBaseRewardPool.extraRewards.selector, 0),
       abi.encode(mockVirtualRewardsPool)
     );
@@ -955,11 +949,11 @@ contract UnitVaultClaimableRewards is Base {
 
   function testClaimableRewardsWithCVX() public {
     vm.mockCall(
-      BORING_DAO_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(1)
+      GEAR_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(1)
     );
 
     vm.mockCall(
-      BORING_DAO_LP_REWARDS_ADDRESS,
+      GEAR_LP_REWARDS_ADDRESS,
       abi.encodeWithSelector(IBaseRewardPool.extraRewards.selector, 0),
       abi.encode(mockVirtualRewardsPool)
     );
@@ -1004,11 +998,11 @@ contract UnitVaultClaimableRewards is Base {
     );
 
     vm.mockCall(
-      BORING_DAO_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(1)
+      GEAR_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(1)
     );
 
     vm.mockCall(
-      BORING_DAO_LP_REWARDS_ADDRESS,
+      GEAR_LP_REWARDS_ADDRESS,
       abi.encodeWithSelector(IBaseRewardPool.extraRewards.selector, 0),
       abi.encode(mockVirtualRewardsPool)
     );

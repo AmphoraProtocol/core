@@ -14,6 +14,7 @@ import {EthSafeStableCurveOracle} from '@contracts/periphery/oracles/EthSafeStab
 import {CTokenOracle} from '@contracts/periphery/oracles/CTokenOracle.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
 import {TriCrypto2Oracle} from '@contracts/periphery/oracles/TriCrypto2Oracle.sol';
+import {WstEthOracle} from '@contracts/periphery/oracles/WstEthOracle.sol';
 
 import {TestConstants} from '@test/utils/TestConstants.sol';
 
@@ -32,15 +33,22 @@ abstract contract CreateOracles is TestConstants {
     _ethUsdcTokenOracleRelay = address(_uniswapRelayEthUsdc);
   }
 
-  function _createWethOracle(UniswapV3OracleRelay _uniswapRelayEthUsdc) internal returns (address _wethOracle) {
+  function _createEthUsdChainlinkOracleRelay() internal returns (address _ethChainlinkOracle) {
     // Deploy chainlinkEth oracle relay
     ChainlinkOracleRelay _chainlinkEth =
       new ChainlinkOracleRelay(WETH_ADDRESS, CHAINLINK_ETH_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_HOUR);
     console.log('CHAINLINK_ETH_FEED: ', address(_chainlinkEth));
+    _ethChainlinkOracle = address(_chainlinkEth);
+  }
+
+  function _createWethOracle(
+    UniswapV3OracleRelay _uniswapRelayEthUsdc,
+    ChainlinkOracleRelay _chainlinkEth
+  ) internal returns (address _wethOracle) {
     // Deploy anchoredViewEth relay
     AnchoredViewRelay _anchoredViewEth =
       new AnchoredViewRelay(address(_uniswapRelayEthUsdc), address(_chainlinkEth), 20, 100, 10, 100);
-    console.log('ANCHORED_VIEW_RELAY: ', address(_anchoredViewEth));
+    console.log('ANCHORED_VIEW_RELAY_WETH: ', address(_anchoredViewEth));
     _wethOracle = address(_anchoredViewEth);
   }
 
@@ -55,7 +63,7 @@ abstract contract CreateOracles is TestConstants {
     // Deploy anchoredViewUsdt relay
     AnchoredViewRelay _anchoredViewUsdt =
       new AnchoredViewRelay(address(_uniswapRelayUsdtUsdc), address(_chainlinkUsdt), 20, 100, 10, 100);
-    console.log('ANCHORED_VIEW_RELAY: ', address(_anchoredViewUsdt));
+    console.log('ANCHORED_VIEW_RELAY_USDT: ', address(_anchoredViewUsdt));
     _usdtOracle = address(_anchoredViewUsdt);
   }
 
@@ -72,14 +80,13 @@ abstract contract CreateOracles is TestConstants {
     ChainlinkOracleRelay _chainlinkBtcUsd =
       new ChainlinkOracleRelay(WBTC_ADDRESS, CHAINLINK_BTC_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_HOUR);
     // Deploy chainlinkWbtc oracle relay with twice the 8 decimal mul div because there are two feed at 8 decimals multiplied
-    ChainlinkTokenOracleRelay _chainlinkWbtc =
-      new ChainlinkTokenOracleRelay(WBTC_ADDRESS, _chainlinkWbtcBtc,_chainlinkBtcUsd);
+    ChainlinkTokenOracleRelay _chainlinkWbtc = new ChainlinkTokenOracleRelay(_chainlinkWbtcBtc,_chainlinkBtcUsd);
     console.log('CHAINLINK_WBTC_FEED: ', address(_chainlinkWbtc));
 
     // Deploy anchoredViewUsdt relay
     AnchoredViewRelay _anchoredViewWbtc =
       new AnchoredViewRelay(address(_uniswapRelayWbtcUsdc), address(_chainlinkWbtc), 20, 100, 10, 100);
-    console.log('ANCHORED_VIEW_RELAY: ', address(_anchoredViewWbtc));
+    console.log('ANCHORED_VIEW_RELAY_WBTC: ', address(_anchoredViewWbtc));
     _wbtcOracke = address(_anchoredViewWbtc);
   }
 
@@ -95,7 +102,7 @@ abstract contract CreateOracles is TestConstants {
     // Deploy anchoredViewUsdc relay
     AnchoredViewRelay _anchoredViewUsdt =
       new AnchoredViewRelay(address(_uniswapRelayUsdcUsdt), address(_chainlinkUsdc), 20, 100, 10, 100);
-    console.log('ANCHORED_VIEW_RELAY: ', address(_anchoredViewUsdt));
+    console.log('ANCHORED_VIEW_RELAY_USDT: ', address(_anchoredViewUsdt));
     _usdcOracle = address(_anchoredViewUsdt);
   }
 
@@ -111,8 +118,78 @@ abstract contract CreateOracles is TestConstants {
     // Deploy anchoredViewDai relay
     AnchoredViewRelay _anchoredViewDai =
       new AnchoredViewRelay(address(_uniswapRelayDaiUsdc), address(_chainlinkDai), 20, 100, 10, 100);
-    console.log('ANCHORED_VIEW_RELAY: ', address(_anchoredViewDai));
+    console.log('ANCHORED_VIEW_RELAY_DAI: ', address(_anchoredViewDai));
     _daiOracle = address(_anchoredViewDai);
+  }
+
+  function _createSusdOracle() internal returns (address _sUSDOracle) {
+    UniswapV3OracleRelay _uniswapRelayFraxUsdc =
+      new UniswapV3OracleRelay(TWO_HOURS, FRAX_USDC_POOL_ADDRESS, false, SIX_DECIMALS_MUL_DIV, 1);
+    console.log('UNISWAP_FRAX_USDC_ORACLE: ', address(_uniswapRelayFraxUsdc));
+
+    // Deploy uniswapRelaySnxWEth oracle relay
+    UniswapV3TokenOracleRelay _uniswapRelaySusdUsdc =
+      new UniswapV3TokenOracleRelay(_uniswapRelayFraxUsdc, TWO_HOURS, SUSD_FRAX_POOL_ADDRESS, false, 1, 1);
+    console.log('UNISWAP_SNX_ETH_ORACLE: ', address(_uniswapRelaySusdUsdc));
+
+    // Deploy chainlinkSusd oracle relay
+    ChainlinkOracleRelay _chainlinkSusd =
+      new ChainlinkOracleRelay(SUSD_ADDRESS, CHAINLINK_SUSD_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_DAY);
+    console.log('CHAINLINK_SUSD_FEED: ', address(_chainlinkSusd));
+
+    // Deploy anchoredViewSusd relay
+    AnchoredViewRelay _anchoredViewSusd =
+      new AnchoredViewRelay(address(_uniswapRelaySusdUsdc), address(_chainlinkSusd), 20, 100, 10, 100);
+    console.log('ANCHORED_VIEW_RELAY_SUSD: ', address(_anchoredViewSusd));
+    _sUSDOracle = address(_anchoredViewSusd);
+  }
+
+  function _createSnxOracle(UniswapV3OracleRelay _uniswapRelayEthUsdc) internal returns (address _snxOracle) {
+    // Deploy chainlinkSnx oracle relay
+    ChainlinkOracleRelay _chainlinkSnx =
+      new ChainlinkOracleRelay(SNX_ADDRESS, CHAINLINK_SNX_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_DAY);
+    console.log('CHAINLINK_SNX_FEED: ', address(_chainlinkSnx));
+
+    // Deploy uniswapRelaySnxWEth oracle relay
+    UniswapV3TokenOracleRelay _uniswapRelaySnxWEth =
+      new UniswapV3TokenOracleRelay(_uniswapRelayEthUsdc, TWO_HOURS, SNX_ETH_POOL_ADDRESS, false, 1, 1);
+
+    // Deploy anchoredViewSnx relay
+    AnchoredViewRelay _anchoredViewSnx =
+      new AnchoredViewRelay(address(_uniswapRelaySnxWEth), address(_chainlinkSnx), 20, 100, 10, 100);
+    console.log('ANCHORED_VIEW_RELAY_SNX: ', address(_anchoredViewSnx));
+    _snxOracle = address(_anchoredViewSnx);
+  }
+
+  function _createCbEthOracle(
+    UniswapV3OracleRelay _uniswapRelayEthUsdc,
+    ChainlinkOracleRelay _chainlinkEth
+  ) internal returns (address _cbEthOracle) {
+    // Deploy chainlinkCbEth oracle relay
+    ChainlinkOracleRelay _chainlinkCbEthEth =
+      new ChainlinkOracleRelay(CBETH_ADDRESS, CHAINLINK_CBETH_ETH_FEED_ADDRESS, 1, 1, ONE_DAY);
+    console.log('CHAINLINK_CBETH_ETH_FEED: ', address(_chainlinkCbEthEth));
+
+    // Deploy chainlinkCbeth oracle relay
+    ChainlinkTokenOracleRelay _chainlinkCbeth = new ChainlinkTokenOracleRelay(_chainlinkCbEthEth,_chainlinkEth);
+    console.log('CHAINLINK_CBETH_USD_FEED: ', address(_chainlinkCbeth));
+
+    // Deploy uniswapRelayCbethUsdc oracle relay
+    UniswapV3TokenOracleRelay _uniswapRelayCbethUsdc =
+      new UniswapV3TokenOracleRelay(_uniswapRelayEthUsdc, TWO_HOURS, CBETH_ETH_POOL_ADDRESS, false, 1, 1);
+
+    // Deploy anchoredViewCbeth relay
+    AnchoredViewRelay _anchoredViewCbeth =
+      new AnchoredViewRelay(address(_uniswapRelayCbethUsdc), address(_chainlinkCbeth), 20, 100, 10, 100);
+    console.log('ANCHORED_VIEW_RELAY_CBETH: ', address(_anchoredViewCbeth));
+    _cbEthOracle = address(_anchoredViewCbeth);
+  }
+
+  function _createWstEthOracle(IOracleRelay _stEthAnchoredViewUnderlying) internal returns (address _wstEthOracle) {
+    // Deploy anchoredViewWstEth relay oracle
+    WstEthOracle _anchoredViewWstEth = new WstEthOracle(_stEthAnchoredViewUnderlying);
+    console.log('ANCHORED_VIEW_RELAY_WSTETH: ', address(_anchoredViewWstEth));
+    _wstEthOracle = address(_anchoredViewWstEth);
   }
 
   function _createCETHOracle(IOracleRelay _anchoredViewEth) internal returns (address _cETHOracleAddress) {

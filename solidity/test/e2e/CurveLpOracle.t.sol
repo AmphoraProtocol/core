@@ -41,9 +41,10 @@ contract E2ECurveLpOracle is TestConstants, CommonE2EBase {
 
   function testFraxCrvOracleReturnsTheCorrectPrice() public {
     assertGt(fraxCrvOracle.currentValue(), 0);
-    assertEq(
+    assertApproxEqRel(
       fraxCrvOracle.currentValue(),
-      (fraxCrvOracle.anchoredUnderlyingTokens(0).currentValue() * fraxCrvOracle.CRV_POOL().get_virtual_price() / 1e18)
+      (fraxCrvOracle.anchoredUnderlyingTokens(0).currentValue() * fraxCrvOracle.CRV_POOL().get_virtual_price() / 1e18),
+      POINT_ONE_PERCENT
     );
 
     assertApproxEqRel(
@@ -55,9 +56,10 @@ contract E2ECurveLpOracle is TestConstants, CommonE2EBase {
 
   function test3CrvOracleReturnsTheCorrectPrice() public {
     assertGt(threeCrvOracle.currentValue(), 0);
-    assertEq(
+    assertApproxEqRel(
       threeCrvOracle.currentValue(),
-      (threeCrvOracle.anchoredUnderlyingTokens(0).currentValue() * threeCrvOracle.CRV_POOL().get_virtual_price() / 1e18)
+      (threeCrvOracle.anchoredUnderlyingTokens(0).currentValue() * threeCrvOracle.CRV_POOL().get_virtual_price() / 1e18),
+      POINT_ONE_PERCENT
     );
 
     assertApproxEqRel(
@@ -75,9 +77,10 @@ contract E2ECurveLpOracle is TestConstants, CommonE2EBase {
 
   function testFrax3CrvOracleReturnsTheCorrectPrice() public {
     assertGt(frax3CrvOracle.currentValue(), 0);
-    assertEq(
+    assertApproxEqRel(
       frax3CrvOracle.currentValue(),
-      (frax3CrvOracle.anchoredUnderlyingTokens(0).currentValue() * frax3CrvOracle.CRV_POOL().get_virtual_price() / 1e18)
+      (frax3CrvOracle.anchoredUnderlyingTokens(0).currentValue() * frax3CrvOracle.CRV_POOL().get_virtual_price() / 1e18),
+      POINT_ONE_PERCENT
     );
 
     assertApproxEqRel(

@@ -20,8 +20,11 @@ abstract contract Base is DSTestPlus {
   IOracleRelay.OracleType public oracleType = IOracleRelay.OracleType(0); // 0 == Chainlink
 
   function setUp() public virtual {
+    vm.mockCall(
+      address(_mockAggregator), abi.encodeWithSelector(IOracleRelay.underlying.selector), abi.encode(address(_mockWETH))
+    );
     // Deploy contract
-    chainlinkTokenOracleRelay = new ChainlinkTokenOracleRelay(_mockWETH, _mockAggregator, _mockBaseAggregator);
+    chainlinkTokenOracleRelay = new ChainlinkTokenOracleRelay(_mockAggregator, _mockBaseAggregator);
   }
 }
 

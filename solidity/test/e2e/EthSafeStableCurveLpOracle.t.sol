@@ -15,7 +15,6 @@ import {ICurvePool} from '@interfaces/utils/ICurvePool.sol';
 
 contract E2ECurveLpOracle is TestConstants, CommonE2EBase {
   uint256 public constant POINT_ONE_PERCENT = 0.001e18;
-  uint256 public constant THREE_PERCENT = 0.03e18;
 
   EthSafeStableCurveOracle public steCrvOracle;
 
@@ -36,11 +35,10 @@ contract E2ECurveLpOracle is TestConstants, CommonE2EBase {
       (steCrvOracle.anchoredUnderlyingTokens(0).currentValue() * steCrvOracle.CRV_POOL().get_virtual_price() / 1e18)
     );
 
-    /// TODO: This assertion passes with 0.1% on a more recent block number
     assertApproxEqRel(
       steCrvOracle.currentValue(),
       (steCrvOracle.anchoredUnderlyingTokens(1).currentValue() * steCrvOracle.CRV_POOL().get_virtual_price() / 1e18),
-      THREE_PERCENT
+      POINT_ONE_PERCENT
     );
   }
 }

@@ -19,8 +19,9 @@ contract DeployGoerli is Deploy {
   function run() external {
     vm.startBroadcast(deployer);
     UniswapV3OracleRelay _uniswapRelayEthUsdc = UniswapV3OracleRelay(_createEthUsdcTokenOracleRelay());
+    ChainlinkOracleRelay _chainlinkEth = ChainlinkOracleRelay(_createEthUsdChainlinkOracleRelay());
     // Deploy weth oracle first, can be removed if the user defines a valid oracle address
-    address _oracle = _createWethOracle(_uniswapRelayEthUsdc);
+    address _oracle = _createWethOracle(_uniswapRelayEthUsdc, _chainlinkEth);
 
     DeployVars memory _deployVars = DeployVars(
       deployer,

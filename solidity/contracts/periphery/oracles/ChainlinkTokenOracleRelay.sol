@@ -12,18 +12,16 @@ contract ChainlinkTokenOracleRelay is OracleRelay {
   ChainlinkOracleRelay public immutable BASE_AGGREGATOR;
 
   /// @notice All values set at construction time
-  /// @param _underlying The underlying address
   /// @param  _feedAddress The address of chainlink feed
   /// @param  _baseFeedAddress The address of chainlink feed for the base token
   constructor(
-    address _underlying,
     ChainlinkOracleRelay _feedAddress,
     ChainlinkOracleRelay _baseFeedAddress
   ) OracleRelay(OracleType.Chainlink) {
     AGGREGATOR = ChainlinkOracleRelay(_feedAddress);
     BASE_AGGREGATOR = ChainlinkOracleRelay(_baseFeedAddress);
 
-    _setUnderlying(_underlying);
+    _setUnderlying(_feedAddress.underlying());
   }
 
   /// @notice returns the price with 18 decimals without any state changes
