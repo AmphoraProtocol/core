@@ -4,6 +4,7 @@ pragma solidity ^0.8.9;
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {IBaseRewardPool} from '@interfaces/utils/IBaseRewardPool.sol';
+import {ICVX} from '@interfaces/utils/ICVX.sol';
 
 /// @title Vault Interface
 interface IVault {
@@ -147,7 +148,7 @@ interface IVault {
 
   /// @notice Returns the CVX token address
   /// @return _cvx The CVX token address
-  function CVX() external view returns (IERC20 _cvx);
+  function CVX() external view returns (ICVX _cvx);
 
   /*///////////////////////////////////////////////////////////////
                               LOGIC

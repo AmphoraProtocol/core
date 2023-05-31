@@ -16,6 +16,7 @@ import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
 
 import {DSTestPlus} from 'solidity-utils/test/DSTestPlus.sol';
 import {TestConstants} from '@test/utils/TestConstants.sol';
+import {ICVX} from '@interfaces/utils/ICVX.sol';
 
 abstract contract Base is DSTestPlus, TestConstants {
   IERC20 internal _mockToken = IERC20(mockContract(newAddress(), 'mockToken'));
@@ -25,6 +26,11 @@ abstract contract Base is DSTestPlus, TestConstants {
   IERC20 public cvx = IERC20(mockContract(newAddress(), 'cvx'));
   IERC20 public crv = IERC20(mockContract(newAddress(), 'crv'));
 
+  uint256 public cvxTotalSupply = 1000 ether;
+  uint256 public cvxMaxSupply = 2000 ether;
+  uint256 public cvxTotalCliffs = 1000;
+  uint256 public cvxReductionPerCliff = 10 ether;
+
   Vault public vault;
   address public vaultOwner = label(newAddress(), 'vaultOwner');
 
@@ -32,6 +38,11 @@ abstract contract Base is DSTestPlus, TestConstants {
     vm.mockCall(address(_mockToken), abi.encodeWithSelector(IERC20.transfer.selector), abi.encode(true));
     // solhint-disable-next-line reentrancy
     vault = new Vault(1, vaultOwner, address(mockVaultController), cvx, crv);
+
+    vm.mockCall(address(cvx), abi.encodeWithSelector(IERC20.totalSupply.selector), abi.encode(cvxTotalSupply));
+    vm.mockCall(address(cvx), abi.encodeWithSelector(ICVX.maxSupply.selector), abi.encode(cvxMaxSupply));
+    vm.mockCall(address(cvx), abi.encodeWithSelector(ICVX.totalCliffs.selector), abi.encode(cvxTotalCliffs));
+    vm.mockCall(address(cvx), abi.encodeWithSelector(ICVX.reductionPerCliff.selector), abi.encode(cvxReductionPerCliff));
   }
 
   function depositCurveLpTokenMockCalls(
@@ -620,7 +631,7 @@ contract UnitVaultClaimRewards is Base {
 
     vm.mockCall(
       address(mockAmphClaimer),
-      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, address(vault), 1, 0, 1 ether),
+      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, address(vault), 1, 1 ether * 90 / 100, 1 ether),
       abi.encode(0, 0.5 ether, 1 ether)
     );
 
@@ -657,7 +668,7 @@ contract UnitVaultClaimRewards is Base {
 
     vm.mockCall(
       address(mockAmphClaimer),
-      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, address(vault), 1, 0, 1 ether),
+      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, address(vault), 1, 1 ether * 90 / 100, 1 ether),
       abi.encode(0, 0.5 ether, 1 ether)
     );
 
@@ -708,7 +719,7 @@ contract UnitVaultClaimRewards is Base {
 
     vm.mockCall(
       address(mockAmphClaimer),
-      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, address(vault), 1, 0, 2 ether),
+      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, address(vault), 1, 2 ether * 90 / 100, 2 ether),
       abi.encode(0, 0.5 ether, 1 ether)
     );
 
@@ -723,7 +734,8 @@ contract UnitVaultClaimRewards is Base {
     vm.mockCall(address(crv), abi.encodeWithSelector(IERC20.transfer.selector), abi.encode(true));
 
     vm.expectCall(
-      address(mockAmphClaimer), abi.encodeWithSelector(IAMPHClaimer.claimAmph.selector, 1, 0, 2 ether, vaultOwner)
+      address(mockAmphClaimer),
+      abi.encodeWithSelector(IAMPHClaimer.claimAmph.selector, 1, 2 ether * 90 / 100, 2 ether, vaultOwner)
     );
 
     vm.expectCall(address(crv), abi.encodeWithSelector(IERC20.transfer.selector, vaultOwner, 1.5 ether));
@@ -758,7 +770,7 @@ contract UnitVaultClaimRewards is Base {
 
     vm.mockCall(
       address(mockAmphClaimer),
-      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, address(vault), 1, 0, 1 ether),
+      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, address(vault), 1, 1 ether * 90 / 100, 1 ether),
       abi.encode(0, 0.5 ether, 0)
     );
 
@@ -803,45 +815,6 @@ contract UnitVaultClaimRewards is Base {
       abi.encode(0)
     );
 
-    vm.prank(vaultOwner);
-    vault.claimRewards(_tokens);
-  }
-
-  function testClaimWithCVXRewards() public {
-    address[] memory _tokens = new address[](1);
-    _tokens[0] = address(_mockToken);
-    vm.mockCall(
-      GEAR_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(1)
-    );
-
-    vm.mockCall(
-      GEAR_LP_REWARDS_ADDRESS,
-      abi.encodeWithSelector(IBaseRewardPool.extraRewards.selector, 0),
-      abi.encode(mockVirtualRewardsPool)
-    );
-
-    vm.mockCall(
-      address(mockVirtualRewardsPool),
-      abi.encodeWithSelector(IVirtualBalanceRewardPool.rewardToken.selector),
-      abi.encode(address(cvx))
-    );
-
-    vm.mockCall(
-      address(mockVirtualRewardsPool),
-      abi.encodeWithSelector(IVirtualBalanceRewardPool.earned.selector, address(vault)),
-      abi.encode(1 ether)
-    );
-
-    vm.mockCall(
-      address(mockAmphClaimer),
-      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, address(vault), 1, 1 ether, 1 ether),
-      abi.encode(0.2 ether, 0.5 ether, 1 ether)
-    );
-
-    vm.mockCall(address(address(cvx)), abi.encodeWithSelector(IERC20.transfer.selector), abi.encode(true));
-
-    vm.expectCall(address(address(cvx)), abi.encodeWithSelector(IERC20.transfer.selector, vaultOwner, 0.8 ether));
-    vm.expectCall(address(crv), abi.encodeWithSelector(IERC20.transfer.selector, vaultOwner, 0.5 ether));
     vm.prank(vaultOwner);
     vault.claimRewards(_tokens);
   }
@@ -928,9 +901,10 @@ contract UnitVaultClaimableRewards is Base {
       abi.encode(1 ether)
     );
 
+    uint256 _claimedCVX = 1 ether * 90 / 100;
     vm.mockCall(
       address(mockAmphClaimer),
-      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, address(vault), 1, 0, 1 ether),
+      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, address(vault), 1, _claimedCVX, 1 ether),
       abi.encode(0, 0.5 ether, 3 ether)
     );
 
@@ -940,54 +914,14 @@ contract UnitVaultClaimableRewards is Base {
     assertEq(address(_rewards[0].token), address(crv));
     assertEq(_rewards[0].amount, 0.5 ether);
 
-    assertEq(address(_rewards[1].token), address(mockVirtualRewardsToken));
-    assertEq(_rewards[1].amount, 1 ether);
+    assertEq(address(_rewards[1].token), address(cvx));
+    assertEq(_rewards[1].amount, _claimedCVX);
 
-    assertEq(address(_rewards[2].token), address(mockAmphToken));
-    assertEq(_rewards[2].amount, 3 ether);
-  }
+    assertEq(address(_rewards[2].token), address(mockVirtualRewardsToken));
+    assertEq(_rewards[2].amount, 1 ether);
 
-  function testClaimableRewardsWithCVX() public {
-    vm.mockCall(
-      GEAR_LP_REWARDS_ADDRESS, abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(1)
-    );
-
-    vm.mockCall(
-      GEAR_LP_REWARDS_ADDRESS,
-      abi.encodeWithSelector(IBaseRewardPool.extraRewards.selector, 0),
-      abi.encode(mockVirtualRewardsPool)
-    );
-
-    // mock call extra rewards to be cvx
-    vm.mockCall(
-      address(mockVirtualRewardsPool),
-      abi.encodeWithSelector(IVirtualBalanceRewardPool.rewardToken.selector),
-      abi.encode(address(cvx))
-    );
-
-    vm.mockCall(
-      address(mockVirtualRewardsPool),
-      abi.encodeWithSelector(IVirtualBalanceRewardPool.earned.selector, address(vault)),
-      abi.encode(1 ether)
-    );
-
-    vm.mockCall(
-      address(mockAmphClaimer),
-      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, address(vault), 1, 1 ether, 1 ether),
-      abi.encode(0.2 ether, 0.5 ether, 3 ether)
-    );
-
-    vm.mockCall(address(mockAmphClaimer), abi.encodeWithSelector(IAMPHClaimer.AMPH.selector), abi.encode(mockAmphToken));
-
-    IVault.Reward[] memory _rewards = vault.claimableRewards(address(_mockToken));
-    assertEq(address(_rewards[0].token), address(crv));
-    assertEq(_rewards[0].amount, 0.5 ether);
-
-    assertEq(address(_rewards[1].token), address(address(cvx)));
-    assertEq(_rewards[1].amount, 0.8 ether);
-
-    assertEq(address(_rewards[2].token), address(mockAmphToken));
-    assertEq(_rewards[2].amount, 3 ether);
+    assertEq(address(_rewards[3].token), address(mockAmphToken));
+    assertEq(_rewards[3].amount, 3 ether);
   }
 
   function testClaimableWhenAmphClaimerIsZeroAddress() public {
@@ -1021,16 +955,19 @@ contract UnitVaultClaimableRewards is Base {
 
     IVault.Reward[] memory _rewards = vault.claimableRewards(address(_mockToken));
 
-    assertEq(_rewards.length, 3);
+    assertEq(_rewards.length, 4);
 
     assertEq(address(_rewards[0].token), address(crv));
     assertEq(_rewards[0].amount, 1 ether);
 
-    assertEq(address(_rewards[1].token), address(mockVirtualRewardsToken));
-    assertEq(_rewards[1].amount, 1 ether);
+    assertEq(address(_rewards[1].token), address(cvx));
+    assertEq(_rewards[1].amount, 1 ether * 90 / 100);
 
-    assertEq(address(_rewards[2].token), address(0));
-    assertEq(_rewards[2].amount, 0);
+    assertEq(address(_rewards[2].token), address(mockVirtualRewardsToken));
+    assertEq(_rewards[2].amount, 1 ether);
+
+    assertEq(address(_rewards[3].token), address(0));
+    assertEq(_rewards[3].amount, 0);
   }
 }
 

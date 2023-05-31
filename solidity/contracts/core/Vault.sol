@@ -13,6 +13,7 @@ import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {Context} from '@openzeppelin/contracts/utils/Context.sol';
 import {SafeERC20Upgradeable} from '@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol';
 import {IERC20Upgradeable} from '@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol';
+import {ICVX} from '@interfaces/utils/ICVX.sol';
 
 /// @notice Vault contract, our implementation of maker-vault like vault
 /// @dev Major differences:
@@ -22,7 +23,7 @@ contract Vault is IVault, Context {
   using SafeERC20Upgradeable for IERC20;
 
   /// @dev The CVX token
-  IERC20 public immutable CVX;
+  ICVX public immutable CVX;
 
   /// @dev The CRV token
   IERC20 public immutable CRV;
@@ -63,7 +64,7 @@ contract Vault is IVault, Context {
   constructor(uint96 _id, address _minter, address _controllerAddress, IERC20 _cvx, IERC20 _crv) {
     vaultInfo = VaultInfo(_id, _minter);
     CONTROLLER = IVaultController(_controllerAddress);
-    CVX = _cvx;
+    CVX = ICVX(address(_cvx));
     CRV = _crv;
   }
 
@@ -180,28 +181,24 @@ contract Vault is IVault, Context {
 
       IBaseRewardPool _rewardsContract = _collateralInfo.crvRewardsContract;
       uint256 _crvReward = _rewardsContract.earned(address(this));
-      _totalCrvReward += _crvReward;
 
       if (_crvReward != 0) {
         // Claim the CRV reward
+        _totalCrvReward += _crvReward;
         _rewardsContract.getReward(address(this), false);
+        _totalCvxReward += _calculateCVXReward(_crvReward);
       }
 
       // Loop and claim all virtual rewards
-      for (uint256 _j; _j < _rewardsContract.extraRewardsLength();) {
+      uint256 _extraRewards = _rewardsContract.extraRewardsLength();
+      for (uint256 _j; _j < _extraRewards;) {
         IVirtualBalanceRewardPool _virtualReward = _rewardsContract.extraRewards(_j);
         IERC20 _rewardToken = _virtualReward.rewardToken();
         uint256 _earnedReward = _virtualReward.earned(address(this));
         if (_earnedReward != 0) {
           _virtualReward.getReward();
-          if (address(_rewardToken) == address(CVX)) {
-            // Save the cvx reward in a variable
-            _totalCvxReward += _earnedReward;
-          } else {
-            // If it's any other token, transfer to the owner of the vault
-            _rewardToken.transfer(_msgSender(), _earnedReward);
-            emit ClaimedReward(address(_rewardToken), _earnedReward);
-          }
+          _rewardToken.transfer(_msgSender(), _earnedReward);
+          emit ClaimedReward(address(_rewardToken), _earnedReward);
         }
         unchecked {
           ++_j;
@@ -252,24 +249,19 @@ contract Vault is IVault, Context {
     uint256 _rewardsAmount = _rewardsContract.extraRewardsLength();
 
     uint256 _crvReward = _rewardsContract.earned(address(this));
-    uint256 _cvxReward;
-    uint256 _cvxPosition;
+    uint256 _cvxReward = _calculateCVXReward(_crvReward);
 
-    // +2 for CRV and AMPH
-    _rewards = new Reward[](_rewardsAmount+2);
+    // +3 for CRV, CVX and AMPH
+    _rewards = new Reward[](_rewardsAmount+3);
     _rewards[0] = Reward(CRV, _crvReward);
+    _rewards[1] = Reward(CVX, _cvxReward);
 
     uint256 _i;
     for (_i; _i < _rewardsAmount;) {
       IVirtualBalanceRewardPool _virtualReward = _rewardsContract.extraRewards(_i);
       IERC20 _rewardToken = _virtualReward.rewardToken();
       uint256 _earnedReward = _virtualReward.earned(address(this));
-      if (address(_rewardToken) == address(CVX)) {
-        // Save the cvx reward in a variable
-        _cvxReward = _earnedReward;
-        _cvxPosition = _i;
-      }
-      _rewards[_i + 1] = Reward(_rewardToken, _earnedReward);
+      _rewards[_i + 2] = Reward(_rewardToken, _earnedReward);
 
       unchecked {
         ++_i;
@@ -283,11 +275,11 @@ contract Vault is IVault, Context {
     if (address(_amphClaimer) != address(0)) {
       // claimer is set, proceed
       (_takenCVX, _takenCRV, _claimableAmph) = _amphClaimer.claimable(address(this), this.id(), _cvxReward, _crvReward);
-      _rewards[_i + 1] = Reward(_amphClaimer.AMPH(), _claimableAmph);
+      _rewards[_i + 2] = Reward(_amphClaimer.AMPH(), _claimableAmph);
     }
 
     _rewards[0].amount = _crvReward - _takenCRV;
-    if (_cvxReward != 0) _rewards[_cvxPosition + 1].amount = _cvxReward - _takenCVX;
+    if (_cvxReward != 0) _rewards[1].amount = _cvxReward - _takenCVX;
   }
 
   /// @notice Function used by the VaultController to transfer tokens
@@ -333,5 +325,31 @@ contract Vault is IVault, Context {
   function _depositAndStakeOnConvex(address _token, IBooster _booster, uint256 _amount, uint256 _poolId) internal {
     IERC20(_token).approve(address(_booster), _amount);
     if (!_booster.deposit(_poolId, _amount, true)) revert Vault_DepositAndStakeOnConvexFailed();
+  }
+
+  /// @notice Used to calculate the CVX reward for a given CRV amount
+  /// @dev This is copied from the CVX mint function
+  /// @param _crv The amount of CRV to calculate the CVX reward for
+  /// @return _cvxAmount The amount of CVX to get
+  function _calculateCVXReward(uint256 _crv) internal view returns (uint256 _cvxAmount) {
+    uint256 _supply = CVX.totalSupply();
+    uint256 _totalCliffs = CVX.totalCliffs();
+
+    //use current supply to gauge cliff
+    //this will cause a bit of overflow into the next cliff range
+    //but should be within reasonable levels.
+    //requires a max supply check though
+    uint256 _cliff = _supply / CVX.reductionPerCliff();
+    //mint if below total cliffs
+    if (_cliff < _totalCliffs) {
+      //for reduction% take inverse of current cliff
+      uint256 _reduction = _totalCliffs - _cliff;
+      //reduce
+      _cvxAmount = (_crv * _reduction) / _totalCliffs;
+
+      //supply cap check
+      uint256 _amtTillMax = CVX.maxSupply() - _supply;
+      if (_cvxAmount > _amtTillMax) _cvxAmount = _amtTillMax;
+    }
   }
 }

@@ -110,6 +110,7 @@ contract E2EVault is CommonE2EBase {
     IBaseRewardPool(USDT_LP_REWARDS_ADDRESS).queueNewRewards(_depositAmount);
 
     uint256 _balanceBeforeCRV = IERC20(CRV_ADDRESS).balanceOf(bob);
+    uint256 _balanceBeforeCVX = IERC20(CVX_ADDRESS).balanceOf(bob);
     uint256 _balanceBeforeAMPH = amphToken.balanceOf(bob);
     assertEq(IERC20(CRV_ADDRESS).balanceOf(address(governor)), 0);
 
@@ -126,8 +127,12 @@ contract E2EVault is CommonE2EBase {
 
     // _rewards[0] should be CRV and _rewards[1] AMPH in this case
     assertEq(IERC20(CRV_ADDRESS).balanceOf(bob), _balanceBeforeCRV + _rewards[0].amount);
-    assertEq(amphToken.balanceOf(bob), _balanceBeforeAMPH + _rewards[1].amount);
+    assertEq(IERC20(CVX_ADDRESS).balanceOf(bob), _balanceBeforeCVX + _rewards[1].amount);
+    assertEq(amphToken.balanceOf(bob), _balanceBeforeAMPH + _rewards[2].amount);
     assertGt(IERC20(CRV_ADDRESS).balanceOf(address(governor)), 0);
+    assertGt(IERC20(CVX_ADDRESS).balanceOf(address(governor)), 0);
+    assertEq(IERC20(CRV_ADDRESS).balanceOf(address(bobVault)), 0);
+    assertEq(IERC20(CVX_ADDRESS).balanceOf(address(bobVault)), 0);
   }
 
   function testClaimCurveLPRewardsWithClaimerAsZeroAddress() public {
@@ -157,16 +162,61 @@ contract E2EVault is CommonE2EBase {
     }
 
     uint256 _balanceBeforeCRV = IERC20(CRV_ADDRESS).balanceOf(bob);
+    uint256 _balanceBeforeCVX = IERC20(CVX_ADDRESS).balanceOf(bob);
     uint256 _amphBalanceBeforeClaimingInZero = amphToken.balanceOf(bob);
 
     vm.prank(bob);
     bobVault.claimRewards(_tokens);
 
     uint256 _balanceAfterCRV = IERC20(CRV_ADDRESS).balanceOf(bob);
+    uint256 _balanceAfterCVX = IERC20(CVX_ADDRESS).balanceOf(bob);
     uint256 _amphBalanceAfterClaimingInZero = amphToken.balanceOf(bob);
 
+    assertGt(_balanceAfterCVX, _balanceBeforeCVX);
     assertGt(_balanceAfterCRV, _balanceBeforeCRV);
     assertEq(_amphBalanceBeforeClaimingInZero, _amphBalanceAfterClaimingInZero);
+  }
+
+  function testClaimCurveLPRewardsOverAndOverShouldTransferAllCVXBalance() public {
+    // change claimer to 0x0
+    vm.prank(address(governor));
+    vaultController.changeClaimerContract(IAMPHClaimer(address(0)));
+
+    uint256 _depositAmount = 10 ether;
+
+    vm.startPrank(bob);
+    usdtStableLP.approve(address(bobVault), _depositAmount);
+    bobVault.depositERC20(address(usdtStableLP), _depositAmount);
+    vm.stopPrank();
+
+    vm.prank(BOOSTER);
+    IBaseRewardPool(USDT_LP_REWARDS_ADDRESS).queueNewRewards(_depositAmount);
+
+    address[] memory _tokens = new address[](1);
+    _tokens[0] = address(usdtStableLP);
+
+    uint256 _balanceBeforeCRV = IERC20(CRV_ADDRESS).balanceOf(bob);
+    uint256 _balanceBeforeCVX = IERC20(CVX_ADDRESS).balanceOf(bob);
+
+    uint256 _totalCRVClaimed;
+    uint256 _totalCVXClaimed;
+
+    for (uint256 _i; _i < 10; ++_i) {
+      vm.warp(block.timestamp + 5 days);
+      IVault.Reward[] memory _rewards = bobVault.claimableRewards(address(usdtStableLP));
+      _totalCRVClaimed += _rewards[0].amount;
+      _totalCVXClaimed += _rewards[1].amount;
+
+      vm.prank(bob);
+      bobVault.claimRewards(_tokens);
+    }
+
+    uint256 _balanceAfterCRV = IERC20(CRV_ADDRESS).balanceOf(bob);
+    uint256 _balanceAfterCVX = IERC20(CVX_ADDRESS).balanceOf(bob);
+
+    assertEq(_balanceBeforeCRV, _balanceAfterCRV - _totalCRVClaimed);
+    assertEq(_balanceBeforeCVX, _balanceAfterCVX - _totalCVXClaimed);
+    assertEq(IERC20(CVX_ADDRESS).balanceOf(address(bobVault)), 0);
   }
 
   function testClaimMultipleCurveLPWithExtraRewards() public {
@@ -184,8 +234,8 @@ contract E2EVault is CommonE2EBase {
     assertEq(usdtStableLP.balanceOf(bob), bobCurveLPBalance - _depositAmount);
 
     uint256 _balanceBeforeCRV = IERC20(CRV_ADDRESS).balanceOf(bob);
+    uint256 _balanceBeforeCVX = IERC20(CVX_ADDRESS).balanceOf(bob);
     uint256 _balanceVirtualBefore = IERC20(GEAR_ADDRESS).balanceOf(bob);
-    uint256 _balanceOtherVirtualBefore = IERC20(GEAR_ADDRESS).balanceOf(bob);
     uint256 _balanceBeforeAMPH = amphToken.balanceOf(bob);
 
     vm.prank(BOOSTER);
@@ -219,19 +269,22 @@ contract E2EVault is CommonE2EBase {
     vm.stopPrank();
 
     assertTrue(_rewards[0].amount != 0); // _rewards[0] = CRV rewards
-    assertTrue(_rewards[1].amount != 0); // _rewards[1] = AMPH rewards
+    assertTrue(_rewards[1].amount != 0); // _rewards[1] = CVX rewards
+    assertTrue(_rewards[2].amount != 0); // _rewards[2] = AMPH rewards
     assertTrue(_rewards2[0].amount != 0); // _rewards2[0] = CRV rewards
-    assertTrue(_rewards2[1].amount != 0); // _rewards2[1] = extra rewards
-    assertTrue(_rewards2[2].amount != 0); // _rewards2[2] = other extra rewards
-    // TODO: Commented until we fix the claimRewards method in the vault
-    // assertTrue(_rewards2[3].amount != 0); // _rewards2[2] = AMPH rewards
+    assertTrue(_rewards2[1].amount != 0); // _rewards2[1] = CVX rewards
+    assertTrue(_rewards2[2].amount != 0); // _rewards2[2] = GEAR rewards
+    assertTrue(_rewards2[3].amount != 0); // _rewards2[3] = AMPH rewards
     assertApproxEqAbs(
       IERC20(CRV_ADDRESS).balanceOf(bob), _balanceBeforeCRV + _rewards[0].amount + _rewards2[0].amount, 1
     );
-    // TODO: this was changed from _rewards2[3].amount to _rewards2[2].amount because of the claimRewards error
-    assertApproxEqAbs(amphToken.balanceOf(bob), _balanceBeforeAMPH + _rewards[1].amount + _rewards2[2].amount, 1);
-    assertEq(IERC20(GEAR_ADDRESS).balanceOf(bob), _balanceVirtualBefore + _rewards2[1].amount);
-    // assertEq(IERC20(GEAR_ADDRESS).balanceOf(bob), _balanceOtherVirtualBefore + _rewards2[1].amount);
+    assertApproxEqAbs(
+      IERC20(CVX_ADDRESS).balanceOf(bob), _balanceBeforeCVX + _rewards[1].amount + _rewards2[1].amount, 1
+    );
+    // This 10 wei difference is because of the claiming order or the rewards and is an acceptable difference.
+    // When calling the view method claimable it doesn't affect the CVX supply so the rewards don't change between claims
+    assertApproxEqAbs(amphToken.balanceOf(bob), _balanceBeforeAMPH + _rewards[2].amount + _rewards2[3].amount, 10);
+    assertEq(IERC20(GEAR_ADDRESS).balanceOf(bob), _balanceVirtualBefore + _rewards2[2].amount);
   }
 
   function testDepositCrvLpAfterPoolIdUpdate() public {
