@@ -22,6 +22,7 @@ contract CbEthEthOracle is OracleRelay, CurveRegistryUtils, Ownable {
     IOracleRelay _ethOracleRelay
   ) OracleRelay(OracleType.Chainlink) {
     CB_ETH_POOL = IV2Pool(_cbETHPool);
+
     CB_ETH_ORACLE_RELAY = _cbEthOracleRelay;
     ETH_ORACLE_RELAY = _ethOracleRelay;
 

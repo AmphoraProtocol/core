@@ -14,9 +14,11 @@ import {TestConstants} from '@test/utils/TestConstants.sol';
 
 contract E2ECurveLpOracle is TestConstants, CommonE2EBase {
   uint256 public constant POINT_ONE_PERCENT = 0.001e18;
+  uint256 public constant ONE_PERCENT = 0.01e18;
 
   StableCurveLpOracle public fraxCrvOracle;
   StableCurveLpOracle public frax3CrvOracle;
+  StableCurveLpOracle public susdDaiUsdtUsdcOracle;
 
   function setUp() public virtual override {
     super.setUp();
@@ -28,6 +30,8 @@ contract E2ECurveLpOracle is TestConstants, CommonE2EBase {
     IOracleRelay _anchoredViewDai = IOracleRelay(_createDaiOracle());
     /// Deploy usdt oracle relay
     IOracleRelay _anchoredViewUsdt = IOracleRelay(_createUsdtOracle());
+    /// Deploy susd oracle relay
+    IOracleRelay _anchoredViewSusd = IOracleRelay(_createSusdOracle());
 
     fraxCrvOracle =
       StableCurveLpOracle(_createFraxCrvOracle(FRAX_USDC_CRV_POOL_ADDRESS, _anchoredViewFrax, _anchoredViewUsdc));
@@ -35,6 +39,12 @@ contract E2ECurveLpOracle is TestConstants, CommonE2EBase {
     frax3CrvOracle = StableCurveLpOracle(
       _createFrax3CrvOracle(
         FRAX_3CRV_META_POOL_ADDRESS, _anchoredViewFrax, _anchoredViewDai, _anchoredViewUsdt, _anchoredViewUsdc
+      )
+    );
+
+    susdDaiUsdtUsdcOracle = StableCurveLpOracle(
+      _createSusdDaiUsdcUsdtOracle(
+        SUSD_DAI_USDT_USDC_CRV_POOL_ADDRESS, _anchoredViewSusd, _anchoredViewDai, _anchoredViewUsdt, _anchoredViewUsdc
       )
     );
   }
@@ -98,6 +108,45 @@ contract E2ECurveLpOracle is TestConstants, CommonE2EBase {
     assertApproxEqRel(
       frax3CrvOracle.currentValue(),
       (frax3CrvOracle.anchoredUnderlyingTokens(3).currentValue() * frax3CrvOracle.CRV_POOL().get_virtual_price() / 1e18),
+      POINT_ONE_PERCENT
+    );
+  }
+
+  function testSusdDaiUsdtUsdcOracleReturnsTheCorrectPrice() public {
+    assertGt(susdDaiUsdtUsdcOracle.currentValue(), 0);
+    assertApproxEqRel(
+      susdDaiUsdtUsdcOracle.currentValue(),
+      (
+        susdDaiUsdtUsdcOracle.anchoredUnderlyingTokens(0).currentValue()
+          * susdDaiUsdtUsdcOracle.CRV_POOL().get_virtual_price() / 1e18
+      ),
+      ONE_PERCENT
+    );
+
+    assertApproxEqRel(
+      susdDaiUsdtUsdcOracle.currentValue(),
+      (
+        susdDaiUsdtUsdcOracle.anchoredUnderlyingTokens(1).currentValue()
+          * susdDaiUsdtUsdcOracle.CRV_POOL().get_virtual_price() / 1e18
+      ),
+      POINT_ONE_PERCENT
+    );
+
+    assertApproxEqRel(
+      susdDaiUsdtUsdcOracle.currentValue(),
+      (
+        susdDaiUsdtUsdcOracle.anchoredUnderlyingTokens(2).currentValue()
+          * susdDaiUsdtUsdcOracle.CRV_POOL().get_virtual_price() / 1e18
+      ),
+      POINT_ONE_PERCENT
+    );
+
+    assertApproxEqRel(
+      susdDaiUsdtUsdcOracle.currentValue(),
+      (
+        susdDaiUsdtUsdcOracle.anchoredUnderlyingTokens(3).currentValue()
+          * susdDaiUsdtUsdcOracle.CRV_POOL().get_virtual_price() / 1e18
+      ),
       POINT_ONE_PERCENT
     );
   }

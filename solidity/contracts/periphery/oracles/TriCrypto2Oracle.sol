@@ -25,6 +25,7 @@ contract TriCrypto2Oracle is OracleRelay, CurveRegistryUtils, Ownable {
     IOracleRelay _wbtcOracleRelay
   ) OracleRelay(OracleType.Chainlink) {
     TRI_CRYPTO = IV2Pool(_triCryptoPool);
+
     WBTC_ORACLE_RELAY = _wbtcOracleRelay;
     ETH_ORACLE_RELAY = _ethOracleRelay;
     USDT_ORACLE_RELAY = _usdtOracleRelay;

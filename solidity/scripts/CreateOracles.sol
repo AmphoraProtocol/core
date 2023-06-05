@@ -330,4 +330,22 @@ abstract contract CreateOracles is TestConstants {
     _cbEthOracleAddress = address(_cbEthOracle);
     console.log('CBETH_ETH_ORACLE: ', _cbEthOracleAddress);
   }
+
+  function _createSusdDaiUsdcUsdtOracle(
+    address _crvPool,
+    IOracleRelay _susdAnchorOracle,
+    IOracleRelay _daiAnchorOracle,
+    IOracleRelay _usdtAnchorOracle,
+    IOracleRelay _usdcAnchorOracle
+  ) internal returns (address _susdDaiUsdtUsdcOracleAddress) {
+    IOracleRelay[] memory _anchoredUnderlyingTokens = new IOracleRelay[](4);
+    _anchoredUnderlyingTokens[0] = _susdAnchorOracle;
+    _anchoredUnderlyingTokens[1] = _daiAnchorOracle;
+    _anchoredUnderlyingTokens[2] = _usdtAnchorOracle;
+    _anchoredUnderlyingTokens[3] = _usdcAnchorOracle;
+
+    StableCurveLpOracle _susdDaiUsdtUsdcOracle = new StableCurveLpOracle(_crvPool, _anchoredUnderlyingTokens);
+    _susdDaiUsdtUsdcOracleAddress = address(_susdDaiUsdtUsdcOracle);
+    console.log('SUSD_DAI_USDT_USDC_ORACLE: ', _susdDaiUsdtUsdcOracleAddress);
+  }
 }
