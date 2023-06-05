@@ -4,7 +4,6 @@ pragma solidity >=0.8.4 <0.9.0;
 import {DSTestPlus, console} from 'solidity-utils/test/DSTestPlus.sol';
 import {EthSafeStableCurveOracle} from '@contracts/periphery/oracles/EthSafeStableCurveOracle.sol';
 
-import {ICurvePool} from '@interfaces/utils/ICurvePool.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
 import {WstEthOracle} from '@contracts/periphery/oracles/WstEthOracle.sol';
 import {IWStETH} from '@interfaces/utils/IWStETH.sol';

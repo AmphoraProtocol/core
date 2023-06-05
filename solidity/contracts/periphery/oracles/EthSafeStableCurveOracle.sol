@@ -2,7 +2,6 @@
 pragma solidity ^0.8.9;
 
 import {IOracleRelay, OracleRelay} from '@contracts/periphery/oracles/OracleRelay.sol';
-import {ICurvePool} from '@interfaces/utils/ICurvePool.sol';
 import {Math} from '@openzeppelin/contracts/utils/math/Math.sol';
 import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 import {StableCurveLpOracle} from '@contracts/periphery/oracles/StableCurveLpOracle.sol';

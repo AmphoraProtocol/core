@@ -2,7 +2,7 @@
 pragma solidity ^0.8.9;
 
 import {IOracleRelay, OracleRelay} from '@contracts/periphery/oracles/OracleRelay.sol';
-import {ICurvePool} from '@interfaces/utils/ICurvePool.sol';
+import {IStablePool} from '@interfaces/utils/ICurvePool.sol';
 import {Math} from '@openzeppelin/contracts/utils/math/Math.sol';
 import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 import {CurveRegistryUtils} from '@contracts/periphery/oracles/CurveRegistryUtils.sol';
@@ -13,13 +13,13 @@ contract StableCurveLpOracle is OracleRelay, CurveRegistryUtils, Ownable {
   error StableCurveLpOracle_TooFewAnchoredOracles();
 
   /// @notice The pool of the crv lp token
-  ICurvePool public immutable CRV_POOL;
+  IStablePool public immutable CRV_POOL;
   /// @notice The anchor oracles of the underlying tokens
   IOracleRelay[] public anchoredUnderlyingTokens;
 
   constructor(address _crvPool, IOracleRelay[] memory _anchoredUnderlyingTokens) OracleRelay(OracleType.Chainlink) {
     if (_anchoredUnderlyingTokens.length < 2) revert StableCurveLpOracle_TooFewAnchoredOracles();
-    CRV_POOL = ICurvePool(_crvPool);
+    CRV_POOL = IStablePool(_crvPool);
     for (uint256 _i; _i < _anchoredUnderlyingTokens.length;) {
       anchoredUnderlyingTokens.push(_anchoredUnderlyingTokens[_i]);
 

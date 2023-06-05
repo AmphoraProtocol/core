@@ -7,7 +7,7 @@ import {AnchoredViewRelay} from '@contracts/periphery/oracles/AnchoredViewRelay.
 import {StableCurveLpOracle} from '@contracts/periphery/oracles/StableCurveLpOracle.sol';
 import {CreateOracles} from '@scripts/CreateOracles.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
-import {ICurvePool} from '@interfaces/utils/ICurvePool.sol';
+import {IStablePool} from '@interfaces/utils/ICurvePool.sol';
 
 import {CommonE2EBase, console} from '@test/e2e/Common.sol';
 import {TestConstants} from '@test/utils/TestConstants.sol';

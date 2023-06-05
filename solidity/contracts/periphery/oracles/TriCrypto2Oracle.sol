@@ -2,23 +2,21 @@
 pragma solidity ^0.8.9;
 
 import {IOracleRelay, OracleRelay} from '@contracts/periphery/oracles/OracleRelay.sol';
-import {AggregatorV2V3Interface} from '@chainlink/interfaces/AggregatorV2V3Interface.sol';
-import {ICurvePool} from '@interfaces/utils/ICurvePool.sol';
+import {IV2Pool} from '@interfaces/utils/ICurvePool.sol';
 import {Math} from '@openzeppelin/contracts/utils/math/Math.sol';
 import {FixedPointMathLib} from 'solady/utils/FixedPointMathLib.sol';
-import {ChainlinkStalePriceLib} from '@contracts/periphery/oracles/ChainlinkStalePriceLib.sol';
 import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
+import {CurveRegistryUtils} from '@contracts/periphery/oracles/CurveRegistryUtils.sol';
 
 /// @notice Oracle Relay for the TriCrypto pool (USDT/WBTC/WETH)
-contract TriCrypto2Oracle is OracleRelay, Ownable {
+contract TriCrypto2Oracle is OracleRelay, CurveRegistryUtils, Ownable {
   /// @notice Emitted when the amount is zero
   error TriCryptoOracle_ZeroAmount();
 
-  ICurvePool public immutable TRI_CRYPTO;
-
-  IOracleRelay public wbtcOracleRelay;
-  IOracleRelay public ethOracleRelay;
-  IOracleRelay public usdtOracleRelay;
+  IV2Pool public immutable TRI_CRYPTO;
+  IOracleRelay public immutable WBTC_ORACLE_RELAY;
+  IOracleRelay public immutable ETH_ORACLE_RELAY;
+  IOracleRelay public immutable USDT_ORACLE_RELAY;
 
   constructor(
     address _triCryptoPool,
@@ -26,10 +24,12 @@ contract TriCrypto2Oracle is OracleRelay, Ownable {
     IOracleRelay _usdtOracleRelay,
     IOracleRelay _wbtcOracleRelay
   ) OracleRelay(OracleType.Chainlink) {
-    TRI_CRYPTO = ICurvePool(_triCryptoPool);
-    wbtcOracleRelay = _wbtcOracleRelay;
-    ethOracleRelay = _ethOracleRelay;
-    usdtOracleRelay = _usdtOracleRelay;
+    TRI_CRYPTO = IV2Pool(_triCryptoPool);
+    WBTC_ORACLE_RELAY = _wbtcOracleRelay;
+    ETH_ORACLE_RELAY = _ethOracleRelay;
+    USDT_ORACLE_RELAY = _usdtOracleRelay;
+
+    _setUnderlying(_getLpAddress(_triCryptoPool));
   }
 
   /// @notice The current reported value of the oracle
@@ -47,9 +47,9 @@ contract TriCrypto2Oracle is OracleRelay, Ownable {
 
     // Get the prices from chainlink and add 10 decimals
     // TODO: need to be added as anchor oracler, stale delay is set in ChainlinkOracleRelay
-    uint256 _wbtcPrice = (wbtcOracleRelay.peekValue());
-    uint256 _ethPrice = (ethOracleRelay.peekValue());
-    uint256 _usdtPrice = (usdtOracleRelay.peekValue());
+    uint256 _wbtcPrice = (WBTC_ORACLE_RELAY.peekValue());
+    uint256 _ethPrice = (ETH_ORACLE_RELAY.peekValue());
+    uint256 _usdtPrice = (USDT_ORACLE_RELAY.peekValue());
 
     uint256 _basePrices = (_wbtcPrice * _ethPrice * _usdtPrice);
 

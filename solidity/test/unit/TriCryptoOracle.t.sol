@@ -3,9 +3,8 @@ pragma solidity >=0.8.4 <0.9.0;
 
 import {WUSDA} from '@contracts/core/WUSDA.sol';
 import {TriCrypto2Oracle} from '@contracts/periphery/oracles/TriCrypto2Oracle.sol';
-
+import {ICurveAddressesProvider, ICurveRegistry} from '@interfaces/periphery/ICurveAddressesProvider.sol';
 import {ICurvePool} from '@interfaces/utils/ICurvePool.sol';
-
 import {DSTestPlus} from 'solidity-utils/test/DSTestPlus.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {AggregatorInterface} from '@chainlink/interfaces/AggregatorInterface.sol';
@@ -22,10 +21,32 @@ abstract contract Base is DSTestPlus {
   IOracleRelay public ethFeed = IOracleRelay(mockContract(newAddress(), 'ethFeed'));
   IOracleRelay public usdtFeed = IOracleRelay(mockContract(newAddress(), 'usdtFeed'));
 
+  address internal _lpToken = newAddress();
+  ICurveAddressesProvider internal _curveAddressesProvider =
+    ICurveAddressesProvider(mockContract(address(0x0000000022D53366457F9d5E68Ec105046FC4383), 'curveAddressesProvider'));
+  ICurveRegistry internal _curveRegistry = ICurveRegistry(mockContract(address(newAddress()), 'curveRegistry'));
+
   TriCrypto2Oracle public triCryptoOracle;
 
   function setUp() public virtual {
+    // Mock curve addresses provider
+    vm.mockCall(
+      address(_curveAddressesProvider),
+      abi.encodeWithSelector(ICurveAddressesProvider.get_registry.selector),
+      abi.encode(address(_curveRegistry))
+    );
+    // Mock curve registry
+    vm.mockCall(
+      address(_curveRegistry), abi.encodeWithSelector(ICurveRegistry.get_lp_token.selector), abi.encode(_lpToken)
+    );
+
     triCryptoOracle = new TriCrypto2Oracle(address(curvePool), ethFeed, usdtFeed, wbtcFeed);
+  }
+}
+
+contract UnitUnderlyingIsSet is Base {
+  function testUnderlyingIsSet() public {
+    assertEq(triCryptoOracle.underlying(), _lpToken);
   }
 }
 

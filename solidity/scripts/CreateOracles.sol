@@ -15,6 +15,7 @@ import {CTokenOracle} from '@contracts/periphery/oracles/CTokenOracle.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
 import {TriCrypto2Oracle} from '@contracts/periphery/oracles/TriCrypto2Oracle.sol';
 import {WstEthOracle} from '@contracts/periphery/oracles/WstEthOracle.sol';
+import {CbEthEthOracle} from '@contracts/periphery/oracles/CbEthEthOracle.sol';
 
 import {TestConstants} from '@test/utils/TestConstants.sol';
 
@@ -319,5 +320,14 @@ abstract contract CreateOracles is TestConstants {
       new TriCrypto2Oracle(TRI_CRYPTO_2_POOL_ADDRESS, _wethAnchorOracle, _usdtAnchorOracle, _wbtcAnchorOracle);
     _triCrypto2OracleAddress = address(_triCrypto2Oracle);
     console.log('TRI_CRYPTO_2_ORACLE: ', _triCrypto2OracleAddress);
+  }
+
+  function _createCbEthEthOracle(
+    IOracleRelay _cbEthAnchorOracle,
+    IOracleRelay _wethAnchorOracle
+  ) internal returns (address _cbEthOracleAddress) {
+    CbEthEthOracle _cbEthOracle = new CbEthEthOracle(CBETH_ETH_CRV_POOL_ADDRESS, _cbEthAnchorOracle, _wethAnchorOracle);
+    _cbEthOracleAddress = address(_cbEthOracle);
+    console.log('CBETH_ETH_ORACLE: ', _cbEthOracleAddress);
   }
 }

@@ -4,14 +4,14 @@ pragma solidity >=0.8.4 <0.9.0;
 import {DSTestPlus, console} from 'solidity-utils/test/DSTestPlus.sol';
 import {EthSafeStableCurveOracle} from '@contracts/periphery/oracles/EthSafeStableCurveOracle.sol';
 
-import {ICurvePool} from '@interfaces/utils/ICurvePool.sol';
+import {IStablePool, ICurvePool} from '@interfaces/utils/ICurvePool.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
 import {ICurveAddressesProvider, ICurveRegistry} from '@interfaces/periphery/ICurveAddressesProvider.sol';
 
 abstract contract Base is DSTestPlus {
   EthSafeStableCurveOracle public curveOracle;
 
-  ICurvePool internal _mockCurvePool;
+  IStablePool internal _mockCurvePool;
   IOracleRelay[] internal _anchoredUnderlyingTokens;
   IOracleRelay internal _oracleRelayToken1;
   IOracleRelay internal _oracleRelayToken2;
@@ -22,7 +22,7 @@ abstract contract Base is DSTestPlus {
 
   function setUp() public virtual {
     // mock curve pool & oracles
-    _mockCurvePool = ICurvePool(mockContract(address(newAddress()), 'mockCurvePool'));
+    _mockCurvePool = IStablePool(mockContract(address(newAddress()), 'mockCurvePool'));
     _oracleRelayToken1 = IOracleRelay(mockContract(address(newAddress()), 'anchorOracle1'));
     _oracleRelayToken2 = IOracleRelay(mockContract(address(newAddress()), 'anchorOracle2'));
     _curveAddressesProvider = ICurveAddressesProvider(
@@ -67,7 +67,7 @@ abstract contract Base is DSTestPlus {
     // Mock the curve pool remove liquidity function
     uint256[2] memory _amounts;
     vm.mockCall(
-      address(_mockCurvePool), abi.encodeWithSelector(ICurvePool.remove_liquidity.selector), abi.encode(_amounts)
+      address(_mockCurvePool), abi.encodeWithSelector(IStablePool.remove_liquidity.selector), abi.encode(_amounts)
     );
     // Deploy contract
     curveOracle = new EthSafeStableCurveOracle(address(_mockCurvePool), _anchoredUnderlyingTokens);
@@ -99,7 +99,7 @@ contract UnitTestEthSafeStableCurveLpOracleCurrentValue is Base {
 
   function testCurrentValueCallsRemoveLiquidity() public {
     uint256[2] memory _amounts;
-    vm.expectCall(address(_mockCurvePool), abi.encodeWithSelector(ICurvePool.remove_liquidity.selector, _amounts));
+    vm.expectCall(address(_mockCurvePool), abi.encodeWithSelector(IStablePool.remove_liquidity.selector, _amounts));
     curveOracle.currentValue();
   }
 

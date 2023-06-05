@@ -11,7 +11,7 @@ import {CreateOracles} from '@scripts/CreateOracles.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
 import {CommonE2EBase, console, IERC20} from '@test/e2e/Common.sol';
 import {TestConstants} from '@test/utils/TestConstants.sol';
-import {ICurvePool} from '@interfaces/utils/ICurvePool.sol';
+import {IStablePool} from '@interfaces/utils/ICurvePool.sol';
 
 contract E2ECurveLpOracle is TestConstants, CommonE2EBase {
   uint256 public constant POINT_ONE_PERCENT = 0.001e18;
@@ -56,7 +56,7 @@ contract E2EEthSafeCurveLpOracleManipulations is E2ECurveLpOracle {
 
     // deploy the exploiter contract
     // solhint-disable-next-line reentrancy
-    exploiter = new EthCurveLPExploiter(ICurvePoolEth(STE_CRV_POOL_ADDRESS), stETH, steCrvOracle);
+    exploiter = new EthCurveLPExploiter(IStablePool(STE_CRV_POOL_ADDRESS), stETH, steCrvOracle);
 
     // We apporve a lot of stETH
     stETH.approve(address(exploiter), type(uint256).max);
@@ -79,7 +79,7 @@ contract E2EEthSafeCurveLpOracleManipulations is E2ECurveLpOracle {
 
     // deploy the exploiter contract with the unsafe oracle
     EthCurveLPExploiter _exploiter =
-    new EthCurveLPExploiter(ICurvePoolEth(STE_CRV_POOL_ADDRESS), stETH, EthSafeStableCurveOracle(address(_unsafeStETHOracle)));
+    new EthCurveLPExploiter(IStablePool(STE_CRV_POOL_ADDRESS), stETH, EthSafeStableCurveOracle(address(_unsafeStETHOracle)));
 
     // We apporve max stETH
     stETH.approve(address(_exploiter), type(uint256).max);
@@ -90,21 +90,14 @@ contract E2EEthSafeCurveLpOracleManipulations is E2ECurveLpOracle {
   }
 }
 
-interface ICurvePoolEth is ICurvePool {
-  function add_liquidity(
-    uint256[2] memory _amounts,
-    uint256 _minMintAmount
-  ) external payable returns (uint256 _lpAmount);
-}
-
 contract EthCurveLPExploiter {
-  ICurvePoolEth public pool;
+  IStablePool public pool;
   IERC20 public stETH;
   EthSafeStableCurveOracle public oracle;
   bool public wasManipulated;
   uint256 internal _virtualPriceBeforeManipulation;
 
-  constructor(ICurvePoolEth _pool, IERC20 _stETH, EthSafeStableCurveOracle _oracle) {
+  constructor(IStablePool _pool, IERC20 _stETH, EthSafeStableCurveOracle _oracle) {
     pool = _pool;
     stETH = _stETH;
     oracle = _oracle;
