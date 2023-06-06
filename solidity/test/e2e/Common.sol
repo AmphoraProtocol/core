@@ -72,6 +72,9 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateO
   AnchoredViewRelay public anchoredViewDydx;
   AnchoredViewRelay public anchoredViewBtc;
   AnchoredViewRelay public anchoredViewStEth;
+  IOracleRelay public anchoredViewDai;
+  IOracleRelay public anchoredViewUsdc;
+  IOracleRelay public anchoredViewUsdt;
   // Curve oracles
   StableCurveLpOracle public threeCrvOracle;
   TriCrypto2Oracle public triCryptoOracle;
@@ -234,20 +237,20 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateO
     anchoredViewStEth = AnchoredViewRelay(_createStEthOracle(uniswapRelayEthUsdc));
 
     /// Deploy usdc oracle relay
-    IOracleRelay _anchoredViewUsdc = IOracleRelay(_createUsdcOracle());
+    anchoredViewUsdc = IOracleRelay(_createUsdcOracle());
     /// Deploy dai oracle relay
-    IOracleRelay _anchoredViewDai = IOracleRelay(_createDaiOracle());
+    anchoredViewDai = IOracleRelay(_createDaiOracle());
     /// Deploy usdt oracle relay
-    IOracleRelay _anchoredViewUsdt = IOracleRelay(_createUsdtOracle());
+    anchoredViewUsdt = IOracleRelay(_createUsdtOracle());
     // Deploy wbtc oracle relay
     IOracleRelay _anchoredViewWbtc = IOracleRelay(_createWbtcOracle(uniswapRelayEthUsdc));
 
     // Deploy the ThreeCrvOracle
     threeCrvOracle = StableCurveLpOracle(
-      _create3CrvOracle(THREE_CRV_POOL_ADDRESS, _anchoredViewDai, _anchoredViewUsdt, _anchoredViewUsdc)
+      _create3CrvOracle(THREE_CRV_POOL_ADDRESS, anchoredViewDai, anchoredViewUsdt, anchoredViewUsdc)
     );
     // Deploy the triCryptoOracle
-    triCryptoOracle = TriCrypto2Oracle(_createTriCrypto2Oracle(anchoredViewEth, _anchoredViewUsdt, _anchoredViewWbtc));
+    triCryptoOracle = TriCrypto2Oracle(_createTriCrypto2Oracle(anchoredViewEth, anchoredViewUsdt, _anchoredViewWbtc));
 
     // Register WETH as acceptable erc20 to vault controller
     vaultController.registerErc20(

@@ -296,15 +296,11 @@ abstract contract CreateOracles is TestConstants {
   function _createFrax3CrvOracle(
     address _crvPool,
     IOracleRelay _fraxAnchorOracle,
-    IOracleRelay _daiAnchorOracle,
-    IOracleRelay _usdtAnchorOracle,
-    IOracleRelay _usdcAnchorOracle
+    IOracleRelay _3CrvAnchorOracle
   ) internal returns (address _frax3CrvOracleAddress) {
-    IOracleRelay[] memory _anchoredUnderlyingTokens = new IOracleRelay[](4);
+    IOracleRelay[] memory _anchoredUnderlyingTokens = new IOracleRelay[](2);
     _anchoredUnderlyingTokens[0] = _fraxAnchorOracle;
-    _anchoredUnderlyingTokens[1] = _daiAnchorOracle;
-    _anchoredUnderlyingTokens[2] = _usdtAnchorOracle;
-    _anchoredUnderlyingTokens[3] = _usdcAnchorOracle;
+    _anchoredUnderlyingTokens[1] = _3CrvAnchorOracle;
 
     StableCurveLpOracle _frax3CrvOracle = new StableCurveLpOracle(_crvPool, _anchoredUnderlyingTokens);
     _frax3CrvOracleAddress = address(_frax3CrvOracle);

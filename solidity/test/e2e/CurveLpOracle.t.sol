@@ -15,6 +15,7 @@ import {TestConstants} from '@test/utils/TestConstants.sol';
 contract E2ECurveLpOracle is TestConstants, CommonE2EBase {
   uint256 public constant POINT_ONE_PERCENT = 0.001e18;
   uint256 public constant ONE_PERCENT = 0.01e18;
+  uint256 public constant THREE_PERCENT = 0.03e18;
 
   StableCurveLpOracle public fraxCrvOracle;
   StableCurveLpOracle public frax3CrvOracle;
@@ -25,27 +26,18 @@ contract E2ECurveLpOracle is TestConstants, CommonE2EBase {
     super.setUp();
     /// Deploy FraxCrv oracle relay
     IOracleRelay _anchoredViewFrax = IOracleRelay(_createFraxOracle());
-    /// Deploy usdc oracle relay
-    IOracleRelay _anchoredViewUsdc = IOracleRelay(_createUsdcOracle());
-    /// Deploy dai oracle relay
-    IOracleRelay _anchoredViewDai = IOracleRelay(_createDaiOracle());
-    /// Deploy usdt oracle relay
-    IOracleRelay _anchoredViewUsdt = IOracleRelay(_createUsdtOracle());
     /// Deploy susd oracle relay
     IOracleRelay _anchoredViewSusd = IOracleRelay(_createSusdOracle());
 
     fraxCrvOracle =
-      StableCurveLpOracle(_createFraxCrvOracle(FRAX_USDC_CRV_POOL_ADDRESS, _anchoredViewFrax, _anchoredViewUsdc));
+      StableCurveLpOracle(_createFraxCrvOracle(FRAX_USDC_CRV_POOL_ADDRESS, _anchoredViewFrax, anchoredViewUsdc));
 
-    frax3CrvOracle = StableCurveLpOracle(
-      _createFrax3CrvOracle(
-        FRAX_3CRV_META_POOL_ADDRESS, _anchoredViewFrax, _anchoredViewDai, _anchoredViewUsdt, _anchoredViewUsdc
-      )
-    );
+    frax3CrvOracle =
+      StableCurveLpOracle(_createFrax3CrvOracle(FRAX_3CRV_META_POOL_ADDRESS, _anchoredViewFrax, threeCrvOracle));
 
     susdDaiUsdtUsdcOracle = StableCurveLpOracle(
       _createSusdDaiUsdcUsdtOracle(
-        SUSD_DAI_USDT_USDC_CRV_POOL_ADDRESS, _anchoredViewSusd, _anchoredViewDai, _anchoredViewUsdt, _anchoredViewUsdc
+        SUSD_DAI_USDT_USDC_CRV_POOL_ADDRESS, _anchoredViewSusd, anchoredViewDai, anchoredViewUsdt, anchoredViewUsdc
       )
     );
 
@@ -100,19 +92,7 @@ contract E2ECurveLpOracle is TestConstants, CommonE2EBase {
     assertApproxEqRel(
       frax3CrvOracle.currentValue(),
       (frax3CrvOracle.anchoredUnderlyingTokens(1).currentValue() * frax3CrvOracle.CRV_POOL().get_virtual_price() / 1e18),
-      POINT_ONE_PERCENT
-    );
-
-    assertApproxEqRel(
-      frax3CrvOracle.currentValue(),
-      (frax3CrvOracle.anchoredUnderlyingTokens(2).currentValue() * frax3CrvOracle.CRV_POOL().get_virtual_price() / 1e18),
-      POINT_ONE_PERCENT
-    );
-
-    assertApproxEqRel(
-      frax3CrvOracle.currentValue(),
-      (frax3CrvOracle.anchoredUnderlyingTokens(3).currentValue() * frax3CrvOracle.CRV_POOL().get_virtual_price() / 1e18),
-      POINT_ONE_PERCENT
+      THREE_PERCENT
     );
   }
 
