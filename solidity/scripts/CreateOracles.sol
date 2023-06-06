@@ -348,4 +348,18 @@ abstract contract CreateOracles is TestConstants {
     _susdDaiUsdtUsdcOracleAddress = address(_susdDaiUsdtUsdcOracle);
     console.log('SUSD_DAI_USDT_USDC_ORACLE: ', _susdDaiUsdtUsdcOracleAddress);
   }
+
+  function _createSusdFraxCrvOracle(
+    address _crvPool,
+    IOracleRelay _susdAnchorOracle,
+    IOracleRelay _fraxCrvAnchorOracle
+  ) internal returns (address _susdFraxCrvLpOracleAddress) {
+    IOracleRelay[] memory _anchoredUnderlyingTokens = new IOracleRelay[](2);
+    _anchoredUnderlyingTokens[0] = _susdAnchorOracle;
+    _anchoredUnderlyingTokens[1] = _fraxCrvAnchorOracle;
+
+    StableCurveLpOracle _susdFraxCrvLpOracle = new StableCurveLpOracle(_crvPool, _anchoredUnderlyingTokens);
+    _susdFraxCrvLpOracleAddress = address(_susdFraxCrvLpOracle);
+    console.log('SUSD_FRAX_CRV_ORACLE: ', _susdFraxCrvLpOracleAddress);
+  }
 }

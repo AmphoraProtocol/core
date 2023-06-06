@@ -19,6 +19,7 @@ contract E2ECurveLpOracle is TestConstants, CommonE2EBase {
   StableCurveLpOracle public fraxCrvOracle;
   StableCurveLpOracle public frax3CrvOracle;
   StableCurveLpOracle public susdDaiUsdtUsdcOracle;
+  StableCurveLpOracle public susdFraxCrvOracle;
 
   function setUp() public virtual override {
     super.setUp();
@@ -47,6 +48,9 @@ contract E2ECurveLpOracle is TestConstants, CommonE2EBase {
         SUSD_DAI_USDT_USDC_CRV_POOL_ADDRESS, _anchoredViewSusd, _anchoredViewDai, _anchoredViewUsdt, _anchoredViewUsdc
       )
     );
+
+    susdFraxCrvOracle =
+      StableCurveLpOracle(_createSusdFraxCrvOracle(SUSD_FRAX_CRV_POOL_ADDRESS, _anchoredViewSusd, fraxCrvOracle));
   }
 
   function testFraxCrvOracleReturnsTheCorrectPrice() public {
@@ -146,6 +150,27 @@ contract E2ECurveLpOracle is TestConstants, CommonE2EBase {
       (
         susdDaiUsdtUsdcOracle.anchoredUnderlyingTokens(3).currentValue()
           * susdDaiUsdtUsdcOracle.CRV_POOL().get_virtual_price() / 1e18
+      ),
+      POINT_ONE_PERCENT
+    );
+  }
+
+  function testSusdFraxCrvOracleReturnsTheCorrectPrice() public {
+    assertGt(susdFraxCrvOracle.currentValue(), 0);
+    assertApproxEqRel(
+      susdFraxCrvOracle.currentValue(),
+      (
+        susdFraxCrvOracle.anchoredUnderlyingTokens(0).currentValue() * susdFraxCrvOracle.CRV_POOL().get_virtual_price()
+          / 1e18
+      ),
+      POINT_ONE_PERCENT
+    );
+
+    assertApproxEqRel(
+      susdFraxCrvOracle.currentValue(),
+      (
+        susdFraxCrvOracle.anchoredUnderlyingTokens(1).currentValue() * susdFraxCrvOracle.CRV_POOL().get_virtual_price()
+          / 1e18
       ),
       POINT_ONE_PERCENT
     );
