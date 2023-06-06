@@ -133,9 +133,6 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateO
 
   uint256 public initialAMPH = 100_000_000 ether;
 
-  uint256 public cvxRate = 10e18; // 10 AMPH per 1 CVX
-  uint256 public crvRate = 0.5e18; // 0.5 AMPH per 1 CVX
-
   uint256 public cvxRewardFee = 0.02e18;
   uint256 public crvRewardFee = 0.01e18;
 
@@ -177,7 +174,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateO
 
     // Deploy claimer
     amphClaimer =
-    new AMPHClaimer(address(vaultController), IERC20(address(amphToken)), IERC20(CVX_ADDRESS), IERC20(CRV_ADDRESS), cvxRate, crvRate, cvxRewardFee, crvRewardFee);
+    new AMPHClaimer(address(vaultController), IERC20(address(amphToken)), IERC20(CVX_ADDRESS), IERC20(CRV_ADDRESS), cvxRewardFee, crvRewardFee);
 
     // Change AMPH claimer
     vaultController.changeClaimerContract(amphClaimer);

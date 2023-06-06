@@ -28,18 +28,6 @@ interface IAMPHClaimer {
   event ChangedVaultController(address indexed _newVaultController);
 
   /**
-   * @notice Emited when governance changes the CVX rate
-   * @param _newCvxRate The new rate
-   */
-  event ChangedCvxRate(uint256 _newCvxRate);
-
-  /**
-   * @notice Emited when governance changes the CRV rate
-   * @param _newCrvRate he new rate
-   */
-  event ChangedCrvRate(uint256 _newCrvRate);
-
-  /**
    * @notice Emited when governance recovers a token from the contract
    * @param _token the token recovered
    * @param _receiver the receiver of the tokens
@@ -63,21 +51,23 @@ interface IAMPHClaimer {
                             VARIABLES
     //////////////////////////////////////////////////////////////*/
 
-  function vaultController() external view returns (IVaultController _vaultController);
-
   function CVX() external view returns (IERC20 _cvx);
 
   function CRV() external view returns (IERC20 _crv);
 
   function AMPH() external view returns (IERC20 _amph);
 
-  function amphPerCvx() external view returns (uint256 _amphPerCvx);
+  function BASE_SUPPLY_PER_CLIFF() external view returns (uint256 _baseSupplyPerCliff);
 
-  function amphPerCrv() external view returns (uint256 _amphPerCrv);
+  function distributedAmph() external view returns (uint256 _distributedAmph);
+
+  function TOTAL_CLIFFS() external view returns (uint256 _totalCliffs);
 
   function cvxRewardFee() external view returns (uint256 _cvxRewardFee);
 
   function crvRewardFee() external view returns (uint256 _crvRewardFee);
+
+  function vaultController() external view returns (IVaultController _vaultController);
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC
@@ -98,10 +88,6 @@ interface IAMPHClaimer {
   ) external view returns (uint256 _cvxAmountToSend, uint256 _crvAmountToSend, uint256 _claimableAmph);
 
   function changeVaultController(address _newVaultController) external;
-
-  function changeCvxRate(uint256 _newRate) external;
-
-  function changeCrvRate(uint256 _newRate) external;
 
   function recoverDust(address _token, uint256 _amount) external;
 

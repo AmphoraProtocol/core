@@ -263,10 +263,17 @@ contract E2EVault is CommonE2EBase {
     _tokensToClaim[0] = address(gearLP);
     _tokensToClaim[1] = address(usdtStableLP);
 
+    uint256 _balanceCrvGovBefore = IERC20(CRV_ADDRESS).balanceOf(address(governor));
+    uint256 _balanceCvxGovBefore = IERC20(CVX_ADDRESS).balanceOf(address(governor));
+
     // claim
     vm.startPrank(bob);
     bobVault.claimRewards(_tokensToClaim);
     vm.stopPrank();
+
+    // governance should have received the tokens
+    assertGt(IERC20(CRV_ADDRESS).balanceOf(address(governor)), _balanceCrvGovBefore);
+    assertGt(IERC20(CVX_ADDRESS).balanceOf(address(governor)), _balanceCvxGovBefore);
 
     assertTrue(_rewards[0].amount != 0); // _rewards[0] = CRV rewards
     assertTrue(_rewards[1].amount != 0); // _rewards[1] = CVX rewards

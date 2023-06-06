@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import {Math} from '@openzeppelin/contracts/utils/math/Math.sol';
 import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
 import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 import {SafeERC20, IERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
@@ -13,6 +14,21 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
 
   uint256 internal constant _BASE = 1 ether;
 
+  /// @dev Constant used in the formula
+  uint256 internal constant _FIFTY_MILLIONS = 50_000_000 * 1e6;
+
+  /// @dev Constant used in the formula
+  uint256 internal constant _TWENTY_FIVE_THOUSANDS = 25_000 * 1e6;
+
+  /// @dev Constant used in the formula
+  uint256 internal constant _FIFTY = 50 * 1e6;
+
+  /// @dev The base supply of AMPH per cliff, denominated in 1e6
+  uint256 public constant BASE_SUPPLY_PER_CLIFF = 8_000_000 * 1e6;
+
+  /// @dev The total number of cliffs (for both tokens)
+  uint256 public constant TOTAL_CLIFFS = 1000;
+
   /// @dev The CVX token
   IERC20 public immutable CVX;
 
@@ -22,11 +38,8 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
   /// @dev The AMPH token
   IERC20 public immutable AMPH;
 
-  /// @dev How much AMPH you will receive per 1 CVX (1e18)
-  uint256 public amphPerCvx;
-
-  /// @dev How much AMPH you will receive per 1 CRV (1e18)
-  uint256 public amphPerCrv;
+  /// @dev The total amount of AMPH minted for rewards in CRV, denominated in 1e6
+  uint256 public distributedAmph;
 
   /// @dev Percentage of rewards taken in CVX (1e18 == 100%)
   uint256 public cvxRewardFee;
@@ -42,8 +55,6 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
     IERC20 _amph,
     IERC20 _cvx,
     IERC20 _crv,
-    uint256 _amphPerCvx,
-    uint256 _amphPerCrv,
     uint256 _cvxRewardFee,
     uint256 _crvRewardFee
   ) {
@@ -51,9 +62,6 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
     CVX = _cvx;
     CRV = _crv;
     AMPH = _amph;
-
-    amphPerCvx = _amphPerCvx;
-    amphPerCrv = _amphPerCrv;
 
     cvxRewardFee = _cvxRewardFee;
     crvRewardFee = _crvRewardFee;
@@ -75,6 +83,10 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
   ) external override returns (uint256 _cvxAmountToSend, uint256 _crvAmountToSend, uint256 _claimedAmph) {
     (_cvxAmountToSend, _crvAmountToSend, _claimedAmph) =
       _claimable(msg.sender, _vaultId, _cvxTotalRewards, _crvTotalRewards);
+
+    /// Update the state
+    if (_crvAmountToSend != 0 && _claimedAmph != 0) distributedAmph += (_claimedAmph / 1e12); // scale back to 1e6
+
     CVX.safeTransferFrom(msg.sender, owner(), _cvxAmountToSend);
     CRV.safeTransferFrom(msg.sender, owner(), _crvAmountToSend);
 
@@ -110,24 +122,6 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
     emit ChangedVaultController(_newVaultController);
   }
 
-  /// @notice Used by governance to change the CVX per AMPH rate
-  /// @param _newRate The new rate to set
-  /// @dev 10**18 is 1 AMPH per CVX
-  function changeCvxRate(uint256 _newRate) external override onlyOwner {
-    amphPerCvx = _newRate;
-
-    emit ChangedCvxRate(_newRate);
-  }
-
-  /// @notice Used by governance to change the CRV per AMPH rate
-  /// @param _newRate The new rate to set
-  /// @dev 10**18 is 1 AMPH per CRV
-  function changeCrvRate(uint256 _newRate) external override onlyOwner {
-    amphPerCrv = _newRate;
-
-    emit ChangedCrvRate(_newRate);
-  }
-
   /// @notice Used by governance to recover tokens from the contract
   /// @param _token The token to recover
   /// @param _amount The amount to recover
@@ -153,12 +147,6 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
     emit ChangedCrvRewardFee(_newFee);
   }
 
-  /// @dev Returns the AMPH given some token amount and rate
-  function _tokenAmountToAmph(uint256 _tokenAmount, uint256 _tokenRate) internal pure returns (uint256 _amph) {
-    if (_tokenAmount == 0) return 0;
-    _amph = (_tokenAmount * _tokenRate) / _BASE;
-  }
-
   /// @dev Receives a total and a percentage, returns the amount equivalent of the percentage
   function _totalToFraction(uint256 _total, uint256 _fraction) internal pure returns (uint256 _amount) {
     if (_total == 0) return 0;
@@ -177,28 +165,88 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
 
     uint256 _amphBalance = AMPH.balanceOf(address(this));
 
-    // if both amounts are zero, or AMPH balance is zero simply return all zeros
-    if ((_cvxTotalRewards == 0 && _crvTotalRewards == 0) || _amphBalance == 0) return (0, 0, 0);
+    // if amounts are zero, or AMPH balance is zero simply return all zeros
+    if (_crvTotalRewards == 0 || _amphBalance == 0) return (0, 0, 0);
 
     uint256 _cvxRewardsFeeToExchange = _totalToFraction(_cvxTotalRewards, cvxRewardFee);
     uint256 _crvRewardsFeeToExchange = _totalToFraction(_crvTotalRewards, crvRewardFee);
 
-    uint256 _amphByCvx = _tokenAmountToAmph(_cvxRewardsFeeToExchange, amphPerCvx);
-    uint256 _amphByCrv = _tokenAmountToAmph(_crvRewardsFeeToExchange, amphPerCrv);
+    uint256 _amphByCrv = _calculate(_crvRewardsFeeToExchange);
 
-    uint256 _totalAmount = _amphByCvx + _amphByCrv;
+    // Check if all cliffs consumed
+    if (_getCliff((_amphByCrv / 1e12) + distributedAmph) >= TOTAL_CLIFFS) return (0, 0, 0);
 
     // check for rounding errors
-    if (_totalAmount == 0) return (0, 0, 0);
+    if (_amphByCrv == 0) return (0, 0, 0);
 
-    if (_amphBalance >= _totalAmount) {
+    if (_amphBalance >= _amphByCrv) {
       // contract has the full amount
       _cvxAmountToSend = _cvxRewardsFeeToExchange;
-      _crvAmountToSend = _crvRewardsFeeToExchange;
-      _claimableAmph = _totalAmount;
+      _crvAmountToSend = _amphByCrv == 0 ? 0 : _crvRewardsFeeToExchange;
+      _claimableAmph = _amphByCrv;
     } else {
       // contract doesnt have the full amount
       return (0, 0, 0);
     }
+  }
+
+  /// @dev Returns the rate of the token, denominated in 1e6
+  function _getRate(uint256 _distributedAmph) internal pure returns (uint256 _rate) {
+    uint256 _foo = (_TWENTY_FIVE_THOUSANDS * BASE_SUPPLY_PER_CLIFF) / Math.max(_distributedAmph, _FIFTY_MILLIONS);
+    uint256 _bar = (_distributedAmph * 1e12) / (BASE_SUPPLY_PER_CLIFF * _FIFTY);
+
+    _rate = 1e6 + (_foo - _bar);
+  }
+
+  /// @dev Returns how much AMPH would be minted given a token amount
+  function _calculate(uint256 _tokenAmountToSend) internal view returns (uint256 _amphAmount) {
+    if (_tokenAmountToSend == 0) return 0;
+
+    uint256 _tempAmountReceived = _tokenAmountToSend; // CRV, 1e18
+    uint256 _amphToMint; // 1e18
+
+    uint256 _distributedAmph = distributedAmph;
+
+    while (_tempAmountReceived != 0) {
+      uint256 _amphForThisTurn;
+
+      // all cliffs start when a certain amount of CRV is accumulated and finish when a certain amount is reached, this is the start of the current cliff
+      uint256 _bottomLastCliff = _getCliff(_distributedAmph) * BASE_SUPPLY_PER_CLIFF;
+
+      // get rate
+      uint256 _rate = _getRate(_distributedAmph); // 1e6
+
+      // calculate how many AMPH to mint given that rate.
+      // transform the CRV amount to 1e6 and multiply.
+      // perform the mul first to avoid rounding errors.
+      _amphForThisTurn = ((_rate * _tempAmountReceived) / 1e12) / 1e6; // 1e6
+
+      // calculate the amph available for this cliff
+      uint256 _amphAvailableForThisCliff = (_bottomLastCliff + BASE_SUPPLY_PER_CLIFF) - _distributedAmph; // 1e6
+
+      // check if the amount of amph to mint surpasses the cliff
+      if (_amphAvailableForThisCliff < _amphForThisTurn) {
+        /// surpassing the cliff
+        _amphForThisTurn = _amphAvailableForThisCliff;
+        // calculate how many CRV are entering this cliff
+        uint256 _amountTokenToEnter = (_amphAvailableForThisCliff * 1e18) / _rate;
+        _tempAmountReceived -= _amountTokenToEnter;
+      } else {
+        /// within the cliff
+        _tempAmountReceived = 0;
+      }
+
+      _distributedAmph += _amphForThisTurn; // 1e6
+
+      _amphToMint += (_amphForThisTurn * 1e12); // 1e18
+    }
+
+    // return
+    _amphAmount = _amphToMint;
+  }
+
+  /// @dev Returns the current cliff, it will round down but is on purpose
+  function _getCliff(uint256 _distributedAmph) internal pure returns (uint256 _cliff) {
+    _cliff = _distributedAmph / BASE_SUPPLY_PER_CLIFF;
   }
 }

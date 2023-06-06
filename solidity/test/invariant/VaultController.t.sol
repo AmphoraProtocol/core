@@ -43,8 +43,6 @@ contract InvariantVaultController is BaseInvariant, TestConstants {
   IERC20 public susd;
 
   uint256 public initialAMPH = 100_000_000 ether;
-  uint256 public cvxRate = 10e18; // 10 AMPH per 1 CVX
-  uint256 public crvRate = 0.5e18; // 0.5 AMPH per 1 CVX
 
   uint256 public cvxRewardFee = 0.02e18;
   uint256 public crvRewardFee = 0.01e18;
@@ -68,7 +66,7 @@ contract InvariantVaultController is BaseInvariant, TestConstants {
     new VaultController(IVaultController(address(0)), _tokens, IAMPHClaimer(address(0)), vaultDeployer, initialBorrowingFee, BOOSTER, liquidationFee);
     // Deploy amphora claimer
     amphoraClaimer =
-    new AMPHClaimer(address(vaultController), IERC20(address(amphoraToken)), IERC20(CVX_ADDRESS), IERC20(CRV_ADDRESS), cvxRate, crvRate, cvxRewardFee, crvRewardFee);
+    new AMPHClaimer(address(vaultController), IERC20(address(amphoraToken)), IERC20(CVX_ADDRESS), IERC20(CRV_ADDRESS), cvxRewardFee, crvRewardFee);
 
     // Deploy CurveMaster
     curveMaster = new CurveMaster();
