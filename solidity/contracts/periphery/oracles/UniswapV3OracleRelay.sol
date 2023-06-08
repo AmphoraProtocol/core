@@ -13,11 +13,19 @@ contract UniswapV3OracleRelay is OracleRelay {
   /// @notice Thrown when the tick time diff fails
   error UniswapV3OracleRelay_TickTimeDiffTooLarge();
 
+  /// @notice Returns True if the quote token is token0 in the pool
   bool public immutable QUOTE_TOKEN_IS_TOKEN0;
+
+  /// @notice The pool
   IUniswapV3PoolDerivedState public immutable POOL;
+
+  /// @notice The lookback for the oracle
   uint32 public immutable LOOKBACK;
 
+  /// @notice The multiply number used to scale the price
   uint256 public immutable MUL;
+
+  /// @notice The divide number used to scale the price
   uint256 public immutable DIV;
 
   /// @notice All values set at construction time

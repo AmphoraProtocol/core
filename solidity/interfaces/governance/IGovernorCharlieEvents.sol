@@ -107,7 +107,6 @@ interface IGovernorCharlieEvents {
   );
 
   event VoteCast(address indexed _voter, uint256 _proposalId, uint8 _support, uint256 _votes, string _reason);
-
   event ProposalCanceled(uint256 _id);
   event ProposalQueued(uint256 _id, uint256 _eta);
   event ProposalExecuted(uint256 _id);

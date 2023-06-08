@@ -15,14 +15,22 @@ contract UniswapV3TokenOracleRelay is OracleRelay {
   /// @notice Thrown when the tick time diff fails
   error UniswapV3OracleRelay_TickTimeDiffTooLarge();
 
+  /// @notice The oracle for eth/usdc
   UniswapV3OracleRelay public immutable ETH_ORACLE;
 
+  /// @notice Returns True if the quote token is token0 in the pool
   bool public immutable QUOTE_TOKEN_IS_TOKEN0;
 
+  /// @notice The pool
   IUniswapV3PoolDerivedState public immutable POOL;
 
+  /// @notice The lookback for the oracle
   uint32 public immutable LOOKBACK;
+
+  /// @notice The multiply number used to scale the price
   uint256 public immutable MUL;
+
+  /// @notice The divide number used to scale the price
   uint256 public immutable DIV;
 
   /// @notice All values set at construction time
@@ -50,6 +58,9 @@ contract UniswapV3TokenOracleRelay is OracleRelay {
     _setUnderlying(_quoteTokenIsToken0 ? IUniswapV3Pool(_poolAddress).token1() : IUniswapV3Pool(_poolAddress).token0());
   }
 
+  /// @notice The current reported value of the oracle
+  /// @dev Implementation in _get
+  /// @return _price The current value
   function peekValue() public view virtual override returns (uint256 _price) {
     _price = _get();
   }

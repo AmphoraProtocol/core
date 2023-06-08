@@ -3,19 +3,24 @@ pragma solidity ^0.8.9;
 
 import {IOracleRelay, OracleRelay} from '@contracts/periphery/oracles/OracleRelay.sol';
 import {IV2Pool} from '@interfaces/utils/ICurvePool.sol';
-import {Math} from '@openzeppelin/contracts/utils/math/Math.sol';
 import {FixedPointMathLib} from 'solady/utils/FixedPointMathLib.sol';
-import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 import {CurveRegistryUtils} from '@contracts/periphery/oracles/CurveRegistryUtils.sol';
 
 /// @notice Oracle Relay for the TriCrypto pool (USDT/WBTC/WETH)
-contract TriCrypto2Oracle is OracleRelay, CurveRegistryUtils, Ownable {
+contract TriCrypto2Oracle is OracleRelay, CurveRegistryUtils {
   /// @notice Emitted when the amount is zero
   error TriCryptoOracle_ZeroAmount();
 
+  /// @notice The Curve pool
   IV2Pool public immutable TRI_CRYPTO;
+
+  /// @notice The oracle relay for the WBTC/USD price
   IOracleRelay public immutable WBTC_ORACLE_RELAY;
+
+  /// @notice The oracle relay for the ETH/USD price
   IOracleRelay public immutable ETH_ORACLE_RELAY;
+
+  /// @notice The oracle relay for the USDT/USD price
   IOracleRelay public immutable USDT_ORACLE_RELAY;
 
   constructor(

@@ -16,6 +16,7 @@ contract AmphoraProtocolToken is IAmphoraProtocolToken, ERC20VotesComp, Ownable 
     _mint(_account, _initialSupply);
   }
 
+  /// @notice Mint a specified amount of tokens to a specified address
   function mint(address _dst, uint256 _rawAmount) public onlyOwner {
     _mint(_dst, _rawAmount);
   }

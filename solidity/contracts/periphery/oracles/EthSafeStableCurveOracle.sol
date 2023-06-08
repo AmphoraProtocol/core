@@ -2,8 +2,6 @@
 pragma solidity ^0.8.9;
 
 import {IOracleRelay, OracleRelay} from '@contracts/periphery/oracles/OracleRelay.sol';
-import {Math} from '@openzeppelin/contracts/utils/math/Math.sol';
-import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 import {StableCurveLpOracle} from '@contracts/periphery/oracles/StableCurveLpOracle.sol';
 
 /// @notice Oracle Relay for curve lps safe for usage with pools that hold ETH

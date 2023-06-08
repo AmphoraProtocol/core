@@ -12,11 +12,16 @@ contract ChainlinkOracleRelay is OracleRelay, Ownable {
   /// @notice Emitted when the amount is zero
   error ChainlinkOracle_ZeroAmount();
 
+  /// @notice The chainlink aggregator
   AggregatorV2V3Interface private immutable _AGGREGATOR;
 
+  /// @notice multiply number used to scale the price
   uint256 public immutable MULTIPLY;
+
+  /// @notice divide number used to scale the price
   uint256 public immutable DIVIDE;
 
+  /// @notice The delay before the price is considered stale
   uint256 public stalePriceDelay;
 
   /// @notice All values set at construction time

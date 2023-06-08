@@ -45,18 +45,33 @@ interface ICurveMaster {
                             VARIABLES
     //////////////////////////////////////////////////////////////*/
 
+  /// @notice The vault controller address
   function vaultControllerAddress() external view returns (address _vaultController);
 
+  /// @notice Returns the value of curve labled _tokenAddress at _xValue
+  /// @param _tokenAddress The key to lookup the curve with in the mapping
+  /// @param _xValue The x value to pass to the slave
+  /// @return _value The y value of the curve
   function getValueAt(address _tokenAddress, int256 _xValue) external view returns (int256 _value);
 
+  /// @notice Mapping of token to address
   function curves(address _tokenAddress) external view returns (address _curve);
 
   /*///////////////////////////////////////////////////////////////
                             LOGIC
     //////////////////////////////////////////////////////////////*/
+
+  /// @notice Set the VaultController addr in order to pay interest on curve setting
+  /// @param _vaultMasterAddress The address of vault master
   function setVaultController(address _vaultMasterAddress) external;
 
+  /// @notice Setting a new curve should pay interest
+  /// @param _tokenAddress The address of the token
+  /// @param _curveAddress The address of the curve for the contract
   function setCurve(address _tokenAddress, address _curveAddress) external;
 
+  /// @notice Special function that does not calculate interest, used for deployment
+  /// @param _tokenAddress The address of the token
+  /// @param _curveAddress The address of the curve for the contract
   function forceSetCurve(address _tokenAddress, address _curveAddress) external;
 }

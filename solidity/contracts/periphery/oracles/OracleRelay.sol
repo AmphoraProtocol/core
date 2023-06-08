@@ -25,5 +25,8 @@ abstract contract OracleRelay is IOracleRelay {
     _currentValue = peekValue();
   }
 
+  /// @notice The current reported value of the oracle
+  /// @dev Implementation in _get()
+  /// @return _price The current value
   function peekValue() public view virtual override returns (uint256 _price);
 }

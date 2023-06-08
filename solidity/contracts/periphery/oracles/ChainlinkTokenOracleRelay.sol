@@ -8,7 +8,10 @@ import {ChainlinkOracleRelay} from '@contracts/periphery/oracles/ChainlinkOracle
 /// @dev Oracle that wraps a chainlink oracle
 ///      The oracle returns (chainlinkPrice) * mul / div
 contract ChainlinkTokenOracleRelay is OracleRelay {
+  /// @notice The chainlink aggregator
   ChainlinkOracleRelay public immutable AGGREGATOR;
+
+  /// @notice The chainlink aggregator for the base token
   ChainlinkOracleRelay public immutable BASE_AGGREGATOR;
 
   /// @notice All values set at construction time

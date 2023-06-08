@@ -22,5 +22,9 @@ interface IVaultDeployer {
                               LOGIC
   //////////////////////////////////////////////////////////////*/
 
+  /// @notice Deploys a new Vault
+  /// @param _id The id of the vault
+  /// @param _minter The address of the minter of the vault
+  /// @return _vault The vault that was created
   function deployVault(uint96 _id, address _minter) external returns (IVault _vault);
 }

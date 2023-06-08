@@ -39,8 +39,10 @@ contract Vault is IVault, Context {
   /// the vaultController in order to find the true liabilitiy
   uint256 public baseLiability;
 
+  /// @dev Keeps track of the accounting of the collateral deposited
   mapping(address => uint256) public balances;
 
+  /// @dev Keeps track of the tokens that are staked on convex
   mapping(address => bool) public isTokenStaked;
 
   /// @notice Checks if _msgSender is the controller of the vault
@@ -322,6 +324,7 @@ contract Vault is IVault, Context {
     _newLiability = baseLiability;
   }
 
+  /// @dev Internal function for depositing and staking on convex
   function _depositAndStakeOnConvex(address _token, IBooster _booster, uint256 _amount, uint256 _poolId) internal {
     IERC20(_token).approve(address(_booster), _amount);
     if (!_booster.deposit(_poolId, _amount, true)) revert Vault_DepositAndStakeOnConvexFailed();

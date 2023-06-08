@@ -8,16 +8,28 @@ import {IChainlinkOracleRelay} from '@interfaces/periphery/IChainlinkOracleRelay
 /// ensures that the main relay's price is within some amount of the anchor relay price
 /// if not, the call reverts, effectively disabling the oracle & any actions which require it
 contract AnchoredViewRelay is OracleRelay {
+  /// @notice The address of the anchor relay
   address public anchorAddress;
+
+  /// @notice The interface of the anchor relay
   IOracleRelay public anchorRelay;
 
+  /// @notice The address of the main relay
   address public mainAddress;
+
+  /// @notice The interface of the main relay
   IOracleRelay public mainRelay;
 
+  /// @notice The numerator of the allowable deviation from the anchor price
   uint256 public widthNumerator;
+
+  /// @notice The denominator of the allowable deviation from the anchor price
   uint256 public widthDenominator;
 
+  /// @notice The numerator of the allowable deviation from the anchor price for the stale price
   uint256 public staleWidthNumerator;
+
+  /// @notice The denominator of the allowable deviation from the anchor price for the stale price
   uint256 public staleWidthDenominator;
 
   /// @notice All values set at construction time

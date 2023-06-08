@@ -2,9 +2,6 @@
 pragma solidity ^0.8.9;
 
 import {IOracleRelay, OracleRelay} from '@contracts/periphery/oracles/OracleRelay.sol';
-import {ICToken} from '@interfaces/periphery/ICToken.sol';
-import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
-import {IERC20Metadata} from '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 import {IWStETH} from '@interfaces/utils/IWStETH.sol';
 
 /// @notice Oracle Relay for WstEth

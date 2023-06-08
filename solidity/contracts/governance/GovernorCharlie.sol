@@ -73,7 +73,7 @@ contract GovernorCharlie is IGovernorCharlie {
   /// @notice The emergency proposal holding period
   uint256 public emergencyTimelockDelay;
 
-  /// all receipts for proposal
+  /// @notice all receipts for proposal
   mapping(uint256 => mapping(address => Receipt)) public proposalReceipts;
 
   /// @notice The number of votes to reject an optimistic proposal

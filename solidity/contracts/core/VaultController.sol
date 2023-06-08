@@ -997,6 +997,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
     }
   }
 
+  /// @notice Modifies the total deposited in the protocol
   function _modifyTotalDeposited(uint256 _amount, address _token, bool _increase) internal {
     CollateralInfo memory _collateral = tokenAddressCollateralInfo[_token];
     if (_collateral.tokenId == 0) revert VaultController_TokenNotRegistered();

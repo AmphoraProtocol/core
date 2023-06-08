@@ -4,11 +4,10 @@ pragma solidity ^0.8.9;
 import {IOracleRelay, OracleRelay} from '@contracts/periphery/oracles/OracleRelay.sol';
 import {IStablePool} from '@interfaces/utils/ICurvePool.sol';
 import {Math} from '@openzeppelin/contracts/utils/math/Math.sol';
-import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 import {CurveRegistryUtils} from '@contracts/periphery/oracles/CurveRegistryUtils.sol';
 
 /// @notice Oracle Relay for crv lps
-contract StableCurveLpOracle is OracleRelay, CurveRegistryUtils, Ownable {
+contract StableCurveLpOracle is OracleRelay, CurveRegistryUtils {
   /// @notice Thrown when there are too few anchored oracles
   error StableCurveLpOracle_TooFewAnchoredOracles();
 
@@ -54,6 +53,7 @@ contract StableCurveLpOracle is OracleRelay, CurveRegistryUtils, Ownable {
     _value = _lpPrice / 1e18;
   }
 
+  /// @notice returns the updated virtual price for the pool
   function _getVirtualPrice() internal view virtual returns (uint256 _value) {
     _value = CRV_POOL.get_virtual_price();
   }

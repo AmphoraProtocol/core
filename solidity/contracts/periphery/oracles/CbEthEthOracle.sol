@@ -5,15 +5,20 @@ import {IOracleRelay, OracleRelay} from '@contracts/periphery/oracles/OracleRela
 import {IV2Pool} from '@interfaces/utils/ICurvePool.sol';
 import {Math} from '@openzeppelin/contracts/utils/math/Math.sol';
 import {FixedPointMathLib} from 'solady/utils/FixedPointMathLib.sol';
-import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 import {CurveRegistryUtils} from '@contracts/periphery/oracles/CurveRegistryUtils.sol';
 
 /// @notice Oracle Relay for the cbETH/ETH pool
-contract CbEthEthOracle is OracleRelay, CurveRegistryUtils, Ownable {
+contract CbEthEthOracle is OracleRelay, CurveRegistryUtils {
+  /// @notice The Curve pool
   IV2Pool public immutable CB_ETH_POOL;
+
+  /// @notice The oracle relay for the cbETH/ETH price
   IOracleRelay public immutable CB_ETH_ORACLE_RELAY;
+
+  /// @notice The oracle relay for the ETH/USD price
   IOracleRelay public immutable ETH_ORACLE_RELAY;
 
+  /// @notice The stored virtual price for the pool
   uint256 public virtualPrice;
 
   constructor(
