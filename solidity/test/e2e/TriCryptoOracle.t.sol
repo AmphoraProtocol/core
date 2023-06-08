@@ -15,7 +15,7 @@ contract E2ETriCryptoOracle is CommonE2EBase {
 
   IERC20 public usdt = IERC20(USDT_ADDRESS);
   IERC20 public triCryptoLpToken = IERC20(TRI_CRYPTO_LP_TOKEN);
-  ITriCryptoPool public triCryptoPool = ITriCryptoPool(TRI_CRYPTO2_POOL_ADDRESS);
+  ITriCryptoPool public triCryptoPool = ITriCryptoPool(TRI_CRYPTO_2_POOL_ADDRESS);
 
   // This test get's the price of 1 LP token in a way that is fully manipulatable by a sandwich attack
   // Do not use it in production
