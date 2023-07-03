@@ -52,7 +52,7 @@ contract CbEthEthOracle is OracleRelay, CurveRegistryUtils {
   /// @dev This function comes from the implementation in vyper
   /// @return _maxPrice The current value
   function _get() internal view returns (uint256 _maxPrice) {
-    uint256 _vp = _getVirtualPrice();
+    uint256 _vp = virtualPrice;
 
     // Get the prices from chainlink and add 10 decimals
     uint256 _cbEthPrice = CB_ETH_ORACLE_RELAY.peekValue();
@@ -74,11 +74,5 @@ contract CbEthEthOracle is OracleRelay, CurveRegistryUtils {
     CB_ETH_POOL.claim_admin_fees();
 
     virtualPrice = _virtualPrice;
-  }
-
-  /// @notice returns the virtual price for the pool
-  /// @return _value the virtual price
-  function _getVirtualPrice() internal view returns (uint256 _value) {
-    _value = virtualPrice;
   }
 }

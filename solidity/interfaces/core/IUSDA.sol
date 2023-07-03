@@ -121,6 +121,9 @@ interface IUSDA is IERC20Metadata, IRoles {
   /// @return _reserveAmount The reserve amount
   function reserveAmount() external view returns (uint256 _reserveAmount);
 
+  /// @notice The address of the pauser
+  function pauser() external view returns (address _pauser);
+
   /*///////////////////////////////////////////////////////////////
                               LOGIC
     //////////////////////////////////////////////////////////////*/
@@ -174,9 +177,6 @@ interface IUSDA is IERC20Metadata, IRoles {
   /// @notice Sets the pauser for both USDA and VaultController
   /// @dev The pauser is a separate role from the owner
   function setPauser(address _pauser) external;
-
-  /// @notice The address of the pauser
-  function pauser() external view returns (address _pauser);
 
   /// @notice Pause contract
   /// @dev Can only be called by the pauser

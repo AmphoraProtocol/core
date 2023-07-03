@@ -82,13 +82,6 @@ contract Vault is IVault, Context {
     _id = vaultInfo.id;
   }
 
-  /// @notice Returns true if the token is staked on convex
-  /// @param _token The address of the erc20 token
-  /// @return _isStaked True if the token is staked on convex
-  function isStaked(address _token) external view override returns (bool _isStaked) {
-    _isStaked = isTokenStaked[_token];
-  }
-
   /// @notice Used to deposit a token to the vault
   /// @dev    Deposits and stakes on convex if token is of type CurveLPStakedOnConvex
   /// @param _token The address of the token to deposit
@@ -162,8 +155,7 @@ contract Vault is IVault, Context {
   /// @return _canStake Returns true if the token can be staked manually
   function canStake(address _token) external view override returns (bool _canStake) {
     uint256 _poolId = CONTROLLER.tokenPoolId(_token);
-    if (_poolId == 0 || balances[_token] == 0 || isTokenStaked[_token]) return false;
-    _canStake = true;
+    if (_poolId != 0 && balances[_token] != 0 && !isTokenStaked[_token]) _canStake = true;
   }
 
   /// @notice Claims available rewards from multiple tokens
@@ -228,8 +220,8 @@ contract Vault is IVault, Context {
         }
       }
 
-      if (_totalCvxReward != 0) CVX.transfer(_msgSender(), _totalCvxReward);
-      if (_totalCrvReward != 0) CRV.transfer(_msgSender(), _totalCrvReward);
+      if (_totalCvxReward > 0) CVX.transfer(_msgSender(), _totalCvxReward);
+      if (_totalCrvReward > 0) CRV.transfer(_msgSender(), _totalCrvReward);
 
       emit ClaimedReward(address(CRV), _totalCrvReward);
       emit ClaimedReward(address(CVX), _totalCvxReward);
@@ -281,7 +273,7 @@ contract Vault is IVault, Context {
     }
 
     _rewards[0].amount = _crvReward - _takenCRV;
-    if (_cvxReward != 0) _rewards[1].amount = _cvxReward - _takenCVX;
+    if (_cvxReward > 0) _rewards[1].amount = _cvxReward - _takenCVX;
   }
 
   /// @notice Function used by the VaultController to transfer tokens

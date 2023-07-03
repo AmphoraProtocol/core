@@ -3,6 +3,7 @@ pragma solidity >=0.8.4 <0.9.0;
 
 import {IVault} from '@interfaces/core/IVault.sol';
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
+import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 /**
  * @notice Deployer of Vaults
@@ -17,6 +18,18 @@ interface IVaultDeployer {
    * @notice Thrown when someone other than the vault controller tries to call the method
    */
   error VaultDeployer_OnlyVaultController();
+
+  /*///////////////////////////////////////////////////////////////
+                              VARIABLES
+  //////////////////////////////////////////////////////////////*/
+
+  /// @notice The address of the CVX token
+  /// @return _cvx The address of the CVX token
+  function CVX() external view returns (IERC20 _cvx);
+
+  /// @notice The address of the CRV token
+  /// @return _crv The address of the CRV token
+  function CRV() external view returns (IERC20 _crv);
 
   /*///////////////////////////////////////////////////////////////
                               LOGIC

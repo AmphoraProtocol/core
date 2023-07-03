@@ -36,7 +36,7 @@ contract EthSafeStableCurveOracle is StableCurveLpOracle {
   function _updateVirtualPrice() internal {
     uint256 _virtualPrice = CRV_POOL.get_virtual_price();
 
-    // We remove 0 liquidity as to get the curve pool locked to avoid any manipulation
+    // We remove 0 liquidity to check the curve pool lock and avoid any manipulation
     uint256[2] memory _amounts;
     CRV_POOL.remove_liquidity(0, _amounts);
 

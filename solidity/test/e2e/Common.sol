@@ -70,8 +70,9 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateO
   AnchoredViewRelay public anchoredViewUni;
   AnchoredViewRelay public anchoredViewAave;
   AnchoredViewRelay public anchoredViewDydx;
-  AnchoredViewRelay public anchoredViewBtc;
   AnchoredViewRelay public anchoredViewStEth;
+  AnchoredViewRelay public anchoredViewSnx;
+  IOracleRelay public anchoredViewBtc;
   IOracleRelay public anchoredViewDai;
   IOracleRelay public anchoredViewUsdc;
   IOracleRelay public anchoredViewUsdt;
@@ -200,15 +201,13 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateO
     // Deploy uniswapRelayEthUsdc oracle relay
     uniswapRelayEthUsdc = UniswapV3OracleRelay(_createEthUsdcTokenOracleRelay());
     // Deploy uniswapRelayUniUsdc oracle relay
-    uniswapRelayUniUsdc = new UniswapV3OracleRelay(14400, USDC_UNI_POOL_ADDRESS, false, 1_000_000_000_000, 1);
+    uniswapRelayUniUsdc = new UniswapV3OracleRelay(14400, USDC_UNI_POOL_ADDRESS, false);
     // Deploys uniswapRelayDydxWeth oracle relay
-    uniswapRelayDydxWeth =
-      new UniswapV3TokenOracleRelay(uniswapRelayEthUsdc, 14400, DYDX_WETH_POOL_ADDRESS, false, 1, 1);
+    uniswapRelayDydxWeth = new UniswapV3TokenOracleRelay(uniswapRelayEthUsdc, 14400, DYDX_WETH_POOL_ADDRESS, false);
     // Deploy uniswapRelayAaveWeth oracle relay
-    uniswapRelayAaveWeth =
-      new UniswapV3TokenOracleRelay(uniswapRelayEthUsdc, 14400, AAVE_WETH_POOL_ADDRESS, false, 1, 1);
+    uniswapRelayAaveWeth = new UniswapV3TokenOracleRelay(uniswapRelayEthUsdc, 14400, AAVE_WETH_POOL_ADDRESS, false);
     // Deploy uniswapRelayUniUsdc oracle relay
-    uniswapRelayWbtcUsdc = new UniswapV3OracleRelay(7200, USDC_WBTC_POOL_ADDRESS, false, 1_000_000_000_000, 1);
+    uniswapRelayWbtcUsdc = new UniswapV3OracleRelay(7200, USDC_WBTC_POOL_ADDRESS, false);
     // Deploy chainLinkUni oracle relay
     chainLinkUni = new ChainlinkOracleRelay(UNI_ADDRESS, CHAINLINK_UNI_FEED_ADDRESS, 10_000_000_000, 1, staleTime);
     // Deploy chainlinkEth oracle relay
@@ -228,10 +227,9 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateO
     anchoredViewAave = new AnchoredViewRelay(address(uniswapRelayAaveWeth), address(chainlinkAave), 25, 100, 10, 100);
     // Deploy anchoredViewDydx relay
     anchoredViewDydx = new AnchoredViewRelay(address(uniswapRelayDydxWeth), address(chainlinkDydx), 20, 100, 10, 100);
-    // Deploy anchoredViewEth relay
-    anchoredViewBtc = new AnchoredViewRelay(address(uniswapRelayWbtcUsdc), address(chainlinkBtc), 20, 100, 10, 100);
     // Deploy anchoredViewsTEth relay
     anchoredViewStEth = AnchoredViewRelay(_createStEthOracle(uniswapRelayEthUsdc));
+    anchoredViewSnx = AnchoredViewRelay(_createSnxOracle(uniswapRelayEthUsdc));
 
     /// Deploy usdc oracle relay
     anchoredViewUsdc = IOracleRelay(_createUsdcOracle());
@@ -240,14 +238,14 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateO
     /// Deploy usdt oracle relay
     anchoredViewUsdt = IOracleRelay(_createUsdtOracle());
     // Deploy wbtc oracle relay
-    IOracleRelay _anchoredViewWbtc = IOracleRelay(_createWbtcOracle(uniswapRelayEthUsdc));
+    anchoredViewBtc = IOracleRelay(_createWbtcOracle(uniswapRelayEthUsdc));
 
     // Deploy the ThreeCrvOracle
     threeCrvOracle = StableCurveLpOracle(
       _create3CrvOracle(THREE_CRV_POOL_ADDRESS, anchoredViewDai, anchoredViewUsdt, anchoredViewUsdc)
     );
     // Deploy the triCryptoOracle
-    triCryptoOracle = TriCrypto2Oracle(_createTriCrypto2Oracle(anchoredViewEth, anchoredViewUsdt, _anchoredViewWbtc));
+    triCryptoOracle = TriCrypto2Oracle(_createTriCrypto2Oracle(anchoredViewEth, anchoredViewUsdt, anchoredViewBtc));
 
     // Register WETH as acceptable erc20 to vault controller
     vaultController.registerErc20(

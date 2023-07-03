@@ -119,6 +119,13 @@ interface IVault {
   function balances(address _token) external view returns (uint256 _balance);
 
   /**
+   * @notice Returns if the token in staked
+   * @param _token The address of the token
+   * @return _isStaked True if the token is staked
+   */
+  function isTokenStaked(address _token) external view returns (bool _isStaked);
+
+  /**
    * @notice Returns the current vault base liability
    * @return _liability The current vault base liability of the vault
    */
@@ -153,8 +160,6 @@ interface IVault {
   /*///////////////////////////////////////////////////////////////
                               LOGIC
     //////////////////////////////////////////////////////////////*/
-
-  function isStaked(address _token) external view returns (bool _isStaked);
 
   /**
    * @notice Used to deposit a token to the vault

@@ -52,7 +52,6 @@ contract TriCrypto2Oracle is OracleRelay, CurveRegistryUtils {
     uint256 _vp = TRI_CRYPTO.get_virtual_price();
 
     // Get the prices from chainlink and add 10 decimals
-    // TODO: need to be added as anchor oracler, stale delay is set in ChainlinkOracleRelay
     uint256 _wbtcPrice = (WBTC_ORACLE_RELAY.peekValue());
     uint256 _ethPrice = (ETH_ORACLE_RELAY.peekValue());
     uint256 _usdtPrice = (USDT_ORACLE_RELAY.peekValue());

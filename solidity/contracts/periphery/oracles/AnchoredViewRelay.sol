@@ -8,14 +8,8 @@ import {IChainlinkOracleRelay} from '@interfaces/periphery/IChainlinkOracleRelay
 /// ensures that the main relay's price is within some amount of the anchor relay price
 /// if not, the call reverts, effectively disabling the oracle & any actions which require it
 contract AnchoredViewRelay is OracleRelay {
-  /// @notice The address of the anchor relay
-  address public anchorAddress;
-
   /// @notice The interface of the anchor relay
   IOracleRelay public anchorRelay;
-
-  /// @notice The address of the main relay
-  address public mainAddress;
 
   /// @notice The interface of the main relay
   IOracleRelay public mainRelay;
@@ -47,17 +41,17 @@ contract AnchoredViewRelay is OracleRelay {
     uint256 _staleWidthNumerator,
     uint256 _staleWidthDenominator
   ) OracleRelay(IOracleRelay(_mainAddress).oracleType()) {
-    anchorAddress = _anchorAddress;
     anchorRelay = IOracleRelay(_anchorAddress);
 
-    mainAddress = _mainAddress;
     mainRelay = IOracleRelay(_mainAddress);
 
+    address _underlying = anchorRelay.underlying();
+
     /// Ensure the two relays have the same underlying
-    if (anchorRelay.underlying() != mainRelay.underlying()) revert OracleRelay_DifferentUnderlyings();
+    if (_underlying != mainRelay.underlying()) revert OracleRelay_DifferentUnderlyings();
 
     /// Set the underlying
-    _setUnderlying(anchorRelay.underlying());
+    _setUnderlying(_underlying);
 
     widthNumerator = _widthNumerator;
     widthDenominator = _widthDenominator;
@@ -86,7 +80,7 @@ contract AnchoredViewRelay is OracleRelay {
     require(_anchorPrice > 0, 'invalid anchor value');
 
     uint256 _buffer;
-    if (IChainlinkOracleRelay(mainAddress).isStale()) {
+    if (IChainlinkOracleRelay(address(mainRelay)).isStale()) {
       /// If the price is stale the range percentage is smaller
       _buffer = (staleWidthNumerator * _anchorPrice) / staleWidthDenominator;
     } else {

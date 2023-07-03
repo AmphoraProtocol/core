@@ -531,7 +531,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
     uint256 _baseLiability = _vault.modifyLiability(true, _baseAmount);
     // increase the total base liability by the _baseAmount
     // the same amount we added to the vault's liability
-    totalBaseLiability = totalBaseLiability + _safeu192(_baseAmount);
+    totalBaseLiability += _baseAmount;
     // now take the vault's total base liability and multiply it by the interest factor
     uint256 _usdaLiability = _truncate(uint256(interest.factor) * _baseLiability);
     // now get the ltv of the vault, aka their borrowing power, in usda
@@ -590,7 +590,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
       _baseAmount = _safeu192((_amountInUSDA * EXP_SCALE) / interest.factor);
     }
     // decrease the total base liability by the calculated base amount
-    totalBaseLiability = totalBaseLiability - _baseAmount;
+    totalBaseLiability -= _baseAmount;
     // ensure that _baseAmount is lower than the vault's base liability.
     // this may not be needed, since modifyLiability *should* revert if is not true
     if (_baseAmount > _vault.baseLiability()) revert VaultController_RepayTooMuch();
@@ -650,7 +650,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
     // see _liquidationMath for more detailed explaination of the math
     (uint256 _tokenAmount, uint256 _badFillPrice) = _liquidationMath(_id, _assetAddress, _tokensToLiquidate);
     // set _tokensToLiquidate to this calculated amount if the function does not fail
-    if (_tokenAmount != 0) _tokensToLiquidate = _tokenAmount;
+    if (_tokenAmount > 0) _tokensToLiquidate = _tokenAmount;
     // the USDA to repurchase is equal to the bad fill price multiplied by the amount of tokens to liquidate
     uint256 _usdaToRepurchase = _truncate(_badFillPrice * _tokensToLiquidate);
     // get the vault that the liquidator wishes to liquidate
@@ -667,7 +667,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
 
     // withdraw from convex
     CollateralInfo memory _assetInfo = tokenAddressCollateralInfo[_assetAddress];
-    if (_vault.isStaked(_assetAddress)) {
+    if (_vault.isTokenStaked(_assetAddress)) {
       _vault.controllerWithdrawAndUnwrap(_assetInfo.crvRewardsContract, _tokensToLiquidate);
     }
 
@@ -783,8 +783,10 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
     //Cannot liquidate more than is necessary to make vault over-collateralized
     if (_tokensToLiquidate > _maxTokensToLiquidate) _tokensToLiquidate = _maxTokensToLiquidate;
 
+    uint256 _balance = _vault.balances(_assetAddress);
+
     //Cannot liquidate more collateral than there is in the vault
-    if (_tokensToLiquidate > _vault.balances(_assetAddress)) _tokensToLiquidate = _vault.balances(_assetAddress);
+    if (_tokensToLiquidate > _balance) _tokensToLiquidate = _balance;
 
     _actualTokensToLiquidate = _tokensToLiquidate;
   }
@@ -855,13 +857,13 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
   //solhint-disable-next-line code-complexity
   function _getVaultBorrowingPower(IVault _vault) private returns (uint192 _borrowPower) {
     // loop over each registed token, adding the indivuduals ltv to the total ltv of the vault
-    for (uint192 _i = 1; _i <= enabledTokens.length; ++_i) {
-      CollateralInfo memory _collateral = tokenAddressCollateralInfo[enabledTokens[_i - 1]];
+    for (uint192 _i; _i < enabledTokens.length; ++_i) {
+      CollateralInfo memory _collateral = tokenAddressCollateralInfo[enabledTokens[_i]];
       // if the ltv is 0, continue
       if (_collateral.ltv == 0) continue;
       // get the address of the token through the array of enabled tokens
       // note that index 0 of enabledTokens corresponds to a vaultId of 1, so we must subtract 1 from i to get the correct index
-      address _tokenAddress = enabledTokens[_i - 1];
+      address _tokenAddress = enabledTokens[_i];
       // the balance is the vault's token balance of the current collateral token in the loop
       uint256 _balance = _vault.balances(_tokenAddress);
       if (_balance == 0) continue;
@@ -881,13 +883,13 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
   //solhint-disable-next-line code-complexity
   function _peekVaultBorrowingPower(IVault _vault) private view returns (uint192 _borrowPower) {
     // loop over each registed token, adding the indivuduals ltv to the total ltv of the vault
-    for (uint192 _i = 1; _i <= enabledTokens.length; ++_i) {
-      CollateralInfo memory _collateral = tokenAddressCollateralInfo[enabledTokens[_i - 1]];
+    for (uint192 _i; _i < enabledTokens.length; ++_i) {
+      CollateralInfo memory _collateral = tokenAddressCollateralInfo[enabledTokens[_i]];
       // if the ltv is 0, continue
       if (_collateral.ltv == 0) continue;
       // get the address of the token through the array of enabled tokens
       // note that index 0 of enabledTokens corresponds to a vaultId of 1, so we must subtract 1 from i to get the correct index
-      address _tokenAddress = enabledTokens[_i - 1];
+      address _tokenAddress = enabledTokens[_i];
       // the balance is the vault's token balance of the current collateral token in the loop
       uint256 _balance = _vault.balances(_tokenAddress);
       if (_balance == 0) continue;

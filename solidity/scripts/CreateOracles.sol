@@ -28,8 +28,7 @@ abstract contract CreateOracles is TestConstants {
 
   function _createEthUsdcTokenOracleRelay() internal returns (address _ethUsdcTokenOracleRelay) {
     // Deploy uniswapRelayEthUsdc oracle relay
-    UniswapV3OracleRelay _uniswapRelayEthUsdc =
-      new UniswapV3OracleRelay(TWO_HOURS, USDC_WETH_POOL_ADDRESS, true, SIX_DECIMALS_MUL_DIV, 1);
+    UniswapV3OracleRelay _uniswapRelayEthUsdc = new UniswapV3OracleRelay(TWO_HOURS, USDC_WETH_POOL_ADDRESS, true);
     console.log('UNISWAP_ETH_USDC_ORACLE: ', address(_uniswapRelayEthUsdc));
     _ethUsdcTokenOracleRelay = address(_uniswapRelayEthUsdc);
   }
@@ -55,7 +54,7 @@ abstract contract CreateOracles is TestConstants {
 
   function _createUsdtOracle() internal returns (address _usdtOracle) {
     // Deploy uniswapRelayUsdtUsdc oracle relay
-    UniswapV3OracleRelay _uniswapRelayUsdtUsdc = new UniswapV3OracleRelay(TWO_HOURS, USDT_USDC_POOL_ADDRESS, true, 1, 1);
+    UniswapV3OracleRelay _uniswapRelayUsdtUsdc = new UniswapV3OracleRelay(TWO_HOURS, USDT_USDC_POOL_ADDRESS, true);
     console.log('UNISWAP_USDT_USDC_ORACLE: ', address(_uniswapRelayUsdtUsdc));
     // Deploy chainlinkUsdt oracle relay
     ChainlinkOracleRelay _chainlinkUsdt =
@@ -71,7 +70,7 @@ abstract contract CreateOracles is TestConstants {
   function _createWbtcOracle(UniswapV3OracleRelay _uniswapRelayEthUsdc) internal returns (address _wbtcOracke) {
     // Deploy uniswapRelayWbtcUsdc oracle relay
     UniswapV3TokenOracleRelay _uniswapRelayWbtcUsdc =
-      new UniswapV3TokenOracleRelay(_uniswapRelayEthUsdc, TWO_HOURS, WBTC_ETH_POOL_ADDRESS, false, 1, 1e10);
+      new UniswapV3TokenOracleRelay(_uniswapRelayEthUsdc, TWO_HOURS, WBTC_ETH_POOL_ADDRESS, false);
     console.log('UNISWAP_WBTC_USDC_ORACLE: ', address(_uniswapRelayWbtcUsdc));
 
     // Deploy chainlinkWbtcBtc oracle relay
@@ -93,8 +92,7 @@ abstract contract CreateOracles is TestConstants {
 
   function _createUsdcOracle() internal returns (address _usdcOracle) {
     // Deploy uniswapRelayUsdcUsdt oracle relay
-    UniswapV3OracleRelay _uniswapRelayUsdcUsdt =
-      new UniswapV3OracleRelay(TWO_HOURS, USDC_USDT_POOL_ADDRESS, false, 1, 1);
+    UniswapV3OracleRelay _uniswapRelayUsdcUsdt = new UniswapV3OracleRelay(TWO_HOURS, USDC_USDT_POOL_ADDRESS, false);
     console.log('UNISWAP_USDC_USDT_ORACLE: ', address(_uniswapRelayUsdcUsdt));
     // Deploy chainlinkUsdc oracle relay
     ChainlinkOracleRelay _chainlinkUsdc =
@@ -109,8 +107,7 @@ abstract contract CreateOracles is TestConstants {
 
   function _createDaiOracle() internal returns (address _daiOracle) {
     // Deploy uniswapRelayDaiUsdc oracle relay
-    UniswapV3OracleRelay _uniswapRelayDaiUsdc =
-      new UniswapV3OracleRelay(TWO_HOURS, DAI_USDC_POOL_ADDRESS, false, SIX_DECIMALS_MUL_DIV, 1);
+    UniswapV3OracleRelay _uniswapRelayDaiUsdc = new UniswapV3OracleRelay(TWO_HOURS, DAI_USDC_POOL_ADDRESS, false);
     console.log('UNISWAP_DAI_USDC_ORACLE: ', address(_uniswapRelayDaiUsdc));
     // Deploy _chainlinkDai oracle relay
     ChainlinkOracleRelay _chainlinkDai =
@@ -124,13 +121,12 @@ abstract contract CreateOracles is TestConstants {
   }
 
   function _createSusdOracle() internal returns (address _sUSDOracle) {
-    UniswapV3OracleRelay _uniswapRelayFraxUsdc =
-      new UniswapV3OracleRelay(TWO_HOURS, FRAX_USDC_POOL_ADDRESS, false, SIX_DECIMALS_MUL_DIV, 1);
+    UniswapV3OracleRelay _uniswapRelayFraxUsdc = new UniswapV3OracleRelay(TWO_HOURS, FRAX_USDC_POOL_ADDRESS, false);
     console.log('UNISWAP_FRAX_USDC_ORACLE: ', address(_uniswapRelayFraxUsdc));
 
     // Deploy uniswapRelaySnxWEth oracle relay
     UniswapV3TokenOracleRelay _uniswapRelaySusdUsdc =
-      new UniswapV3TokenOracleRelay(_uniswapRelayFraxUsdc, TWO_HOURS, SUSD_FRAX_POOL_ADDRESS, false, 1, 1);
+      new UniswapV3TokenOracleRelay(_uniswapRelayFraxUsdc, TWO_HOURS, SUSD_FRAX_POOL_ADDRESS, false);
     console.log('UNISWAP_SNX_ETH_ORACLE: ', address(_uniswapRelaySusdUsdc));
 
     // Deploy chainlinkSusd oracle relay
@@ -153,7 +149,7 @@ abstract contract CreateOracles is TestConstants {
 
     // Deploy uniswapRelaySnxWEth oracle relay
     UniswapV3TokenOracleRelay _uniswapRelaySnxWEth =
-      new UniswapV3TokenOracleRelay(_uniswapRelayEthUsdc, TWO_HOURS, SNX_ETH_POOL_ADDRESS, false, 1, 1);
+      new UniswapV3TokenOracleRelay(_uniswapRelayEthUsdc, TWO_HOURS, SNX_ETH_POOL_ADDRESS, false);
 
     // Deploy anchoredViewSnx relay
     AnchoredViewRelay _anchoredViewSnx =
@@ -177,7 +173,7 @@ abstract contract CreateOracles is TestConstants {
 
     // Deploy uniswapRelayCbethUsdc oracle relay
     UniswapV3TokenOracleRelay _uniswapRelayCbethUsdc =
-      new UniswapV3TokenOracleRelay(_uniswapRelayEthUsdc, TWO_HOURS, CBETH_ETH_POOL_ADDRESS, false, 1, 1);
+      new UniswapV3TokenOracleRelay(_uniswapRelayEthUsdc, TWO_HOURS, CBETH_ETH_POOL_ADDRESS, false);
 
     // Deploy anchoredViewCbeth relay
     AnchoredViewRelay _anchoredViewCbeth =
@@ -220,7 +216,7 @@ abstract contract CreateOracles is TestConstants {
   function _createStEthOracle(UniswapV3OracleRelay _uniswapRelayEthUsdc) internal returns (address _stEthOracle) {
     // Deploy uniswapRelayWstEthWEth oracle relay
     UniswapV3TokenOracleRelay _uniswapRelayWstEthWEth =
-      new UniswapV3TokenOracleRelay(_uniswapRelayEthUsdc, TWO_HOURS, WSTETH_WETH_POOL_ADDRESS, false, 1, 1);
+      new UniswapV3TokenOracleRelay(_uniswapRelayEthUsdc, TWO_HOURS, WSTETH_WETH_POOL_ADDRESS, false);
     console.log('UNISWAP_WSTETH_WETH_ORACLE: ', address(_uniswapRelayWstEthWEth));
     // Deploy _chainlinkStETH oracle relay
     ChainlinkOracleRelay _chainlinkStETH =
@@ -235,8 +231,7 @@ abstract contract CreateOracles is TestConstants {
 
   function _createFraxOracle() internal returns (address _fraxOracle) {
     // Deploy uniswapRelayFraxUsdc oracle relay
-    UniswapV3OracleRelay _uniswapRelayFraxUsdc =
-      new UniswapV3OracleRelay(TWO_HOURS, FRAX_USDC_POOL_ADDRESS, false, SIX_DECIMALS_MUL_DIV, 1);
+    UniswapV3OracleRelay _uniswapRelayFraxUsdc = new UniswapV3OracleRelay(TWO_HOURS, FRAX_USDC_POOL_ADDRESS, false);
     console.log('UNISWAP_FRAX_USDC_ORACLE: ', address(_uniswapRelayFraxUsdc));
     // Deploy _chainlinkFrax oracle relay
     ChainlinkOracleRelay _chainlinkFrax =

@@ -182,7 +182,7 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
     if (_amphBalance >= _amphByCrv) {
       // contract has the full amount
       _cvxAmountToSend = _cvxRewardsFeeToExchange;
-      _crvAmountToSend = _amphByCrv == 0 ? 0 : _crvRewardsFeeToExchange;
+      _crvAmountToSend = _crvRewardsFeeToExchange;
       _claimableAmph = _amphByCrv;
     } else {
       // contract doesnt have the full amount
@@ -207,7 +207,7 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
 
     uint256 _distributedAmph = distributedAmph;
 
-    while (_tempAmountReceived != 0) {
+    while (_tempAmountReceived > 0) {
       uint256 _amphForThisTurn;
 
       // all cliffs start when a certain amount of CRV is accumulated and finish when a certain amount is reached, this is the start of the current cliff

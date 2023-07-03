@@ -130,9 +130,8 @@ contract USDA is Pausable, UFragments, IUSDA, ExponentialNoError, Roles {
   /// @param _susdWithdrawn The amount os sUSD withdrawn
   function withdrawAll() external override returns (uint256 _susdWithdrawn) {
     uint256 _balance = this.balanceOf(_msgSender());
-    uint256 _amount = _balance > reserveAmount ? reserveAmount : _balance;
-    _withdraw(_amount, _msgSender());
-    _susdWithdrawn = _amount;
+    _susdWithdrawn = _balance > reserveAmount ? reserveAmount : _balance;
+    _withdraw(_susdWithdrawn, _msgSender());
   }
 
   /// @notice Withdraw sUSD by burning USDA
@@ -141,9 +140,8 @@ contract USDA is Pausable, UFragments, IUSDA, ExponentialNoError, Roles {
   /// @param _susdWithdrawn The amount os sUSD withdrawn
   function withdrawAllTo(address _target) external override returns (uint256 _susdWithdrawn) {
     uint256 _balance = this.balanceOf(_msgSender());
-    uint256 _amount = _balance > reserveAmount ? reserveAmount : _balance;
-    _withdraw(_amount, _target);
-    _susdWithdrawn = _amount;
+    _susdWithdrawn = _balance > reserveAmount ? reserveAmount : _balance;
+    _withdraw(_susdWithdrawn, _target);
   }
 
   /// @notice business logic to withdraw sUSD and burn USDA from the caller

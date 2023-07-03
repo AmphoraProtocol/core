@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.5.0 <0.9.0;
 
-import {IOracleRelay, OracleRelay} from '@contracts/periphery/oracles/OracleRelay.sol';
-import {IUniswapV3PoolDerivedState} from '@uniswap/v3-core/contracts/interfaces/pool/IUniswapV3PoolDerivedState.sol';
-import {TickMath} from '@uniswap/v3-core/contracts/libraries/TickMath.sol';
+import {OracleRelay} from '@contracts/periphery/oracles/OracleRelay.sol';
 import {IUniswapV3Pool} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
+import {OracleLibrary} from '@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol';
+import {IERC20Metadata} from '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 
 /// @notice Oracle that wraps a univ3 pool
 /// @dev The oracle returns (univ3) * mul / div
@@ -17,44 +17,47 @@ contract UniswapV3OracleRelay is OracleRelay {
   bool public immutable QUOTE_TOKEN_IS_TOKEN0;
 
   /// @notice The pool
-  IUniswapV3PoolDerivedState public immutable POOL;
+  IUniswapV3Pool public immutable POOL;
 
   /// @notice The lookback for the oracle
   uint32 public immutable LOOKBACK;
 
-  /// @notice The multiply number used to scale the price
-  uint256 public immutable MUL;
+  /// @notice The base token decimals
+  uint8 public immutable BASE_TOKEN_DECIMALS;
 
-  /// @notice The divide number used to scale the price
-  uint256 public immutable DIV;
+  /// @notice The quote token decimals
+  uint8 public immutable QUOTE_TOKEN_DECIMALS;
+
+  /// @notice The base token
+  address public immutable BASE_TOKEN;
+
+  /// @notice The quote token
+  address public immutable QUOTE_TOKEN;
 
   /// @notice All values set at construction time
   /// @param _lookback How many seconds to twap for
   /// @param  _poolAddress The address of chainlink feed
   /// @param _quoteTokenIsToken0 The marker for which token to use as quote/base in calculation
-  /// @param _mul The numerator of scalar
-  /// @param _div The denominator of scalar
-  constructor(
-    uint32 _lookback,
-    address _poolAddress,
-    bool _quoteTokenIsToken0,
-    uint256 _mul,
-    uint256 _div
-  ) OracleRelay(OracleType.Uniswap) {
+  constructor(uint32 _lookback, address _poolAddress, bool _quoteTokenIsToken0) OracleRelay(OracleType.Uniswap) {
     LOOKBACK = _lookback;
-    MUL = _mul;
-    DIV = _div;
     QUOTE_TOKEN_IS_TOKEN0 = _quoteTokenIsToken0;
-    POOL = IUniswapV3PoolDerivedState(_poolAddress);
+    POOL = IUniswapV3Pool(_poolAddress);
 
-    _setUnderlying(_quoteTokenIsToken0 ? IUniswapV3Pool(_poolAddress).token1() : IUniswapV3Pool(_poolAddress).token0());
+    address _token0 = POOL.token0();
+    address _token1 = POOL.token1();
+
+    (BASE_TOKEN, QUOTE_TOKEN) = QUOTE_TOKEN_IS_TOKEN0 ? (_token1, _token0) : (_token0, _token1);
+    BASE_TOKEN_DECIMALS = IERC20Metadata(BASE_TOKEN).decimals();
+    QUOTE_TOKEN_DECIMALS = IERC20Metadata(QUOTE_TOKEN).decimals();
+
+    _setUnderlying(BASE_TOKEN);
   }
 
   /// @notice returns the price with 18 decimals without any state changes
   /// @dev some oracles require a state change to get the exact current price.
   ///      This is updated when calling other state changing functions that query the price
   /// @return _price the current price
-  function peekValue() public view override returns (uint256 _price) {
+  function peekValue() public view virtual override returns (uint256 _price) {
     _price = _get();
   }
 
@@ -68,37 +71,17 @@ contract UniswapV3OracleRelay is OracleRelay {
   /// @notice Returns last second value of the oracle
   /// @param _seconds How many seconds to twap for
   /// @return _price The last second value of the oracle
-  function _getLastSeconds(uint32 _seconds) private view returns (uint256 _price) {
-    int56[] memory _tickCumulatives;
-    uint32[] memory _input = new uint32[](2);
-    _input[0] = _seconds;
-    _input[1] = 0;
+  function _getLastSeconds(uint32 _seconds) internal view returns (uint256 _price) {
+    uint256 _uniswapPrice = _getPriceFromUniswap(_seconds, uint128(10 ** BASE_TOKEN_DECIMALS));
+    _price = _toBase18(_uniswapPrice, QUOTE_TOKEN_DECIMALS);
+  }
 
-    (_tickCumulatives,) = POOL.observe(_input);
+  function _getPriceFromUniswap(uint32 _seconds, uint128 _amount) internal view virtual returns (uint256 _price) {
+    (int24 _arithmeticMeanTick,) = OracleLibrary.consult(address(POOL), _seconds);
+    _price = OracleLibrary.getQuoteAtTick(_arithmeticMeanTick, _amount, BASE_TOKEN, QUOTE_TOKEN);
+  }
 
-    uint32 _tickTimeDifference = _seconds;
-    int56 _tickCumulativeDifference = _tickCumulatives[0] - _tickCumulatives[1];
-    bool _tickNegative = _tickCumulativeDifference < 0;
-    uint56 _tickAbs;
-    if (_tickNegative) _tickAbs = uint56(-_tickCumulativeDifference);
-    else _tickAbs = uint56(_tickCumulativeDifference);
-
-    uint56 _bigTick = _tickAbs / _tickTimeDifference;
-    if (_bigTick >= 887_272) revert UniswapV3OracleRelay_TickTimeDiffTooLarge();
-    int24 _tick;
-    if (_tickNegative) _tick = -int24(int56(_bigTick));
-    else _tick = int24(int56(_bigTick));
-
-    // we use 1e18 bc this is what we're going to use in exp
-    // basically, you need the 'price' amount of the quote in order to buy 1 base
-    // or, 1 base is worth this much quote;
-
-    _price = (1e9 * ((uint256(TickMath.getSqrtRatioAtTick(_tick))))) / (2 ** (2 * 48));
-
-    _price = _price * _price;
-
-    if (!QUOTE_TOKEN_IS_TOKEN0) _price = (1e18 * 1e18) / _price;
-
-    _price = (_price * MUL) / DIV;
+  function _toBase18(uint256 _amount, uint8 _decimals) internal pure returns (uint256 _e18Amount) {
+    _e18Amount = (_decimals > 18) ? _amount / (10 ** (_decimals - 18)) : _amount * (10 ** (18 - _decimals));
   }
 }
