@@ -1,24 +1,18 @@
-name: CI
-
 on: [push]
+
+name: test
 
 concurrency:
   group: ${{github.workflow}}-${{github.ref}}
   cancel-in-progress: true
 
 jobs:
-  lint:
-    name: Run Linters
+  check:
+    name: Foundry project
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [16.x]
-
     steps:
       - uses: actions/checkout@v3
-
-      - name: Use Node.js
+      - name: Install node
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
@@ -29,79 +23,24 @@ jobs:
         with:
           version: nightly
 
-      - run: yarn lint:check
+      - name: Install dependencies
+        run: yarn --frozen-lockfile --network-concurrency 1
 
-  forge:
-    name: Run Unit and E2E Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
+      - name: Compile
+        run: forge build
 
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
+      - name: Run unit tests
+        run: yarn test:unit
 
-      - name: Install forge dependencies
-        run: forge install
-
-      - name: Precompile using 0.8.14 and via-ir=false
-        run: yarn build
+      - name: "Run invariant tests"
+        run: yarn test:invariant
 
       - name: "Create env file"
         run: |
           touch .env
           echo MAINNET_RPC="${{ secrets.MAINNET_RPC }}" >> .env
-          echo RINKEBY_RPC="${{ secrets.RINKEBY_RPC }}" >> .env
+          echo FOUNDRY_FUZZ_RUNS=1 >> .env
           cat .env
 
-      - name: Run tests
-        shell: bash
-        run: yarn test
-
-  forge-optimized:
-    name: Run Optimized Unit Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-
-      - name: Install forge dependencies
-        run: forge install
-
-      - name: Precompile using 0.8.14 and via-ir=true
-        run: yarn build:optimized
-
-      - name: Run tests
-        run: yarn test:unit
-
-  # coverage:
-  #   name: Run Coverage Tests
-  #   runs-on: ubuntu-latest
-
-  #   strategy:
-  #     matrix:
-  #       node-version: [16.x]
-
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - name: Use Node.js
-  #       uses: actions/setup-node@v3
-  #       with:
-  #         node-version: ${{ matrix.node-version }}
-  #         cache: "yarn"
-  #     - run: yarn install
-  #     - run: yarn build
-  #     - run: yarn coverage
-  #     - uses: codecov/codecov-action@v3
-  #       with:
-  #         files: ./coverage/lcov.info
-  #         flags: production
+      - name: Run E2E tests
+        run: yarn test:e2e

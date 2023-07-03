@@ -1,110 +1,105 @@
-<img src="https://raw.githubusercontent.com/defi-wonderland/brand/v1.0.0/external/solidity-foundry-boilerplate-banner.png" alt="wonderland banner" align="center" />
-<br />
+# Amphora Protocol
 
-<div align="center"><strong>Start your next Solidity project with Foundry in seconds</strong></div>
-<div align="center">A highly scalable foundation focused on DX and best practices</div>
+## Deploy (Local)
 
-<br />
+To deploy the protocol locally and run the deployment script we need to have `foundry` installed.
 
-## Features
+1. Start anvil, which is our local Ethereum node.
 
-<dl>
-  <dt>Sample contracts</dt>
-  <dd>Basic Greeter contract with an external interface.</dd>
-
-  <dt>Foundry setup</dt>
-  <dd>Foundry configuration with multiple custom profiles and remappings.</dd>
-
-  <dt>Deployment scripts</dt>
-  <dd>Sample scripts to deploy contracts on both mainnet and testnet.</dd>
-
-  <dt>Sample e2e & unit tests</dt>
-  <dd>Example tests showcasing mocking, assertions and configuration for mainnet forking. As well it includes everything needed in order to check code coverage.</dd>
-
-  <dt>Linter</dt>
-  <dd>Simple and fast solidity linting thanks to forge fmt</a>.</dd>
-
-  <dt>Github workflows CI</dt>
-  <dd>Run all tests and see the coverage as you push your changes.</dd>
-</dl>
-
-## Setup
-
-1. Install Foundry by following the instructions from [their repository](https://github.com/foundry-rs/foundry#installation).
-2. Copy the `.env.example` file to `.env` and fill in the variables
-3. Install the dependencies by running : `yarn install && forge install`
-
-## Build
-
-The default way to build the code is suboptimal but fast, you can run it via:
-
-```bash
-yarn build
+```
+anvil -f $MAINNET_RPC --fork-block-number 16784744 --chain-id 1337
 ```
 
-In order to build a more optimized code ([via IR](https://docs.soliditylang.org/en/v0.8.15/ir-breaking-changes.html#solidity-ir-based-codegen-changes)), run:
+2. After you run anvil, 10 accounts are gonna be auto-generated with their private keys. We can take one of the private keys and use it as the deployer wallet. So, add one of private keys to `.env` with key `DEPLOYER_ANVIL_LOCAL_PRIVATE_KEY`.
 
-```bash
-yarn build:optimized
+3. The we are ready to run the `Deploy` script.
+
+```
+yarn deploy:local
 ```
 
-## Running tests
+## Run Deposit and Borrow scripts
 
-Unit tests should be isolated from any externalities, while E2E usually run in a fork of the blockchain. In this boilerplate you will find example of both.
+In order to run the `DepositAndBorrow` script we will need to have deployed the protocol locally. After that:
 
-In order to run both unit and E2E tests, run:
+1. Copy the deployed addresses of `VaultController` and `USDA` contracts and replace them to their respective variables, `VAULT_CONTROLLER_ADDRESS` and `USDA_ADDRESS`, inside the `/solidity/test/utils/TestConstants.sol` file, under the `SCRIPTS` sections.
 
-```bash
-yarn test
+2. In order to run the scripts we will need some `WETH` to deposit to the Vault once we mint it. We will use foundry's `cast` to get some tokens to our address:
+
+    - First we impersonate ourselves as a rich WETH address `cast rpc anvil_impersonateAccount 0xce0Adbb76A8Ce7224BeC6b586E18743aeB03250A`
+
+    - Then we transfer some WETH to our address
+
+        ```
+        cast send $WETH_ADDRESS \
+        --from 0xce0Adbb76A8Ce7224BeC6b586E18743aeB03250A \
+        "transfer(address,uint)(bool)" \
+        $DESTINATION_PUBLIC_ADDRESS \
+        $AMOUNT
+        ```
+
+3. Now we should be able to run the scripts. First to mint a new Vault and deposit an amount of WETH we call `yarn scripts:deposit`.
+
+4. Finally we will be able to run the borrow script. To borrow an amount of USDA tokens we call `yarn scripts:borrow`.
+
+## Code Coverage (unit tests)
+
+Running `forge coverage` on the project doesn't work straight away because of a "stack too deep" error in `GovernorCharlie` contract, for more information on the issue [check here](https://github.com/foundry-rs/foundry/issues/3357#issuecomment-1297192171). To bypass this problem for now we can do:
+
+1. Comment the whole `Governor.t.sol` file in `test/unit`
+
+2. In `foundry.toml` change the path of test to `test = './solidity/test/unit'`
+
+3. Run `forge coverage -C solidity/contracts/core`
+
+Following the steps above will create the summary of the code coverage. If you want to check the detailed report and see line-by-line the code covegare then we can do:
+
+1. After following steps 1 & 2 from before we can then create the `lcov` report which will be saved in `lcov.info` file
+
+    `forge coverage -C solidity/contracts/core --report lcov`
+
+2. Use `genhtml` to create an html interface that will display the uncovered lines using the lcov report, the html files will be available in the newly created folder `report`
+
+    `genhtml -o report lcov.info`
+
+## Build and run docs
+
+1. Generate and build docs, uses `forge doc`
+
+`yarn docs:build`
+
+2. Run docs locally
+
+`yarn docs:run`
+
+## Repository
+
 ```
-
-In order to just run unit tests, run:
-
-```bash
-yarn test:unit
+~~ Structure ~~
+├── solidity: All our contracts and interfaces are here
+│   ├─── contracts/: All the contracts
+│   │    ├─── core/: All core contracts
+│   │    │   ├─── VaultManager.sol : Can liquidate a vault, pay interest, changes protocol settings
+│   │    │   ├─── VaultDeployer.sol : Will mint and deploy new Vaults
+│   │    │   ├─── Vault.sol : User's vault, can deposit/withdraw collateral, claim protocol rewards, borrow sUSD
+│   │    │   ├─── CappedCollateralToken.sol : A wrapper for an underlying asset that can be listed as collateral on the protocol
+│   │    │   ├─── USDA.sol : ERC20, given by the protocol 1:1 ratio when a lender deposits sUSD
+│   │    │   └─── WUSDA.sol : Warped version of USDA to interact with other DeFi protocols
+│   │    ├─── periphery/: All periphery contracts
+│   │    │   ├─── CurveMaster.sol : The CurveMaster manages the various interest rate curves, used in VaultManagerLogic
+│   │    │   ├─── CurveLPOracle.sol : Responsible for getting the price of a curve LP token in USD
+│   │    │   └─── ETHOracle.sol : Responsible for getting the price of ETH in USD
+│   │    ├─── utils/: Util contracts that are being extended or used by other contracts
+│   │    │   ├─── GovernanceStructs.sol : Structs needed to create proposals or governance related transactions
+│   │    │   ├─── CappedToken.sol : Contract used to create a capped token
+│   │    │   ├─── UFragments.sol : ERC20, extended by USDA, adjusts balances of all USDA holders
+│   │    │   └─── ThreeLines0_100.sol : The interest rate curve math for USDA **(NOT SURE ABOUT THIS)**
+│   │    ├─── governance/: All contracts that are specific for the governance of the protocol
+│   │    │   ├─── Amphora.sol : Protocol governance token
+│   │    │   └─── ....
+│   ├─── interfaces/: The interfaces of all the contracts (SAME STRUCTURE WITH CONTRACTS)
+│   ├─── tests/: All our tests for the contracts
+│   │    ├─── e2e/: ...
+│   │    ├─── unit/: ...
+├── README.md
 ```
-
-In order to run unit tests and run way more fuzzing than usual (5x), run:
-
-```bash
-yarn test:unit:deep
-```
-
-In order to just run e2e tests, run:
-
-```bash
-yarn test:e2e
-```
-
-In order to check your current code coverage, run:
-
-```bash
-yarn coverage
-```
-
-> **⚠ WARNING: Forge coverage is having some issues...**  
-> As stated in this [github issue](https://github.com/foundry-rs/foundry/issues/2165), checking the code coverage with Forge when using abstract contract is not currently working.
-
-<br>
-
-## Deploy & verify
-
-### Setup
-
-Configure the `.env` variables.
-
-### Rinkeby
-
-```bash
-yarn deploy:rinkeby
-```
-
-### Mainnet
-
-```bash
-yarn deploy:mainnet
-```
-
-The deployments are stored in ./broadcast
-
-See the [Foundry Book for available options](https://book.getfoundry.sh/reference/forge/forge-create.html).
