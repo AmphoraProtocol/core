@@ -9,7 +9,7 @@ on:
 jobs:
   deploy-docs:
     name: Deploy docs
-    if: github.repository == 'defi-wonderland/amphora-private'
+    if: github.repository == 'AmphoraProtocol/core'
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.ref_name == 'main' && 'Prod' || 'Dev' }}
