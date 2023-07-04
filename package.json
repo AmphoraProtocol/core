@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "description": "",
-  "homepage": "https://github.com/defi-wonderland/amphora-private#readme",
+  "homepage": "https://github.com/AmphoraProtocol/core#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/defi-wonderland/amphora-private.git"
+    "url": "git+https://github.com/AmphoraProtocol/core.git"
   },
   "license": "AGPL-3.0-only",
   "author": "Wonderland",

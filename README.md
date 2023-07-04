@@ -79,27 +79,41 @@ Following the steps above will create the summary of the code coverage. If you w
 ├── solidity: All our contracts and interfaces are here
 │   ├─── contracts/: All the contracts
 │   │    ├─── core/: All core contracts
-│   │    │   ├─── VaultManager.sol : Can liquidate a vault, pay interest, changes protocol settings
+│   │    │   ├─── VaultController.sol : Can liquidate a vault, pay interest, changes protocol settings
 │   │    │   ├─── VaultDeployer.sol : Will mint and deploy new Vaults
 │   │    │   ├─── Vault.sol : User's vault, can deposit/withdraw collateral, claim protocol rewards, borrow sUSD
-│   │    │   ├─── CappedCollateralToken.sol : A wrapper for an underlying asset that can be listed as collateral on the protocol
+│   │    │   ├─── AMPHClaimer.sol : Contract for managing the liquidity mining program of amphora
 │   │    │   ├─── USDA.sol : ERC20, given by the protocol 1:1 ratio when a lender deposits sUSD
 │   │    │   └─── WUSDA.sol : Warped version of USDA to interact with other DeFi protocols
 │   │    ├─── periphery/: All periphery contracts
-│   │    │   ├─── CurveMaster.sol : The CurveMaster manages the various interest rate curves, used in VaultManagerLogic
-│   │    │   ├─── CurveLPOracle.sol : Responsible for getting the price of a curve LP token in USD
-│   │    │   └─── ETHOracle.sol : Responsible for getting the price of ETH in USD
+│   │    │   │─── oracles
+│   │    │   │   ├─── CurveLPOracle.sol : Responsible for getting the price of a curve LP token in USD
+│   │    │   │   ├─── AnchoredViewRelay.sol : Oracle implementation that checks price against a relay for an acceptable buffer
+│   │    │   │   ├─── CbEthEthOracle.sol : Oracle implementation for the cbeth-eth pool on curve
+│   │    │   │   ├─── ChainlinkOracleRelay.sol : Oracle implementation for chainlink aggregators
+│   │    │   │   ├─── ChainlinkStalePriceLib.sol : Library for checking price errors on chainlink
+│   │    │   │   ├─── ChainlinkTokenOracleRelay.sol : Oracle implementation for chainlink pairs that don't have a USD oracle
+│   │    │   │   ├─── CTokenOracle.sol : Oracle implementation for compound tokens
+│   │    │   │   ├─── CurveRegistryUtils.sol : Helper to interact with the curve registry
+│   │    │   │   ├─── EthSafeStableCurveOracle.sol : Safe curve lp oracle implementation for pairs that hold native ETH
+│   │    │   │   ├─── OracleRelay.sol : Base implementation of amphora oracles
+│   │    │   │   ├─── StableCurveLpOracle.sol : Oracle implementation for Curve lp stable pairs
+│   │    │   │   ├─── TriCrypto2Oracle.sol : Oracle implementation for the tricrypto2 pool on curve
+│   │    │   │   ├─── UniswapV3OracleRelay.sol : Oracle implementation for uniswap v3 pairs
+│   │    │   │   ├─── UniswapV3TokenOracleRelay.sol : Oracle implementation for uniswap pairs that don't have a USDC oracle
+│   │    │   │   ├─── WstEthOracle.sol : Oracle implementation for the wstETH token
+│   │    │   │   └─── ETHOracle.sol : Responsible for getting the price of ETH in USD
+│   │    │   └─── CurveMaster.sol : The CurveMaster manages the various interest rate curves, used in VaultManagerLogic
 │   │    ├─── utils/: Util contracts that are being extended or used by other contracts
 │   │    │   ├─── GovernanceStructs.sol : Structs needed to create proposals or governance related transactions
-│   │    │   ├─── CappedToken.sol : Contract used to create a capped token
 │   │    │   ├─── UFragments.sol : ERC20, extended by USDA, adjusts balances of all USDA holders
 │   │    │   └─── ThreeLines0_100.sol : The interest rate curve math for USDA **(NOT SURE ABOUT THIS)**
 │   │    ├─── governance/: All contracts that are specific for the governance of the protocol
-│   │    │   ├─── Amphora.sol : Protocol governance token
-│   │    │   └─── ....
+│   │    │   ├─── AmphoraProtocolToken.sol : Protocol governance token
+│   │    │   └─── GovernorCharlie.sol : Governance contract of the protocol
 │   ├─── interfaces/: The interfaces of all the contracts (SAME STRUCTURE WITH CONTRACTS)
 │   ├─── tests/: All our tests for the contracts
 │   │    ├─── e2e/: ...
-│   │    ├─── unit/: ...
-├── README.md
+│   │    └─── unit/: ...
+└── README.md
 ```
