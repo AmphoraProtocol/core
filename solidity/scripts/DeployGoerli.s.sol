@@ -10,6 +10,7 @@ import {IERC20} from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import {MintableToken} from '@scripts/fakes/MintableToken.sol';
 import {FakeBooster} from '@scripts/fakes/FakeBooster.sol';
 import {UniswapV3OracleRelay} from '@contracts/periphery/oracles/UniswapV3OracleRelay.sol';
+import {FakeCVX} from '@scripts/fakes/FakeBaseRewardPool.sol';
 
 import {console} from 'forge-std/console.sol';
 
@@ -54,7 +55,7 @@ contract DeployGoerliOpenDeployment is Deploy {
     uint256 currentNonce = vm.getNonce(deployer);
     console.log('currentNonce: ', currentNonce);
     // Deploy CVX & CRV tokens
-    MintableToken cvx = new MintableToken('CVX');
+    MintableToken cvx = MintableToken(address(new FakeCVX()));
     MintableToken crv = new MintableToken('CRV');
     // Deploy Fake Booster
     FakeBooster fakeBooster = new FakeBooster();
