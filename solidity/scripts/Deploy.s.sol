@@ -27,6 +27,7 @@ import {FakeBooster} from '@scripts/fakes/FakeBooster.sol';
 import {FakeVirtualRewardsPool} from '@scripts/fakes/FakeVirtualRewardsPool.sol';
 import {FakeWethOracle} from '@scripts/fakes/FakeWethOracle.sol';
 import {MintableToken} from '@scripts/fakes/MintableToken.sol';
+import {FakeCVX} from '@scripts/fakes/FakeBaseRewardPool.sol';
 
 import {ERC20, IERC20} from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import '@openzeppelin/contracts/utils/Strings.sol';
@@ -134,20 +135,12 @@ abstract contract Deploy is Script, TestConstants, CreateOracles {
     console.log('CRV: ', address(_crv));
 
     FakeBaseRewardPool fakeBaseRewardPool1 =
-      new FakeBaseRewardPool(address(_fakeBooster), _crv, _rewardsPerSecond, address(_lpToken));
+      new FakeBaseRewardPool(address(_fakeBooster), _crv, _rewardsPerSecond, address(_lpToken), FakeCVX(address(_cvx)));
 
     _crv.mint(address(fakeBaseRewardPool1), 1_000_000_000 ether);
+    _cvx.mint(address(fakeBaseRewardPool1), 1_000_000_000 ether);
 
     _pid = _fakeBooster.addPoolInfo(address(_lpToken), address(fakeBaseRewardPool1));
-
-    // Add cvx rewards
-    console.log('CVX', address(_cvx));
-    FakeVirtualRewardsPool fakeVirtualRewardsPool =
-      new FakeVirtualRewardsPool(fakeBaseRewardPool1, _cvx, _rewardsPerSecond);
-
-    _cvx.mint(address(fakeVirtualRewardsPool), 1_000_000_000 ether);
-
-    fakeBaseRewardPool1.addExtraReward(fakeVirtualRewardsPool);
 
     for (uint256 i = 0; i < 2; i++) {
       // Add extra rewards
