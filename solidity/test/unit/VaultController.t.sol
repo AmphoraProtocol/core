@@ -26,7 +26,7 @@ import {IVaultDeployer} from '@interfaces/core/IVaultDeployer.sol';
 
 import {DSTestPlus, console} from 'solidity-utils/test/DSTestPlus.sol';
 import {TestConstants} from '@test/utils/TestConstants.sol';
-import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import {IERC20Metadata, IERC20} from '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 import {CreateOracles} from '@scripts/CreateOracles.sol';
 
 contract VaultControllerForTest is VaultController {
@@ -64,6 +64,7 @@ abstract contract Base is DSTestPlus, TestConstants, CreateOracles {
   address public alice = label(newAddress(), 'alice');
   address public vaultOwner = label(newAddress(), 'vaultOwner');
   address public vaultOwner2 = label(newAddress(), 'vaultOwner2');
+  address public vaultOwnerWbtc = label(newAddress(), 'vaultOwnerWbtc');
   address public booster = mockContract(newAddress(), 'booster');
   IERC20 public cvx = IERC20(mockContract(newAddress(), 'cvx'));
   IERC20 public crv = IERC20(mockContract(newAddress(), 'crv'));
@@ -85,6 +86,11 @@ abstract contract Base is DSTestPlus, TestConstants, CreateOracles {
   StableCurveLpOracle public threeCrvOracle;
 
   uint256 public cap = 100 ether;
+  address internal _mockedWeth = mockContract(WETH_ADDRESS, 'mockedWeth');
+  address internal _mockedWbtc = mockContract(WBTC_ADDRESS, 'mockedWbtc');
+  address internal _mockedWbtcOracle = mockContract(newAddress(), 'wbtcOracle');
+
+  uint256 public wbtcPrice = 30_000 ether;
 
   function setUp() public virtual {
     address[] memory _tokens = new address[](1);
@@ -110,6 +116,15 @@ abstract contract Base is DSTestPlus, TestConstants, CreateOracles {
     // Deploy the ThreeCrvOracle
     threeCrvOracle = StableCurveLpOracle(mockContract(newAddress(), 'threeCrvOracle'));
 
+    vm.mockCall(address(_mockedWeth), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(uint8(18)));
+    vm.mockCall(address(_mockedWbtc), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(uint8(8)));
+
+    vm.mockCall(
+      address(_mockedWbtcOracle), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(wbtcPrice)
+    );
+    vm.mockCall(
+      address(_mockedWbtcOracle), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(wbtcPrice)
+    );
     vm.stopPrank();
   }
 }
@@ -119,9 +134,12 @@ abstract contract VaultBase is Base {
 
   IVault internal _vault;
   IVault internal _vault2;
+  IVault internal _vaultWbtc;
   uint256 internal _vaultDeposit = 10 ether;
+  uint256 internal _wbtcDeposit = 10e8;
   uint96 internal _vaultId = 1;
   uint96 internal _vaultId2 = 2;
+  uint96 internal _vaultIdWbtc = 3;
   uint192 internal _borrowAmount = 5 ether;
 
   IBaseRewardPool internal _crvRewards = IBaseRewardPool(mockContract(newAddress(), 'crvRewards'));
@@ -131,7 +149,12 @@ abstract contract VaultBase is Base {
 
     vm.prank(governance);
     vaultController.registerErc20(
-      WETH_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE, type(uint256).max, 0
+      _mockedWeth, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE, type(uint256).max, 0
+    );
+
+    vm.prank(governance);
+    vaultController.registerErc20(
+      address(_mockedWbtc), OTHER_LTV, address(_mockedWbtcOracle), LIQUIDATION_INCENTIVE, type(uint256).max, 0
     );
 
     vm.prank(vaultOwner);
@@ -139,6 +162,9 @@ abstract contract VaultBase is Base {
 
     vm.prank(vaultOwner2);
     _vault2 = IVault(vaultController.mintVault());
+
+    vm.prank(vaultOwnerWbtc);
+    _vaultWbtc = IVault(vaultController.mintVault());
 
     vm.mockCall(
       WETH_ADDRESS,
@@ -152,17 +178,28 @@ abstract contract VaultBase is Base {
       abi.encode(true)
     );
 
+    vm.mockCall(
+      WBTC_ADDRESS,
+      abi.encode(IERC20.transferFrom.selector, vaultOwnerWbtc, address(_vaultWbtc), _wbtcDeposit),
+      abi.encode(true)
+    );
+
     vm.prank(vaultOwner);
     _vault.depositERC20(WETH_ADDRESS, _vaultDeposit);
 
     vm.prank(vaultOwner2);
     _vault2.depositERC20(WETH_ADDRESS, _vaultDeposit * 2);
 
+    vm.prank(vaultOwnerWbtc);
+    _vaultWbtc.depositERC20(WBTC_ADDRESS, _wbtcDeposit);
+
     vm.mockCall(
       address(vaultController.BOOSTER()),
       abi.encodeWithSelector(IBooster.poolInfo.selector),
       abi.encode(address(usdtLp), address(0), address(0), _crvRewards, address(0), false)
     );
+
+    vm.mockCall(address(usdtLp), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(uint8(18)));
 
     vm.prank(governance);
     vaultController.registerErc20(
@@ -221,6 +258,7 @@ contract UnitVaultControllerConstructor is Base {
     assertEq(mockVaultController.tokenLTV(WETH_ADDRESS), WETH_LTV);
     assertEq(mockVaultController.tokenLiquidationIncentive(WETH_ADDRESS), LIQUIDATION_INCENTIVE);
     assertEq(mockVaultController.tokenCap(WETH_ADDRESS), type(uint256).max);
+    assertEq(mockVaultController.tokenCollateralInfo(WETH_ADDRESS).decimals, 18);
   }
 }
 
@@ -283,6 +321,7 @@ contract UnitVaultControllerMigrateCollateralsFrom is Base {
     assertEq(mockVaultController.tokenLTV(WETH_ADDRESS), WETH_LTV);
     assertEq(mockVaultController.tokenLiquidationIncentive(WETH_ADDRESS), LIQUIDATION_INCENTIVE);
     assertEq(mockVaultController.tokenCap(WETH_ADDRESS), type(uint256).max);
+    assertEq(mockVaultController.tokenCollateralInfo(WETH_ADDRESS).decimals, 18);
   }
 }
 
@@ -470,22 +509,27 @@ contract UnitVaultControllerRegisterERC20 is Base {
     address _oracle,
     uint256 _ltv,
     uint256 _liquidationIncentive,
-    uint256 _cap
+    uint256 _cap,
+    uint8 _decimals
   ) public {
+    vm.assume(address(_token) > address(10));
+    vm.assume(_decimals <= 18);
+    mockContract(address(_token), 'token');
+    vm.mockCall(address(_token), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(_decimals));
     vm.expectRevert('Ownable: caller is not the owner');
     vm.prank(alice);
     vaultController.registerErc20(address(_token), _ltv, _oracle, _liquidationIncentive, _cap, 0);
   }
 
-  function testRevertIfTokenAlreadyRegistered(IERC20 _token, address _oracle, uint64 _ltv, uint256 _cap) public {
+  function testRevertIfTokenAlreadyRegistered(address _oracle, uint64 _ltv, uint256 _cap) public {
     vm.assume(_ltv < 0.95 ether);
     // Register WETH as acceptable erc20 collateral to vault controller and set oracle
     vm.prank(governance);
-    vaultController.registerErc20(address(_token), _ltv, _oracle, LIQUIDATION_INCENTIVE, _cap, 0);
+    vaultController.registerErc20(WETH_ADDRESS, _ltv, _oracle, LIQUIDATION_INCENTIVE, _cap, 0);
     vm.expectRevert(IVaultController.VaultController_TokenAlreadyRegistered.selector);
     // Try to register the same again
     vm.prank(governance);
-    vaultController.registerErc20(address(_token), _ltv, _oracle, LIQUIDATION_INCENTIVE, _cap, 0);
+    vaultController.registerErc20(WETH_ADDRESS, _ltv, _oracle, LIQUIDATION_INCENTIVE, _cap, 0);
   }
 
   function testRevertIfIncompatibleLTV(
@@ -495,6 +539,10 @@ contract UnitVaultControllerRegisterERC20 is Base {
     uint256 _cap
   ) public {
     vm.assume(_liquidationIncentive < 1 ether && _liquidationIncentive > 0.2 ether);
+    vm.assume(address(_token) > address(10));
+    mockContract(address(_token), 'token');
+
+    vm.mockCall(address(_token), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(uint8(18)));
     vm.expectRevert(IVaultController.VaultController_LTVIncompatible.selector);
     vm.prank(governance);
     vaultController.registerErc20(address(_token), WETH_LTV, _oracle, _liquidationIncentive, _cap, 0);
@@ -507,20 +555,26 @@ contract UnitVaultControllerRegisterERC20 is Base {
     uint256 _cap
   ) public {
     vm.assume(_ltv < 0.95 ether);
-    vm.assume(address(_token) != address(0));
+    vm.assume(address(_token) > address(10));
     vm.mockCall(
       address(booster),
       abi.encodeWithSelector(IBooster.poolInfo.selector, 136),
       abi.encode(address(0), address(0), address(0), address(0), address(0), false)
     );
+    mockContract(address(_token), 'token');
+
+    vm.mockCall(address(_token), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(uint8(18)));
     vm.expectRevert(IVaultController.VaultController_TokenAddressDoesNotMatchLpAddress.selector);
     vm.prank(governance);
     vaultController.registerErc20(address(_token), WETH_LTV, _oracle, LIQUIDATION_INCENTIVE, _cap, 136);
   }
 
-  function testRegisterCurveLPToken(IERC20 _token, address _oracle, uint64 _ltv, uint256 _cap) public {
+  function testRegisterCurveLPToken(address _oracle, uint64 _ltv, uint256 _cap, uint8 _decimals) public {
     vm.assume(_ltv < 0.95 ether);
-    vm.assume(address(_token) != address(0));
+    vm.assume(_decimals <= 18);
+    address _token = newAddress();
+    mockContract(address(_token), 'token');
+    vm.mockCall(address(_token), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(_decimals));
 
     address _mockCrvRewards = newAddress();
     vm.mockCall(
@@ -536,6 +590,7 @@ contract UnitVaultControllerRegisterERC20 is Base {
     assertEq(vaultController.tokenLTV(address(_token)), _ltv);
     assertEq(vaultController.tokenLiquidationIncentive(address(_token)), LIQUIDATION_INCENTIVE);
     assertEq(vaultController.tokenCap(address(_token)), _cap);
+    assertEq(vaultController.tokenCollateralInfo(address(_token)).decimals, _decimals);
     assertTrue(
       vaultController.tokenCollateralType(address(_token)) == IVaultController.CollateralType.CurveLPStakedOnConvex
     );
@@ -543,9 +598,13 @@ contract UnitVaultControllerRegisterERC20 is Base {
     assertEq(vaultController.tokenPoolId(address(_token)), 15);
   }
 
-  function testRegisterERC20(IERC20 _token, address _oracle) public {
+  function testRegisterERC20(IERC20 _token, address _oracle, uint8 _decimals) public {
+    vm.assume(address(_token) > address(10));
+    vm.assume(_decimals <= 18);
     vm.expectEmit(false, false, false, true);
     emit RegisteredErc20(address(_token), WETH_LTV, _oracle, LIQUIDATION_INCENTIVE, type(uint256).max);
+    mockContract(address(_token), 'token');
+    vm.mockCall(address(_token), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(_decimals));
 
     vm.prank(governance);
     vaultController.registerErc20(address(_token), WETH_LTV, _oracle, LIQUIDATION_INCENTIVE, type(uint256).max, 0);
@@ -555,6 +614,41 @@ contract UnitVaultControllerRegisterERC20 is Base {
     assertEq(vaultController.tokenLTV(address(_token)), WETH_LTV);
     assertEq(vaultController.tokenLiquidationIncentive(address(_token)), LIQUIDATION_INCENTIVE);
     assertEq(vaultController.tokenCap(address(_token)), type(uint256).max);
+    assertEq(vaultController.tokenCollateralInfo(address(_token)).decimals, _decimals);
+  }
+
+  function testRevertIfRegisterERC20WithMoreThan18Decimals(IERC20 _token, address _oracle, uint8 _decimals) public {
+    vm.assume(address(_token) > address(10));
+    vm.assume(_decimals > 18);
+    mockContract(address(_token), 'token');
+    vm.mockCall(address(_token), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(_decimals));
+    vm.expectRevert(IVaultController.VaultController_TooManyDecimals.selector);
+    vm.prank(governance);
+    vaultController.registerErc20(address(_token), WETH_LTV, _oracle, LIQUIDATION_INCENTIVE, type(uint256).max, 0);
+  }
+
+  function testRevertIfRegisterCurveLpWithMoreThan18Decimals(
+    address _oracle,
+    uint64 _ltv,
+    uint256 _cap,
+    uint8 _decimals
+  ) public {
+    vm.assume(_ltv < 0.95 ether);
+    vm.assume(_decimals > 18);
+    address _token = newAddress();
+    mockContract(address(_token), 'token');
+    vm.mockCall(address(_token), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(_decimals));
+
+    address _mockCrvRewards = newAddress();
+    vm.mockCall(
+      address(booster),
+      abi.encodeWithSelector(IBooster.poolInfo.selector, 15),
+      abi.encode(address(_token), address(0), address(0), _mockCrvRewards, address(0), false)
+    );
+    vm.expectRevert(IVaultController.VaultController_TooManyDecimals.selector);
+
+    vm.prank(governance);
+    vaultController.registerErc20(address(_token), _ltv, _oracle, LIQUIDATION_INCENTIVE, _cap, 15);
   }
 }
 
@@ -727,13 +821,16 @@ contract UnitVaultControllerLiquidateVault is VaultBase, ExponentialNoError {
     address _assetAddress,
     uint256 _tokensToLiquidate
   ) public {
-    vm.assume(_assetAddress != WETH_ADDRESS && _assetAddress != address(usdtLp) && _tokensToLiquidate != 0);
+    vm.assume(
+      _assetAddress != WETH_ADDRESS && _assetAddress != address(usdtLp) && _assetAddress != WBTC_ADDRESS
+        && _tokensToLiquidate != 0
+    );
     vm.expectRevert(IVaultController.VaultController_TokenNotRegistered.selector);
     vaultController.liquidateVault(_id, _assetAddress, _tokensToLiquidate);
   }
 
   function testRevertIfVaultDoesNotExist(uint96 _id, uint256 _tokensToLiquidate) public {
-    vm.assume(_tokensToLiquidate != 0 && _id != _vaultId && _id != _vaultId2);
+    vm.assume(_tokensToLiquidate != 0 && _id > 100);
     vm.expectRevert(IVaultController.VaultController_VaultDoesNotExist.selector);
     vaultController.liquidateVault(_id, WETH_ADDRESS, _tokensToLiquidate);
   }
@@ -742,6 +839,78 @@ contract UnitVaultControllerLiquidateVault is VaultBase, ExponentialNoError {
     vm.assume(_tokensToLiquidate != 0);
     vm.expectRevert(IVaultController.VaultController_VaultSolvent.selector);
     vaultController.liquidateVault(_vaultId, WETH_ADDRESS, _tokensToLiquidate);
+  }
+
+  function testRevertIfWbtcVaultIsSolvent(uint256 _tokensToLiquidate) public {
+    vm.assume(_tokensToLiquidate != 0);
+    uint192 _borrowingPower = vaultController.vaultBorrowingPower(_vaultIdWbtc);
+    vm.prank(vaultOwnerWbtc);
+    vaultController.borrowUSDA(_vaultIdWbtc, _borrowingPower);
+    vm.expectRevert(IVaultController.VaultController_VaultSolvent.selector);
+    vaultController.liquidateVault(_vaultIdWbtc, WBTC_ADDRESS, _tokensToLiquidate);
+  }
+
+  function testLiquidateWbtc() public {
+    uint192 _borrowingPower = vaultController.vaultBorrowingPower(_vaultIdWbtc);
+    vm.prank(vaultOwnerWbtc);
+    vaultController.borrowUSDA(_vaultIdWbtc, _borrowingPower);
+    uint256 _oldPrice = wbtcPrice;
+    uint256 _newPrice = (_oldPrice * OTHER_LTV) / 100 ether;
+    // We lower the price
+    vm.mockCall(
+      address(_mockedWbtcOracle), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(_newPrice)
+    );
+    vm.mockCall(
+      address(_mockedWbtcOracle), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(_newPrice)
+    );
+    // Need to pay USDA to cover for _wbtcDeposit
+    vm.prank(address(vaultController));
+    usdaToken.vaultControllerMint(address(this), _borrowingPower);
+    uint256 _liqFee = vaultController.getLiquidationFee(uint192(_wbtcDeposit), address(_mockedWbtc));
+    vm.expectCall(
+      address(_mockedWbtc), abi.encodeWithSelector(IERC20.transfer.selector, address(this), _wbtcDeposit - _liqFee)
+    );
+    vaultController.liquidateVault(_vaultIdWbtc, WBTC_ADDRESS, _wbtcDeposit);
+  }
+
+  function testLiquidatePartialWbtc() public {
+    vm.prank(vaultOwnerWbtc);
+    _vaultWbtc.depositERC20(WETH_ADDRESS, _vaultDeposit);
+
+    uint192 _borrowingPower = vaultController.vaultBorrowingPower(_vaultIdWbtc);
+    vm.prank(vaultOwnerWbtc);
+    vaultController.borrowUSDA(_vaultIdWbtc, _borrowingPower);
+    uint256 _doubleTruncate = 1 ether * 1 ether;
+    uint256 _valueInWeth = (_vaultDeposit * anchoredViewEth.currentValue() * WETH_LTV) / _doubleTruncate;
+    uint256 _wbtcNewPrice = (wbtcPrice * 90) / 100;
+
+    // We lower the price
+    vm.mockCall(
+      address(_mockedWbtcOracle), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(_wbtcNewPrice)
+    );
+    vm.mockCall(
+      address(_mockedWbtcOracle), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(_wbtcNewPrice)
+    );
+
+    // uint256 _wbtcToLiquidate = 0;
+    // We calculate the wbtcToLiquidate to let the vault be solvent
+    uint256 _newMaxBorrow = _valueInWeth + (_wbtcDeposit * _wbtcNewPrice * 10 ** 10 * OTHER_LTV) / _doubleTruncate;
+    uint256 _wbtcToLiquidate =
+      (_borrowingPower - _newMaxBorrow) * _doubleTruncate * 1e8 / (_wbtcDeposit * _wbtcNewPrice * 10 ** 10 * OTHER_LTV);
+
+    // Need to pay USDA to cover for _wbtcDeposit
+    vm.prank(address(vaultController));
+    usdaToken.vaultControllerMint(address(this), 100_000 ether);
+    uint256 _liqFee = vaultController.getLiquidationFee(uint192(_wbtcToLiquidate), address(_mockedWbtc));
+    vm.expectCall(
+      address(_mockedWbtc), abi.encodeWithSelector(IERC20.transfer.selector, address(this), _wbtcToLiquidate - _liqFee)
+    );
+    uint256 _usdaToPay =
+      (_wbtcToLiquidate * _wbtcNewPrice * 10 ** 10 * (1e18 - LIQUIDATION_INCENTIVE)) / _doubleTruncate;
+    vm.expectCall(
+      address(usdaToken), abi.encodeWithSelector(IUSDA.vaultControllerBurn.selector, address(this), _usdaToPay)
+    );
+    vaultController.liquidateVault(_vaultIdWbtc, WBTC_ADDRESS, _wbtcToLiquidate);
   }
 
   function testLiquidateWithCurveLpAsCollateral() public {
@@ -927,13 +1096,16 @@ contract UnitVaultControllerSimulateLiquidateVault is VaultBase, ExponentialNoEr
     address _assetAddress,
     uint256 _tokensToLiquidate
   ) public {
-    vm.assume(_assetAddress != WETH_ADDRESS && _assetAddress != address(usdtLp) && _tokensToLiquidate != 0);
+    vm.assume(
+      _assetAddress != WETH_ADDRESS && _assetAddress != address(usdtLp) && _assetAddress != WBTC_ADDRESS
+        && _tokensToLiquidate != 0
+    );
     vm.expectRevert(IVaultController.VaultController_TokenNotRegistered.selector);
     vaultController.simulateLiquidateVault(_id, _assetAddress, _tokensToLiquidate);
   }
 
   function testRevertIfVaultDoesNotExist(uint96 _id, uint256 _tokensToLiquidate) public {
-    vm.assume(_tokensToLiquidate != 0 && _id != _vaultId && _id != _vaultId2);
+    vm.assume(_tokensToLiquidate != 0 && _id > 100);
     vm.expectRevert(IVaultController.VaultController_VaultDoesNotExist.selector);
     vaultController.simulateLiquidateVault(_id, WETH_ADDRESS, _tokensToLiquidate);
   }
@@ -995,7 +1167,7 @@ contract UnitVaultControllerCheckVault is VaultBase {
   }
 
   function testRevertIfVaultNotFound(uint96 _id) public {
-    vm.assume(_id != _vaultId && _id != _vaultId2);
+    vm.assume(_id > 100);
     vm.expectRevert(IVaultController.VaultController_VaultDoesNotExist.selector);
     vaultController.checkVault(_id);
   }
@@ -1167,8 +1339,8 @@ contract UnitVaultControllerModifyTotalDeposited is VaultBase {
     vaultController.modifyTotalDeposited(_vaultId, 0, WETH_ADDRESS, true);
   }
 
-  function testRevertNotValidToken(address _token) public {
-    vm.assume(_token != WETH_ADDRESS && _token != address(usdtLp));
+  function testRevertNotValidToken() public {
+    address _token = newAddress();
 
     vm.prank(vaultController.vaultIdVaultAddress(_vaultId));
     vm.expectRevert(IVaultController.VaultController_TokenNotRegistered.selector);
@@ -1349,6 +1521,7 @@ contract UnitVaultControllerGetVault is VaultBase {
   }
 
   function testRevertIfVaultDoesNotExist(uint96 _id) public {
+    vm.assume(_id > 100);
     vm.expectRevert(IVaultController.VaultController_VaultDoesNotExist.selector);
     mockVaultController.getVault(_id);
   }
@@ -1380,7 +1553,7 @@ contract UnitVaultControllerAmountToSolvency is VaultBase, ExponentialNoError {
 
 contract UnitVaultControllerVaultLiability is VaultBase {
   function testRevertIfVaultDoesNotExist(uint96 _id) public {
-    vm.assume(_id != 1 && _id != 2);
+    vm.assume(_id > 100);
     vm.expectRevert(IVaultController.VaultController_VaultDoesNotExist.selector);
     vaultController.vaultLiability(_id);
   }
@@ -1400,12 +1573,22 @@ contract UnitVaultControllerVaultBorrowingPower is VaultBase {
     );
   }
 
+  function testVaultBorrowingPowerWbtc() public {
+    uint256 _borrowingPowerWithoutDiscount = (_wbtcDeposit * wbtcPrice * 10 ** 10 * OTHER_LTV) / (1 ether * 1 ether);
+    assertEq(
+      vaultController.vaultBorrowingPower(_vaultIdWbtc),
+      _borrowingPowerWithoutDiscount - vaultController.getBorrowingFee(uint192(_borrowingPowerWithoutDiscount))
+    );
+  }
+
   function testVaultBorrowingPowerWhenOracleReturnsZero() public {
     vm.mockCall(address(anchoredViewEth), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(0));
     assertEq(vaultController.vaultBorrowingPower(_vaultId), 0);
   }
 
   function testVaultBorrowingPowerWhenLTVIsZero() public {
+    mockContract(address(UNI_ADDRESS), 'UNI');
+    vm.mockCall(address(UNI_ADDRESS), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(uint8(18)));
     vm.prank(governance);
     vaultController.registerErc20(UNI_ADDRESS, 0, address(anchoredViewUni), LIQUIDATION_INCENTIVE, type(uint256).max, 0);
 
@@ -1431,6 +1614,8 @@ contract UnitVaultControllerVaultBorrowingPower is VaultBase {
 
   function testVaultBorrowingPowerMultipleCollateral() public {
     vm.prank(governance);
+    mockContract(address(UNI_ADDRESS), 'UNI');
+    vm.mockCall(address(UNI_ADDRESS), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(uint8(18)));
     vaultController.registerErc20(
       UNI_ADDRESS, UNI_LTV, address(anchoredViewUni), LIQUIDATION_INCENTIVE, type(uint256).max, 0
     );
@@ -1442,15 +1627,25 @@ contract UnitVaultControllerVaultBorrowingPower is VaultBase {
       abi.encode(true)
     );
     _vault.depositERC20(UNI_ADDRESS, _vaultDeposit);
+
+    vm.mockCall(
+      WBTC_ADDRESS,
+      abi.encode(IERC20.transferFrom.selector, vaultOwner, address(_vault), _wbtcDeposit),
+      abi.encode(true)
+    );
+    _vault.depositERC20(WBTC_ADDRESS, _wbtcDeposit);
     vm.stopPrank();
 
     vm.mockCall(address(anchoredViewEth), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(1 ether));
     vm.mockCall(address(anchoredViewUni), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(1 ether));
 
-    uint256 _borrowingPower = (_vaultDeposit * WETH_LTV + _vaultDeposit * UNI_LTV) / 1 ether;
+    uint256 _borrowingPowerWethUni = (_vaultDeposit * WETH_LTV + _vaultDeposit * UNI_LTV) / 1 ether;
+    uint256 _borrowingPowerWbtc = (_wbtcDeposit * wbtcPrice * 10 ** 10 * OTHER_LTV) / (1 ether * 1 ether);
+
     assertEq(
       vaultController.vaultBorrowingPower(_vaultId),
-      _borrowingPower - vaultController.getBorrowingFee(uint192(_borrowingPower))
+      _borrowingPowerWethUni + _borrowingPowerWbtc
+        - vaultController.getBorrowingFee(uint192(_borrowingPowerWethUni + _borrowingPowerWbtc))
     );
   }
 }
@@ -1508,8 +1703,8 @@ contract UnitVaultControllerVaultSummaries is VaultBase, ExponentialNoError {
   }
 
   function testVaultSummariesAll() public {
-    IVaultController.VaultSummary[] memory _summary = vaultController.vaultSummaries(1, 2);
-    assertEq(_summary.length, 2);
+    IVaultController.VaultSummary[] memory _summary = vaultController.vaultSummaries(1, 3);
+    assertEq(_summary.length, 3);
 
     uint256 _borrowPowerWithoutDiscount0 =
       _safeu192(_truncate(_truncate(_safeu192(anchoredViewEth.currentValue() * _vaultDeposit * WETH_LTV))));
@@ -1526,11 +1721,19 @@ contract UnitVaultControllerVaultSummaries is VaultBase, ExponentialNoError {
     assertEq(_summary[1].vaultLiability, vaultController.vaultLiability(_vaultId2));
     assertEq(_summary[1].tokenAddresses[0], WETH_ADDRESS);
     assertEq(_summary[1].tokenBalances[0], _vaultDeposit * 2);
+
+    uint256 _borrowPowerWithoutDiscount2 =
+      _safeu192(_truncate(_truncate((wbtcPrice * 10 ** 10 * _wbtcDeposit * OTHER_LTV))));
+    assertEq(_summary[2].id, _vaultIdWbtc);
+    assertEq(_summary[2].borrowingPower, _borrowPowerWithoutDiscount2);
+    assertEq(_summary[2].vaultLiability, vaultController.vaultLiability(_vaultIdWbtc));
+    assertEq(_summary[2].tokenAddresses[1], WBTC_ADDRESS);
+    assertEq(_summary[2].tokenBalances[1], _wbtcDeposit);
   }
 
   function testVaultSummariesBigEnd() public {
     IVaultController.VaultSummary[] memory _summary = vaultController.vaultSummaries(1, 1_000_000);
-    assertEq(_summary.length, 2);
+    assertEq(_summary.length, 3);
 
     uint256 _borrowPowerWithoutDiscount0 =
       _safeu192(_truncate(_truncate(_safeu192(anchoredViewEth.currentValue() * _vaultDeposit * WETH_LTV))));
@@ -1547,6 +1750,14 @@ contract UnitVaultControllerVaultSummaries is VaultBase, ExponentialNoError {
     assertEq(_summary[1].vaultLiability, vaultController.vaultLiability(_vaultId2));
     assertEq(_summary[1].tokenAddresses[0], WETH_ADDRESS);
     assertEq(_summary[1].tokenBalances[0], _vaultDeposit * 2);
+
+    uint256 _borrowPowerWithoutDiscount2 =
+      _safeu192(_truncate(_truncate((wbtcPrice * 10 ** 10 * _wbtcDeposit * OTHER_LTV))));
+    assertEq(_summary[2].id, _vaultIdWbtc);
+    assertEq(_summary[2].borrowingPower, _borrowPowerWithoutDiscount2);
+    assertEq(_summary[2].vaultLiability, vaultController.vaultLiability(_vaultIdWbtc));
+    assertEq(_summary[2].tokenAddresses[1], WBTC_ADDRESS);
+    assertEq(_summary[2].tokenBalances[1], _wbtcDeposit);
   }
 }
 
@@ -1557,6 +1768,12 @@ contract UnitVaultControllerEnabledTokens is Base {
 
   function setUp() public virtual override {
     super.setUp();
+
+    for (uint256 _i; _i < arrayOfTokens.length; _i++) {
+      vm.mockCall(
+        address(arrayOfTokens[_i]), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(uint8(18))
+      );
+    }
 
     // register a few tokens
     vm.startPrank(governance);

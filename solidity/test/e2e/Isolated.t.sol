@@ -203,7 +203,7 @@ contract E2EMultiAssetLoan is IsolatedBase {
     // check borrow power
     uint256 _wbtcPrice = anchoredViewBtc.currentValue();
     uint256 _wbtcBalance = wbtc.balanceOf(address(gusVault));
-    uint256 _wbtcValue = (_wbtcBalance * _wbtcPrice) / 1 ether;
+    uint256 _wbtcValue = (_wbtcBalance * _wbtcPrice * 10 ** 10) / 1 ether; // in e18
     uint256 _expectedWbtcBorrowPower = (_wbtcValue * WBTC_LTV) / 1 ether;
     assert(
       _expectedWbtcBorrowPower - vaultController.getBorrowingFee(uint192(_expectedWbtcBorrowPower)) == _wbtcBorrowPower
@@ -893,7 +893,7 @@ contract E2EWBtcLoan is IsolatedBase {
     // check borrow power
     uint256 _wbtcPrice = anchoredViewBtc.currentValue();
     uint256 _wbtcBalance = wbtc.balanceOf(address(gusVault));
-    uint256 _wbtcValue = (_wbtcBalance * _wbtcPrice) / 1 ether;
+    uint256 _wbtcValue = (_wbtcBalance * _wbtcPrice * 10 ** 10) / 1 ether; // In e18
     uint256 _expectedWbtcBorrowPower = (_wbtcValue * WBTC_LTV) / 1 ether;
     assert(
       _expectedWbtcBorrowPower - vaultController.getBorrowingFee(uint192(_expectedWbtcBorrowPower)) == _wbtcBorrowPower

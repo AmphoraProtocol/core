@@ -56,12 +56,12 @@ contract DeployGoerliOpenDeployment is Deploy {
     console.log('currentNonce: ', currentNonce);
     // Deploy CVX & CRV tokens
     MintableToken cvx = MintableToken(address(new FakeCVX()));
-    MintableToken crv = new MintableToken('CRV');
+    MintableToken crv = new MintableToken('CRV',uint8(18));
     // Deploy Fake Booster
     FakeBooster fakeBooster = new FakeBooster();
 
     // Deploy a copy of sUSDA
-    MintableToken susdCopy = new MintableToken('sUSD');
+    MintableToken susdCopy = new MintableToken('sUSD',uint8(18));
     susdCopy.mint(deployer, susdCopySupply);
     console.log('sUSD_COPY: ', address(susdCopy));
 
@@ -88,6 +88,18 @@ contract DeployGoerliOpenDeployment is Deploy {
     _vaultController.registerErc20(
       address(linkGoerli), WETH_LTV, address(_chainlinkLink), LIQUIDATION_INCENTIVE, type(uint256).max, _pid
     );
+
+    // Deploy fake wbtc
+    MintableToken wbtc = new MintableToken('WBTC',uint8(8));
+    wbtc.mint(deployer, 10_000e8);
+    console.log('FAKE_WBTC_ADDRESS', address(wbtc));
+    // Deploy chainlink oracle
+    ChainlinkOracleRelay _chainlinkWbtc =
+    new ChainlinkOracleRelay(address(wbtc), 0xA39434A63A52E749F02807ae27335515BA4b07F7, 10_000_000_000, 1, chainlinkStalePriceDelay);
+
+    // Add fake WBTC
+    _vaultController.registerErc20(address(wbtc), WETH_LTV, address(_chainlinkWbtc), LIQUIDATION_INCENTIVE, 1000e8, 0);
+
     vm.stopBroadcast();
   }
 }

@@ -548,7 +548,8 @@ contract UnitVaultClaimRewards is Base {
       oracle: IOracleRelay(address(0)),
       collateralType: IVaultController.CollateralType.CurveLPStakedOnConvex,
       crvRewardsContract: IBaseRewardPool(GEAR_LP_REWARDS_ADDRESS),
-      poolId: 15
+      poolId: 15,
+      decimals: 18
     });
 
     vm.mockCall(

@@ -7,12 +7,12 @@ import {BaseHandler} from '@test/handlers/BaseHandler.sol';
 import {InvariantVaultController} from '@test/invariant/VaultController.t.sol';
 
 import {IAnchoredViewRelay} from '@interfaces/periphery/IAnchoredViewRelay.sol';
-import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
 import {IOracleRelay} from '@interfaces/periphery/IOracleRelay.sol';
 
 import {TestConstants} from '@test/utils/TestConstants.sol';
 import {console} from 'solidity-utils/test/DSTestPlus.sol';
+import {IERC20Metadata, IERC20} from '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 
 /// @notice VaultController handle for owner actor
 /// @dev    In this case the actor is able to call any function of the VaultController
@@ -39,6 +39,8 @@ contract VaultControllerOwnerHandler is BaseHandler, TestConstants {
   IERC20 public susd;
   address[] public registeredTokens;
   mapping(address => address) public tokenOracle;
+
+  uint160 public tokenId = 10;
 
   constructor(VaultController _vaultController, IERC20 _sUSD, USDA _usda, InvariantVaultController _invariantContract) {
     susd = _sUSD;
@@ -87,7 +89,6 @@ contract VaultControllerOwnerHandler is BaseHandler, TestConstants {
   }
 
   function registerErc20(
-    address _tokenAddress,
     uint256 _ltv,
     address _oracleAddress,
     uint256 _liquidationIncentive,
@@ -95,9 +96,12 @@ contract VaultControllerOwnerHandler is BaseHandler, TestConstants {
   ) public countCall('registerErc20') {
     /// Bound liquidationIncentive from 1-99%
     /// ltv shouldn't be equal or higher than EXP_SCALE - liquidationIncentive
+    address _tokenAddress = address(++tokenId);
     _liquidationIncentive = bound(_liquidationIncentive, 1, 99) * 0.01 ether;
     _ltv = bound(_ltv, 1, EXP_SCALE - _liquidationIncentive - 1);
 
+    mockContract(_tokenAddress, 'token');
+    vm.mockCall(_tokenAddress, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(uint8(18)));
     if (_oracleAddress == address(0)) return;
 
     /// For now we assume for single collateral

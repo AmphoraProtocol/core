@@ -139,7 +139,7 @@ contract FakeBaseRewardPool is IBaseRewardPool {
 }
 
 contract FakeCVX is MintableToken {
-  constructor() MintableToken('CVX') {
+  constructor() MintableToken('CVX', uint8(18)) {
     _mint(msg.sender, 100_000 ether);
   }
 

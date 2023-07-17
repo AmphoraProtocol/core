@@ -8,8 +8,7 @@ import {UFragments} from '@contracts/utils/UFragments.sol';
 import {IUSDA} from '@interfaces/core/IUSDA.sol';
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
 
-import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import {IERC20Metadata} from '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
+import {IERC20Metadata, IERC20} from '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 import {Pausable} from '@openzeppelin/contracts/security/Pausable.sol';
 import {Context} from '@openzeppelin/contracts/utils/Context.sol';
 import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';

@@ -6,6 +6,10 @@ import {ERC20} from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 
 contract MockSUSD is ERC20 {
   constructor(string memory _name, string memory _symbol) ERC20(_name, _symbol) {}
+
+  function decimals() public pure override returns (uint8) {
+    return 18;
+  }
 }
 
 struct AddressSet {

@@ -13,7 +13,7 @@ import {IBaseRewardPool} from '@interfaces/utils/IBaseRewardPool.sol';
 import {IAMPHClaimer} from '@interfaces/core/IAMPHClaimer.sol';
 import {IVaultDeployer} from '@interfaces/core/IVaultDeployer.sol';
 
-import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import {IERC20, IERC20Metadata} from '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 import {Pausable} from '@openzeppelin/contracts/security/Pausable.sol';
 
@@ -21,6 +21,9 @@ import {Pausable} from '@openzeppelin/contracts/security/Pausable.sol';
 ///         VaultController contains all business logic for borrowing and lending through the protocol.
 ///         It is also in charge of accruing interest.
 contract VaultController is Pausable, IVaultController, ExponentialNoError, Ownable {
+  /// @dev The max decimals allowed for a listed token
+  uint8 public constant MAX_DECIMALS = 18;
+
   /// @dev The max allowed to be set as borrowing fee
   uint192 public constant MAX_INIT_BORROWING_FEE = 0.05e18;
 
@@ -335,6 +338,8 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
   ) external override onlyOwner {
     CollateralInfo storage _collateral = tokenAddressCollateralInfo[_tokenAddress];
     if (_collateral.tokenId != 0) revert VaultController_TokenAlreadyRegistered();
+    uint8 _tokenDecimals = IERC20Metadata(_tokenAddress).decimals();
+    if (_tokenDecimals > MAX_DECIMALS) revert VaultController_TooManyDecimals();
     if (_poolId != 0) {
       (address _lpToken,,, address _crvRewards,,) = BOOSTER.poolInfo(_poolId);
       if (_lpToken != _tokenAddress) revert VaultController_TokenAddressDoesNotMatchLpAddress();
@@ -360,6 +365,8 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
     _collateral.liquidationIncentive = _liquidationIncentive;
     // set the cap
     _collateral.cap = _cap;
+    // save the decimals
+    _collateral.decimals = _tokenDecimals;
     // finally, add the token to the array of enabled tokens
     enabledTokens.push(_tokenAddress);
 
@@ -767,12 +774,13 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
     uint256 _usdaToSolvency
   ) internal view returns (uint256 _actualTokensToLiquidate, uint256 _badFillPrice) {
     IVault _vault = _getVault(_id);
+    uint256 _priceWithDecimals = _getPriceWithDecimals(_price, _collateral.decimals);
     // get price discounted by liquidation penalty
     // price * (100% - liquidationIncentive)
-    _badFillPrice = _truncate(_price * (1e18 - _collateral.liquidationIncentive));
+    _badFillPrice = _truncate(_priceWithDecimals * (1e18 - _collateral.liquidationIncentive));
 
     // the ltv discount is the amount of collateral value that one token provides
-    uint256 _ltvDiscount = _truncate(_price * _collateral.ltv);
+    uint256 _ltvDiscount = _truncate(_priceWithDecimals * _collateral.ltv);
     // this number is the denominator when calculating the _maxTokensToLiquidate
     // it is simply the badFillPrice - ltvDiscount
     uint256 _denominator = _badFillPrice - _ltvDiscount;
@@ -871,7 +879,9 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
       uint192 _rawPrice = _safeu192(_collateral.oracle.currentValue());
       if (_rawPrice == 0) continue;
       // the token value is equal to the price * balance * tokenLTV
-      uint192 _tokenValue = _safeu192(_truncate(_truncate(_rawPrice * _balance * _collateral.ltv)));
+      uint192 _tokenValue = _safeu192(
+        _truncate(_truncate(_balance * _collateral.ltv * _getPriceWithDecimals(_rawPrice, _collateral.decimals)))
+      );
       // increase the ltv of the vault by the token value
       _borrowPower += _tokenValue;
     }
@@ -897,7 +907,9 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
       uint192 _rawPrice = _safeu192(_collateral.oracle.peekValue());
       if (_rawPrice == 0) continue;
       // the token value is equal to the price * balance * tokenLTV
-      uint192 _tokenValue = _safeu192(_truncate(_truncate(_rawPrice * _balance * _collateral.ltv)));
+      uint192 _tokenValue = _safeu192(
+        _truncate(_truncate(_balance * _collateral.ltv * _getPriceWithDecimals(_rawPrice, _collateral.decimals)))
+      );
       // increase the ltv of the vault by the token value
       _borrowPower += _tokenValue;
     }
@@ -1018,5 +1030,13 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
   function modifyTotalDeposited(uint96 _vaultID, uint256 _amount, address _token, bool _increase) external override {
     if (_msgSender() != vaultIdVaultAddress[_vaultID]) revert VaultController_NotValidVault();
     _modifyTotalDeposited(_amount, _token, _increase);
+  }
+
+  // @notice Returns the price adjusting to the decimals of the token
+  // @param _price The price to adjust
+  // @param _decimals The decimals of the token
+  // @return _priceWithDecimals The price with the decimals of the token
+  function _getPriceWithDecimals(uint256 _price, uint256 _decimals) internal pure returns (uint256 _priceWithDecimals) {
+    _priceWithDecimals = _price * 10 ** (18 - _decimals);
   }
 }

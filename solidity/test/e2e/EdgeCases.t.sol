@@ -35,17 +35,18 @@ contract E2EEdgeCases is CommonE2EBase {
     // create vault
     gusVaultId = _mintVault(gus);
     gusVault = IVault(vaultController.vaultIdVaultAddress(gusVaultId));
+    uint256 _deposit = 1000e8;
 
     // deposits tokens
     vm.startPrank(gus);
     wbtc.approve(address(gusVault), type(uint256).max);
-    gusVault.depositERC20(WBTC_ADDRESS, gusWBTC);
+    gusVault.depositERC20(WBTC_ADDRESS, _deposit);
     vm.stopPrank();
 
     // try to withdraw token
     vm.expectRevert(stdError.arithmeticError);
     vm.prank(gus);
-    gusVault.withdrawERC20(WBTC_ADDRESS, gusWBTC + 1);
+    gusVault.withdrawERC20(WBTC_ADDRESS, _deposit + 1);
   }
 
   function testWithdrawTokensWhichWouldLiquidateYourVault() public {
@@ -53,10 +54,12 @@ contract E2EEdgeCases is CommonE2EBase {
     gusVaultId = _mintVault(gus);
     gusVault = IVault(vaultController.vaultIdVaultAddress(gusVaultId));
 
+    uint256 _deposit = 1000e8;
+
     // deposits tokens
     vm.startPrank(gus);
     wbtc.approve(address(gusVault), type(uint256).max);
-    gusVault.depositERC20(WBTC_ADDRESS, gusWBTC);
+    gusVault.depositERC20(WBTC_ADDRESS, _deposit);
     vm.stopPrank();
 
     // borrow
@@ -67,7 +70,7 @@ contract E2EEdgeCases is CommonE2EBase {
     // try to withdraw token
     vm.expectRevert(IVault.Vault_OverWithdrawal.selector);
     vm.prank(gus);
-    gusVault.withdrawERC20(WBTC_ADDRESS, gusWBTC / 2);
+    gusVault.withdrawERC20(WBTC_ADDRESS, _deposit / 2);
   }
 
   function testDepositTokenThatIsNotWhitelisted() public {
@@ -134,10 +137,12 @@ contract E2EEdgeCases is CommonE2EBase {
     gusVaultId = _mintVault(gus);
     gusVault = IVault(vaultController.vaultIdVaultAddress(gusVaultId));
 
+    uint256 _deposit = 1000e8;
+
     // deposits tokens
     vm.startPrank(gus);
     wbtc.approve(address(gusVault), type(uint256).max);
-    gusVault.depositERC20(WBTC_ADDRESS, gusWBTC / 2);
+    gusVault.depositERC20(WBTC_ADDRESS, _deposit);
     vm.stopPrank();
 
     // borrow
@@ -165,7 +170,7 @@ contract E2EEdgeCases is CommonE2EBase {
 
     // more deposit should pass
     vm.startPrank(gus);
-    gusVault.depositERC20(WBTC_ADDRESS, gusWBTC / 2);
+    gusVault.depositERC20(WBTC_ADDRESS, _deposit);
     vm.stopPrank();
 
     // mint some USDA

@@ -15,6 +15,7 @@ contract E2EVaultController is CommonE2EBase {
   uint256 public borrowAmount = 500 ether;
   uint96 public bobsVaultId = 1;
   uint96 public carolsVaultId = 2;
+  uint256 public gusWbtcDeposit = 1e8;
 
   event Liquidate(uint256 _vaultId, address _assetAddress, uint256 _usdaToRepurchase, uint256 _tokensToLiquidate);
   event BorrowUSDA(uint256 _vaultId, address _vaultAddress, uint256 _borrowAmount, uint256 _fee);
@@ -44,6 +45,16 @@ contract E2EVaultController is CommonE2EBase {
 
     _mintVault(dave);
     daveVault = IVault(vaultController.vaultIdVaultAddress(3));
+
+    // Gus mints vault
+    _mintVault(gus);
+    gusVaultId = 4;
+    // Since we only have 4 vaults the id: 4 is gonna be Gus' vault
+    gusVault = IVault(vaultController.vaultIdVaultAddress(gusVaultId));
+    vm.startPrank(gus);
+    wbtc.approve(address(gusVault), gusWbtcDeposit);
+    gusVault.depositERC20(address(wbtc), gusWbtcDeposit); // Deposit 1 wbtc
+    vm.stopPrank();
   }
 
   /**
@@ -563,6 +574,209 @@ contract E2EVaultController is CommonE2EBase {
     susd.approve(address(usdaToken), _daveUSDA);
     usdaToken.deposit(_daveUSDA);
     uint256 _liquidated = vaultController.liquidateVault(bobsVaultId, WETH_ADDRESS, _vaultInitialWethBalance);
+    vm.stopPrank();
+
+    // Only the max liquidatable amount should be liquidated
+    assertEq(_liquidated, _liquidatableTokens);
+  }
+
+  // Tests with less than 18 decimals
+  function testLiquidateCompleteVaultLessThan18Decimals() public {
+    uint192 _borrowInterestFactor = vaultController.interestFactor();
+    uint192 _if = _payInterestMath(_borrowInterestFactor);
+    uint192 _accountBorrowingPower = vaultController.vaultBorrowingPower(gusVaultId);
+    uint256 _vaultInitialWbtcBalance = gusVault.balances(WBTC_ADDRESS);
+
+    // Borrow the maximum amount
+    vm.prank(gus);
+    vaultController.borrowUSDA(gusVaultId, _accountBorrowingPower);
+    uint192 _initIF = vaultController.interestFactor();
+    assertEq(_initIF, _if);
+
+    // Let time pass so the vault becomes liquidatable because of interest
+    uint256 _tenYears = 10 * (365 days + 6 hours);
+    vm.warp(block.timestamp + _tenYears);
+    uint192 _tenYearInterestFactor = _payInterestMath(_if);
+
+    // Calculate interest to update the protocol, vault should now be liquidatable
+    vaultController.calculateInterest();
+    assertEq(vaultController.interestFactor(), _tenYearInterestFactor);
+    uint256 _expectedUSDAToRepurchase =
+      _calculateUSDAToRepurchase(anchoredViewBtc.currentValue() * 10 ** 10, _vaultInitialWbtcBalance);
+    uint256 _liabilityBeforeLiquidation = vaultController.vaultLiability(gusVaultId);
+
+    // Liquidate vault
+    uint256 _daveInitialWbtc = IERC20(WBTC_ADDRESS).balanceOf(dave);
+    uint256 _daveUSDA = 1_000_000 ether;
+    vm.startPrank(dave);
+    susd.approve(address(usdaToken), _daveUSDA);
+    usdaToken.deposit(_daveUSDA);
+    uint256 _liquidated = vaultController.liquidateVault(gusVaultId, WBTC_ADDRESS, _vaultInitialWbtcBalance);
+    vm.stopPrank();
+
+    {
+      // Check that everything was liquidate
+      assertEq(_liquidated, _vaultInitialWbtcBalance);
+
+      // Check that dave now has the wbtc of the vault
+      uint256 _daveFinalWbtc = IERC20(WBTC_ADDRESS).balanceOf(dave);
+      assertEq(
+        _daveFinalWbtc - _daveInitialWbtc,
+        _liquidated - vaultController.getLiquidationFee(uint192(_vaultInitialWbtcBalance), WBTC_ADDRESS)
+      );
+
+      // Check that the vault's borrowing power is now zero
+      uint192 _newAccountBorrowingPower = vaultController.vaultBorrowingPower(gusVaultId);
+      assertEq(_newAccountBorrowingPower, 0);
+
+      // Check that the vault is now empty
+      uint256 _vaultWbtcBalance = gusVault.balances(WBTC_ADDRESS);
+      uint256 _vaultWbtcBalanceOf = IERC20(WBTC_ADDRESS).balanceOf(address(gusVault));
+      assertEq(_vaultWbtcBalance, _vaultWbtcBalanceOf);
+      assertEq(_vaultWbtcBalance, 0);
+
+      // Check that the correct USDA amount was taken from dave
+      uint256 _daveFinalUSDA = usdaToken.balanceOf(dave);
+      assertEq(_daveUSDA - _expectedUSDAToRepurchase, _daveFinalUSDA);
+    }
+
+    {
+      // Check that the vault's liability is correct
+      uint256 _newAccountLiability = vaultController.vaultLiability(gusVaultId);
+      assertApproxEqAbs(_newAccountLiability, _liabilityBeforeLiquidation - _expectedUSDAToRepurchase, DELTA);
+    }
+  }
+
+  function testOverLiquidationAndLiquidateInsolventVaultLessThan18Decimals() public {
+    uint256 _gusVaultStartWbtcBalance = gusVault.balances(WBTC_ADDRESS);
+
+    uint192 _gusMaxBorrow = vaultController.vaultBorrowingPower(gusVaultId);
+
+    // gus borrows max amount
+    vm.prank(gus);
+    vaultController.borrowUSDA(gusVaultId, _gusMaxBorrow);
+    assertEq(usdaToken.balanceOf(gus), _gusMaxBorrow);
+    assertTrue(vaultController.checkVault(gusVaultId));
+
+    // Advance 1 week and add interest
+    vm.warp(block.timestamp + 1 weeks);
+    vaultController.calculateInterest();
+
+    // gus's vault is now not solvent
+    assertTrue(!vaultController.checkVault(gusVaultId));
+    uint256 _liquidatableTokens = vaultController.tokensToLiquidate(gusVaultId, WBTC_ADDRESS);
+
+    uint256 _expectedUSDAToRepurchase =
+      _calculateUSDAToRepurchase(anchoredViewBtc.currentValue() * 10 ** 10, _liquidatableTokens);
+    uint256 _liabilityBeforeLiquidation = vaultController.vaultLiability(gusVaultId);
+
+    // Liquidate vault with a way higher maximum
+    uint256 _daveStartWbtcBalance = IERC20(WBTC_ADDRESS).balanceOf(dave);
+    uint256 _daveUSDA = 1_000_000 ether;
+    vm.startPrank(dave);
+    susd.approve(address(usdaToken), _daveUSDA);
+    usdaToken.deposit(_daveUSDA);
+    uint256 _liquidated = vaultController.liquidateVault(gusVaultId, WBTC_ADDRESS, _liquidatableTokens * 10);
+    vm.stopPrank();
+
+    // Only the max liquidatable amount should be liquidated
+    assertEq(_liquidated, _liquidatableTokens);
+
+    // The correct amount of USDA was taken from dave
+    assertEq(usdaToken.balanceOf(dave), _daveUSDA - _expectedUSDAToRepurchase);
+
+    // The vault's liability is correct
+    assertApproxEqAbs(
+      vaultController.vaultLiability(gusVaultId), _liabilityBeforeLiquidation - _expectedUSDAToRepurchase, DELTA
+    );
+
+    // Dave got the correct amount of wbtc tokens
+    assertEq(
+      _daveStartWbtcBalance
+        + (_liquidated - vaultController.getLiquidationFee(uint192(_liquidatableTokens), WBTC_ADDRESS)),
+      IERC20(WBTC_ADDRESS).balanceOf(dave)
+    );
+
+    // gus's vault got some WBTC tokens removed
+    assertEq(_gusVaultStartWbtcBalance - _liquidated, gusVault.balances(WBTC_ADDRESS));
+    assertGt(gusVault.balances(WBTC_ADDRESS), 0);
+  }
+
+  function testBorrowLessThan18Decimals() public {
+    uint256 _usdaBalance = usdaToken.balanceOf(gus);
+    assertEq(0, _usdaBalance);
+
+    /// Get initial interest factFtestWithdrawUnderlyingr
+    uint192 _interestFactor = vaultController.interestFactor();
+    uint256 _expectedInterestFactor = _payInterestMath(_interestFactor);
+
+    uint256 _liability = _calculateAccountLiability(borrowAmount, _interestFactor, _interestFactor);
+
+    vm.expectEmit(false, false, false, true);
+    emit BorrowUSDA(gusVaultId, address(gusVault), borrowAmount, vaultController.getBorrowingFee(uint192(borrowAmount)));
+
+    vm.prank(gus);
+    vaultController.borrowUSDA(gusVaultId, uint192(borrowAmount));
+
+    uint256 _newInterestFactor = vaultController.interestFactor();
+    assertEq(_newInterestFactor, _expectedInterestFactor);
+
+    vaultController.calculateInterest();
+    vm.prank(gus);
+    uint256 _trueLiability = vaultController.vaultLiability(gusVaultId);
+    assertEq(_trueLiability, _liability + vaultController.getBorrowingFee(uint192(_liability)));
+
+    uint256 _usdaBalanceAfter = usdaToken.balanceOf(gus);
+    assertEq(_usdaBalanceAfter, borrowAmount);
+  }
+
+  function testLiquidateVaultWhenCollateralLosesValueLessThan18Decimals() public {
+    uint192 _accountBorrowingPower = vaultController.vaultBorrowingPower(gusVaultId);
+
+    // Borrow the maximum amount
+    vm.prank(gus);
+    vaultController.borrowUSDA(gusVaultId, _accountBorrowingPower);
+
+    // Should revert since vault is solvent
+    vm.expectRevert(IVaultController.VaultController_VaultSolvent.selector);
+    uint256 _tokensToLiquidate = vaultController.tokensToLiquidate(gusVaultId, WBTC_ADDRESS);
+
+    // mock the value of the token to make vault insolvent
+    vm.mockCall(
+      address(anchoredViewBtc), abi.encodeWithSelector(IOracleRelay.currentValue.selector), abi.encode(0.5 ether)
+    );
+    vm.mockCall(
+      address(anchoredViewBtc), abi.encodeWithSelector(IOracleRelay.peekValue.selector), abi.encode(0.5 ether)
+    );
+    _tokensToLiquidate = vaultController.tokensToLiquidate(gusVaultId, WBTC_ADDRESS);
+    assertEq(_tokensToLiquidate, gusWbtcDeposit);
+  }
+
+  function testLiquidateVaultWhenPriceIsStaleLessThan18Decimals() public {
+    uint192 _accountBorrowingPower = vaultController.vaultBorrowingPower(gusVaultId);
+    uint256 _vaultInitialWbtcBalance = gusVault.balances(WBTC_ADDRESS);
+
+    // Borrow the maximum amount
+    vm.prank(gus);
+    vaultController.borrowUSDA(gusVaultId, _accountBorrowingPower);
+
+    // Let time pass so the vault becomes liquidatable because of interest
+    uint256 _tenYears = 10 * (365 days + 6 hours);
+    vm.warp(block.timestamp + _tenYears);
+
+    // Calculate interest to update the protocol, vault should now be liquidatable
+    vaultController.calculateInterest();
+
+    // Advance time so the price is stale
+    vm.warp(block.timestamp + staleTime + 1);
+
+    uint256 _liquidatableTokens = vaultController.tokensToLiquidate(gusVaultId, WBTC_ADDRESS);
+    uint256 _daveUSDA = 1_000_000 ether;
+    // Liquidate vault
+    vm.startPrank(dave);
+    susd.approve(address(usdaToken), _daveUSDA);
+    usdaToken.deposit(_daveUSDA);
+    uint256 _liquidated = vaultController.liquidateVault(gusVaultId, WBTC_ADDRESS, _vaultInitialWbtcBalance);
     vm.stopPrank();
 
     // Only the max liquidatable amount should be liquidated
