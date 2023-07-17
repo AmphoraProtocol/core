@@ -23,13 +23,13 @@ contract DeploySepolia is Deploy {
   function run() external {
     vm.startBroadcast(deployer);
     // Deploy CVX & CRV tokens
-    MintableToken cvx = new MintableToken('CVX');
-    MintableToken crv = new MintableToken('CRV');
+    MintableToken cvx = new MintableToken('CVX',uint8(18));
+    MintableToken crv = new MintableToken('CRV',uint8(18));
     // Deploy Fake Booster
     FakeBooster fakeBooster = new FakeBooster();
 
     // Deploy a copy of sUSDA
-    MintableToken susdCopy = new MintableToken('sUSD');
+    MintableToken susdCopy = new MintableToken('sUSD',uint8(18));
     susdCopy.mint(deployer, susdCopySupply);
     console.log('sUSD_COPY: ', address(susdCopy));
 

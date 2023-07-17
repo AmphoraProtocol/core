@@ -142,6 +142,9 @@ interface IVaultController {
                             ERRORS
     //////////////////////////////////////////////////////////////*/
 
+  /// @notice Thrown when token has invalid amount of decimals
+  error VaultController_TooManyDecimals();
+
   /// @notice Thrown when _msgSender is not the pauser of the contract
   error VaultController_OnlyPauser();
 
@@ -229,6 +232,7 @@ interface IVaultController {
     CollateralType collateralType;
     IBaseRewardPool crvRewardsContract;
     uint256 poolId;
+    uint256 decimals;
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -336,6 +340,9 @@ interface IVaultController {
   /// @notice The vault deployer interface
   function VAULT_DEPLOYER() external view returns (IVaultDeployer _vaultDeployer);
 
+  /// @notice The max decimals allowed for a listed token
+  function MAX_DECIMALS() external view returns (uint8 _maxDecimals);
+
   /// @notice Returns an array of all enabled tokens
   /// @return _enabledTokens The array containing the token addresses
   function getEnabledTokens() external view returns (address[] memory _enabledTokens);
@@ -367,7 +374,8 @@ interface IVaultController {
       IOracleRelay _oracle,
       CollateralType _collateralType,
       IBaseRewardPool _crvRewardsContract,
-      uint256 _poolId
+      uint256 _poolId,
+      uint256 _decimals
     );
 
   /// @notice The interest contract

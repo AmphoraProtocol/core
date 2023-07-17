@@ -126,7 +126,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateO
   uint256 public bobCurveLPBalance = 10 ether;
   uint256 public bobWETH = 10 ether;
   uint256 public carolUni = 100 ether;
-  uint256 public gusWBTC = 1_000_000_000;
+  uint256 public gusWBTC = 1_000_000_000 ether;
   uint256 public daveSUSD = 10_000_000_000 ether;
   uint256 public bobAAVE = 1000 ether;
   uint256 public carolDYDX = 100 ether;
@@ -271,7 +271,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateO
 
     // Register the triCrypto2 pool as collateral
     vaultController.registerErc20(
-      TRI_CRYPTO_2_POOL_ADDRESS, OTHER_LTV, address(triCryptoOracle), LIQUIDATION_INCENTIVE, type(uint256).max, 0
+      TRI_CRYPTO_LP_TOKEN, OTHER_LTV, address(triCryptoOracle), LIQUIDATION_INCENTIVE, type(uint256).max, 0
     );
 
     // Register USDA as acceptable erc20 to vault controller

@@ -144,7 +144,8 @@ abstract contract Deploy is Script, TestConstants, CreateOracles {
 
     for (uint256 i = 0; i < 2; i++) {
       // Add extra rewards
-      MintableToken _fakeRewardsToken = new MintableToken(string.concat('RewardToken', Strings.toString(i+1)));
+      MintableToken _fakeRewardsToken =
+        new MintableToken(string.concat('RewardToken', Strings.toString(i+1)), uint8(18));
       console.log(string.concat('REWARD_TOKEN', Strings.toString(i + 1)), ': ', address(_fakeRewardsToken));
       FakeVirtualRewardsPool fakeExtraVirtualRewardsPool =
         new FakeVirtualRewardsPool(fakeBaseRewardPool1, _fakeRewardsToken, _rewardsPerSecond * (i + 2));
@@ -200,7 +201,7 @@ abstract contract Deploy is Script, TestConstants, CreateOracles {
    *  @return _lpToken The address of the lp token
    */
   function _createFakeLp(address _minter, uint256 _amount) internal returns (address _lpToken) {
-    MintableToken fakeLp1 = new MintableToken('LPToken');
+    MintableToken fakeLp1 = new MintableToken('LPToken',uint8(18));
     fakeLp1.mint(_minter, _amount);
     console.log('FAKE_LP', address(fakeLp1));
     _lpToken = address(fakeLp1);
