@@ -46,6 +46,7 @@
     "@defi-wonderland/solidity-utils": "0.0.0-6c86c0fc",
     "@openzeppelin/contracts": "4.8.2",
     "@openzeppelin/contracts-upgradeable": "4.8.1",
+    "@uniswap/v2-core": "1.0.1",
     "@uniswap/v2-periphery": "https://github.com/Uniswap/v2-periphery.git#0335e8f7e1bd1e8d8329fd300aea2ef2f36dd19f",
     "@uniswap/v3-core": "https://github.com/defi-wonderland/uniswap-v3-core.git#00c65edac6862bb0ddfbfd6554d20f259bc9f735",
     "@uniswap/v3-periphery": "https://github.com/defi-wonderland/uniswap-v3-periphery.git#33df3d7265aee0d0eb537df06ce1c884b1ccd7a0",

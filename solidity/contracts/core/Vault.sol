@@ -116,6 +116,10 @@ contract Vault is IVault, Context {
   /// @param _amount The amount of erc20 token to withdraw
   function withdrawERC20(address _tokenAddress, uint256 _amount) external override onlyMinter {
     if (CONTROLLER.tokenId(_tokenAddress) == 0) revert Vault_TokenNotRegistered();
+
+    // calculate interest before withdrawing to make sure the vault is solvent
+    CONTROLLER.calculateInterest();
+
     if (isTokenStaked[_tokenAddress]) {
       if (!CONTROLLER.tokenCrvRewardsContract(_tokenAddress).withdrawAndUnwrap(_amount, false)) {
         revert Vault_WithdrawAndUnstakeOnConvexFailed();

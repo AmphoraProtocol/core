@@ -320,6 +320,10 @@ contract UnitVaultWithdrawERC20 is Base {
       abi.encodeWithSelector(IVaultController.modifyTotalDeposited.selector, address(_mockToken)),
       abi.encode(1)
     );
+
+    vm.mockCall(
+      address(mockVaultController), abi.encodeWithSelector(IVaultController.calculateInterest.selector), abi.encode(1)
+    );
   }
 
   function testRevertIfNotVaultOwner(address _token, uint256 _amount) public {
@@ -422,6 +426,12 @@ contract UnitVaultWithdrawERC20 is Base {
 
   function testWithdrawERC20CallsCheckVault() public {
     vm.expectCall(address(mockVaultController), abi.encodeWithSelector(IVaultController.checkVault.selector, 1));
+    vm.prank(vaultOwner);
+    vault.withdrawERC20(address(_mockToken), 1 ether);
+  }
+
+  function testWithdrawERC20CallsCalculateInterest() public {
+    vm.expectCall(address(mockVaultController), abi.encodeWithSelector(IVaultController.calculateInterest.selector));
     vm.prank(vaultOwner);
     vault.withdrawERC20(address(_mockToken), 1 ether);
   }
