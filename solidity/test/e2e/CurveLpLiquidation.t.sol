@@ -3,7 +3,7 @@ pragma solidity >=0.8.4 <0.9.0;
 
 import {CommonE2EBase, IVault} from '@test/e2e/Common.sol';
 
-contract CurveLpLiquidation is CommonE2EBase {
+contract E2ECurveLpLiquidation is CommonE2EBase {
   uint256 public depositAmount;
 
   function setUp() public virtual override {

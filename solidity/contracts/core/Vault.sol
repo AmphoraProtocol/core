@@ -286,8 +286,8 @@ contract Vault is IVault, Context {
   /// @param _to The address to send the tokens to
   /// @param _amount The amount of tokens to move
   function controllerTransfer(address _token, address _to, uint256 _amount) external override onlyVaultController {
-    SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(_token), _to, _amount);
     balances[_token] -= _amount;
+    SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(_token), _to, _amount);
   }
 
   /// @notice Function used by the VaultController to withdraw from convex
