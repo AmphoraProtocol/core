@@ -54,7 +54,6 @@ contract CbEthEthOracle is OracleRelay, CurveRegistryUtils {
   function _get() internal view returns (uint256 _maxPrice) {
     uint256 _vp = virtualPrice;
 
-    // Get the prices from chainlink and add 10 decimals
     uint256 _cbEthPrice = CB_ETH_ORACLE_RELAY.peekValue();
     uint256 _ethPrice = ETH_ORACLE_RELAY.peekValue();
 

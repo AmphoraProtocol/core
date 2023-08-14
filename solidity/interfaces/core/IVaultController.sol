@@ -454,7 +454,6 @@ interface IVaultController {
   function mintVault() external returns (address _vaultAddress);
 
   /// @notice Simulates the liquidation of an underwater vault
-  /// @dev Returns all zeros if vault is solvent
   /// @param _id The id of vault we want to target
   /// @param _assetAddress The address of the token the liquidator wishes to liquidate
   /// @param _tokensToLiquidate The number of tokens to liquidate
