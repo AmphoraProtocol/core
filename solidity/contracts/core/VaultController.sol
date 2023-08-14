@@ -316,7 +316,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
 
   /// @notice Updates the protocol fee
   /// @param _newProtocolFee The new protocol fee in terms of 1e18=100%
-  function changeProtocolFee(uint192 _newProtocolFee) external override onlyOwner {
+  function changeProtocolFee(uint192 _newProtocolFee) external override onlyOwner paysInterest {
     if (_newProtocolFee >= 1e18) revert VaultController_FeeTooLarge();
     protocolFee = _newProtocolFee;
     emit NewProtocolFee(_newProtocolFee);

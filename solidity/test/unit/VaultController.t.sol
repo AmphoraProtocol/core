@@ -391,6 +391,19 @@ contract UnitVaultControllerChangeProtocolFee is Base {
     vaultController.changeProtocolFee(_protocolFee);
     assertEq(vaultController.protocolFee(), _protocolFee);
   }
+
+  function testCallsPaysInterest() public {
+    uint256 _interestBefore = vaultController.interestFactor();
+    vm.warp(block.timestamp + 1 days);
+
+    vm.prank(governance);
+    vaultController.changeProtocolFee(1);
+
+    uint256 _interestAfter = vaultController.interestFactor();
+
+    // interest should be higher because the modifier increased it
+    assertGt(_interestAfter, _interestBefore);
+  }
 }
 
 contract UnitVaultControllerChangeInitialBorrowingFee is Base {
