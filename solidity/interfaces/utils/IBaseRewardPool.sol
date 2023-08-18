@@ -15,4 +15,5 @@ interface IBaseRewardPool {
   function extraRewardsLength() external view returns (uint256 _extraRewardsLength);
   function extraRewards(uint256 _position) external view returns (IVirtualBalanceRewardPool _virtualReward);
   function queueNewRewards(uint256 _rewards) external returns (bool _success);
+  function operator() external view returns (address _operator);
 }

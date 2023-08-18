@@ -26,6 +26,7 @@ contract FakeBaseRewardPool is IBaseRewardPool {
   IVirtualBalanceRewardPool[] public extraRewards;
   address public owner;
   IERC20 public lptoken;
+  address public operator = address(0);
 
   constructor(
     address _booster,

@@ -183,8 +183,9 @@ contract Vault is IVault, Context {
       if (_crvReward != 0) {
         // Claim the CRV reward
         _totalCrvReward += _crvReward;
+        uint256 _cvxBalanceBefore = CVX.balanceOf(address(this));
         _rewardsContract.getReward(address(this), false);
-        _totalCvxReward += _calculateCVXReward(_crvReward);
+        _totalCvxReward += CVX.balanceOf(address(this)) - _cvxBalanceBefore;
       }
 
       // Loop and claim all virtual rewards
@@ -195,6 +196,7 @@ contract Vault is IVault, Context {
         uint256 _earnedReward = _virtualReward.earned(address(this));
         if (_earnedReward != 0) {
           _virtualReward.getReward();
+          // TODO: We should use safeTransfer
           _rewardToken.transfer(_msgSender(), _earnedReward);
           emit ClaimedReward(address(_rewardToken), _earnedReward);
         }
@@ -247,7 +249,7 @@ contract Vault is IVault, Context {
     uint256 _rewardsAmount = _rewardsContract.extraRewardsLength();
 
     uint256 _crvReward = _rewardsContract.earned(address(this));
-    uint256 _cvxReward = _calculateCVXReward(_crvReward);
+    uint256 _cvxReward = _calculateExpectedCVXReward(_crvReward, _rewardsContract.operator());
 
     // +3 for CRV, CVX and AMPH
     _rewards = new Reward[](_rewardsAmount+3);
@@ -326,11 +328,15 @@ contract Vault is IVault, Context {
     if (!_booster.deposit(_poolId, _amount, true)) revert Vault_DepositAndStakeOnConvexFailed();
   }
 
-  /// @notice Used to calculate the CVX reward for a given CRV amount
+  /// @notice Used to calculate the expected CVX reward for a given CRV amount
   /// @dev This is copied from the CVX mint function
   /// @param _crv The amount of CRV to calculate the CVX reward for
+  /// @param _operator The operator of the rewards contract
   /// @return _cvxAmount The amount of CVX to get
-  function _calculateCVXReward(uint256 _crv) internal view returns (uint256 _cvxAmount) {
+  function _calculateExpectedCVXReward(uint256 _crv, address _operator) internal view returns (uint256 _cvxAmount) {
+    // In case the operator is changed from CVX, the rewards are 0
+    if (CVX.operator() != _operator) return 0;
+
     uint256 _supply = CVX.totalSupply();
     uint256 _totalCliffs = CVX.totalCliffs();
 
