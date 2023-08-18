@@ -163,7 +163,8 @@ contract Vault is IVault, Context {
   /// @notice Claims available rewards from multiple tokens
   /// @dev    Transfers a percentage of the crv and cvx rewards to claim AMPH tokens
   /// @param _tokenAddresses The addresses of the erc20 tokens
-  function claimRewards(address[] memory _tokenAddresses) external override onlyMinter {
+  /// @param _claimExtraRewards True if it should claim the extra rewards from convex
+  function claimRewards(address[] memory _tokenAddresses, bool _claimExtraRewards) external override onlyMinter {
     uint256 _totalCrvReward;
     uint256 _totalCvxReward;
 
@@ -186,20 +187,22 @@ contract Vault is IVault, Context {
         _totalCvxReward += CVX.balanceOf(address(this)) - _cvxBalanceBefore;
       }
 
-      // Loop and claim all virtual rewards
-      uint256 _extraRewards = _rewardsContract.extraRewardsLength();
-      for (uint256 _j; _j < _extraRewards;) {
-        IVirtualBalanceRewardPool _virtualReward = _rewardsContract.extraRewards(_j);
-        IERC20 _rewardToken = _virtualReward.rewardToken();
-        uint256 _rewardBalanceBefore = _rewardToken.balanceOf(address(this));
-        _virtualReward.getReward();
-        uint256 _earnedReward = _rewardToken.balanceOf(address(this)) - _rewardBalanceBefore;
-        if (_earnedReward != 0) {
-          _rewardToken.safeTransfer(_msgSender(), _earnedReward);
-          emit ClaimedReward(address(_rewardToken), _earnedReward);
-        }
-        unchecked {
-          ++_j;
+      if (_claimExtraRewards) {
+        // Loop and claim all virtual rewards
+        uint256 _extraRewards = _rewardsContract.extraRewardsLength();
+        for (uint256 _j; _j < _extraRewards;) {
+          IVirtualBalanceRewardPool _virtualReward = _rewardsContract.extraRewards(_j);
+          IERC20 _rewardToken = _virtualReward.rewardToken();
+          uint256 _rewardBalanceBefore = _rewardToken.balanceOf(address(this));
+          _virtualReward.getReward();
+          uint256 _earnedReward = _rewardToken.balanceOf(address(this)) - _rewardBalanceBefore;
+          if (_earnedReward != 0) {
+            _rewardToken.safeTransfer(_msgSender(), _earnedReward);
+            emit ClaimedReward(address(_rewardToken), _earnedReward);
+          }
+          unchecked {
+            ++_j;
+          }
         }
       }
       unchecked {
@@ -232,10 +235,14 @@ contract Vault is IVault, Context {
     }
   }
 
-  /// @notice Returns an array of all the available rewards the user can claim
-  /// @param _tokenAddress The address of the token collateral to check rewards for
-  /// @return _rewards The array of all the available rewards
-  function claimableRewards(address _tokenAddress) external view override returns (Reward[] memory _rewards) {
+  /// @notice Returns an array of tokens and amounts available for claim
+  /// @param _tokenAddress The address of erc20 token
+  /// @param _claimExtraRewards True if it should claim the extra rewards from convex
+  /// @return _rewards The array of tokens and amount available for claim
+  function claimableRewards(
+    address _tokenAddress,
+    bool _claimExtraRewards
+  ) external view override returns (Reward[] memory _rewards) {
     if (CONTROLLER.tokenId(_tokenAddress) == 0) revert Vault_TokenNotRegistered();
     if (CONTROLLER.tokenCollateralType(_tokenAddress) != IVaultController.CollateralType.CurveLPStakedOnConvex) {
       revert Vault_TokenNotCurveLP();
@@ -244,7 +251,7 @@ contract Vault is IVault, Context {
     IBaseRewardPool _rewardsContract = CONTROLLER.tokenCrvRewardsContract(_tokenAddress);
     IAMPHClaimer _amphClaimer = CONTROLLER.claimerContract();
 
-    uint256 _rewardsAmount = _rewardsContract.extraRewardsLength();
+    uint256 _rewardsAmount = (_claimExtraRewards) ? _rewardsContract.extraRewardsLength() : 0;
 
     uint256 _crvReward = _rewardsContract.earned(address(this));
     uint256 _cvxReward = _calculateExpectedCVXReward(_crvReward, _rewardsContract.operator());

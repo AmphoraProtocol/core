@@ -649,7 +649,7 @@ contract UnitVaultClaimRewards is Base {
     _tokens[0] = _token;
     vm.expectRevert(IVault.Vault_NotMinter.selector);
     vm.prank(newAddress());
-    vault.claimRewards(_tokens);
+    vault.claimRewards(_tokens, true);
   }
 
   function testRevertIfTokenNotRegistered(address _token) public {
@@ -664,7 +664,7 @@ contract UnitVaultClaimRewards is Base {
       abi.encode(collateralInfo)
     );
     vm.prank(vaultOwner);
-    vault.claimRewards(_tokens);
+    vault.claimRewards(_tokens, true);
   }
 
   function testRevertIfProvidedTokenIsNotCurveLP() public {
@@ -678,7 +678,7 @@ contract UnitVaultClaimRewards is Base {
       abi.encode(collateralInfo)
     );
     vm.prank(vaultOwner);
-    vault.claimRewards(_tokens);
+    vault.claimRewards(_tokens, true);
   }
 
   function testExpectTransferCRV() public {
@@ -697,7 +697,7 @@ contract UnitVaultClaimRewards is Base {
     vm.expectCall(address(crv), abi.encodeWithSelector(IERC20.transfer.selector, vaultOwner, 0.5 ether));
 
     vm.prank(vaultOwner);
-    vault.claimRewards(_tokens);
+    vault.claimRewards(_tokens, true);
   }
 
   function testClaimExtraRewards() public {
@@ -732,7 +732,34 @@ contract UnitVaultClaimRewards is Base {
     );
     vm.expectCall(address(crv), abi.encodeWithSelector(IERC20.transfer.selector, vaultOwner, 0.5 ether));
     vm.prank(vaultOwner);
-    vault.claimRewards(_tokens);
+    vault.claimRewards(_tokens, true);
+  }
+
+  function testDontClaimExtraRewards() public {
+    address[] memory _tokens = new address[](1);
+    _tokens[0] = address(_mockToken);
+    vm.mockCall(
+      address(baseRewards), abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(1)
+    );
+
+    vm.mockCall(
+      address(baseRewards),
+      abi.encodeWithSelector(IBaseRewardPool.extraRewards.selector, 0),
+      abi.encode(mockVirtualRewardsPool)
+    );
+
+    vm.mockCall(
+      address(mockAmphClaimer),
+      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, address(vault), 1, tokenBalanceChange, 1 ether),
+      abi.encode(0, 0.5 ether, 1 ether)
+    );
+
+    vm.expectCall(address(mockVirtualRewardsPool), abi.encodeWithSelector(IVirtualBalanceRewardPool.earned.selector), 0);
+
+    vm.expectCall(address(mockVirtualRewardsToken), abi.encodeWithSelector(IERC20.transfer.selector), 0);
+    vm.expectCall(address(crv), abi.encodeWithSelector(IERC20.transfer.selector, vaultOwner, 0.5 ether));
+    vm.prank(vaultOwner);
+    vault.claimRewards(_tokens, false);
   }
 
   function testClaimMultipleTokens() public {
@@ -791,7 +818,7 @@ contract UnitVaultClaimRewards is Base {
 
     vm.expectCall(address(crv), abi.encodeWithSelector(IERC20.transfer.selector, vaultOwner, 1.5 ether));
     vm.prank(vaultOwner);
-    vault.claimRewards(_tokens);
+    vault.claimRewards(_tokens, true);
   }
 
   function testClaimWhenNoAMPHToClaim() public {
@@ -819,7 +846,7 @@ contract UnitVaultClaimRewards is Base {
     // user gets the full amount
     vm.expectCall(address(crv), abi.encodeWithSelector(IERC20.transfer.selector, vaultOwner, 1 ether));
     vm.prank(vaultOwner);
-    vault.claimRewards(_tokens);
+    vault.claimRewards(_tokens, true);
   }
 
   function testClaimWhenTheRewardsAreZero() public {
@@ -849,7 +876,7 @@ contract UnitVaultClaimRewards is Base {
     forTestBaseRewards.setTokenBalanceChange(0);
     forTestVirtualRewards.setTokenBalanceChange(0);
     vm.prank(vaultOwner);
-    vault.claimRewards(_tokens);
+    vault.claimRewards(_tokens, true);
   }
 }
 
@@ -893,7 +920,7 @@ contract UnitVaultClaimableRewards is Base {
       abi.encodeWithSelector(IVaultController.tokenId.selector, address(_token)),
       abi.encode(0)
     );
-    vault.claimableRewards(_token);
+    vault.claimableRewards(_token, true);
   }
 
   function testRevertIfProvidedTokenIsNotCurveLP() public {
@@ -903,7 +930,7 @@ contract UnitVaultClaimableRewards is Base {
       abi.encodeWithSelector(IVaultController.tokenCollateralType.selector),
       abi.encode(IVaultController.CollateralType.Single)
     );
-    vault.claimableRewards(address(_mockToken));
+    vault.claimableRewards(address(_mockToken), true);
   }
 
   function testClaimableRewards() public {
@@ -932,7 +959,8 @@ contract UnitVaultClaimableRewards is Base {
 
     vm.mockCall(address(mockAmphClaimer), abi.encodeWithSelector(IAMPHClaimer.AMPH.selector), abi.encode(mockAmphToken));
 
-    IVault.Reward[] memory _rewards = vault.claimableRewards(address(_mockToken));
+    IVault.Reward[] memory _rewards = vault.claimableRewards(address(_mockToken), true);
+    assertEq(_rewards.length, 4);
     assertEq(address(_rewards[0].token), address(crv));
     assertEq(_rewards[0].amount, 0.5 ether);
 
@@ -944,6 +972,44 @@ contract UnitVaultClaimableRewards is Base {
 
     assertEq(address(_rewards[3].token), address(mockAmphToken));
     assertEq(_rewards[3].amount, 3 ether);
+  }
+
+  function testClaimableRewardsNoExtraRewards() public {
+    vm.mockCall(
+      address(baseRewards), abi.encodeWithSelector(IBaseRewardPool.extraRewardsLength.selector), abi.encode(1)
+    );
+
+    vm.mockCall(
+      address(baseRewards),
+      abi.encodeWithSelector(IBaseRewardPool.extraRewards.selector, 0),
+      abi.encode(mockVirtualRewardsPool)
+    );
+
+    vm.mockCall(
+      address(mockVirtualRewardsPool),
+      abi.encodeWithSelector(IVirtualBalanceRewardPool.earned.selector, address(vault)),
+      abi.encode(1 ether)
+    );
+
+    uint256 _claimedCVX = 1 ether * 90 / 100;
+    vm.mockCall(
+      address(mockAmphClaimer),
+      abi.encodeWithSelector(IAMPHClaimer.claimable.selector, address(vault), 1, _claimedCVX, 1 ether),
+      abi.encode(0, 0.5 ether, 3 ether)
+    );
+
+    vm.mockCall(address(mockAmphClaimer), abi.encodeWithSelector(IAMPHClaimer.AMPH.selector), abi.encode(mockAmphToken));
+
+    IVault.Reward[] memory _rewards = vault.claimableRewards(address(_mockToken), false);
+    assertEq(_rewards.length, 3);
+    assertEq(address(_rewards[0].token), address(crv));
+    assertEq(_rewards[0].amount, 0.5 ether);
+
+    assertEq(address(_rewards[1].token), address(cvx));
+    assertEq(_rewards[1].amount, _claimedCVX);
+
+    assertEq(address(_rewards[2].token), address(mockAmphToken));
+    assertEq(_rewards[2].amount, 3 ether);
   }
 
   function testClaimableWhenAmphClaimerIsZeroAddress() public {
@@ -969,7 +1035,7 @@ contract UnitVaultClaimableRewards is Base {
       abi.encode(1 ether)
     );
 
-    IVault.Reward[] memory _rewards = vault.claimableRewards(address(_mockToken));
+    IVault.Reward[] memory _rewards = vault.claimableRewards(address(_mockToken), true);
 
     assertEq(_rewards.length, 4);
 
@@ -1013,7 +1079,7 @@ contract UnitVaultClaimableRewards is Base {
 
     vm.mockCall(address(mockAmphClaimer), abi.encodeWithSelector(IAMPHClaimer.AMPH.selector), abi.encode(mockAmphToken));
 
-    IVault.Reward[] memory _rewards = vault.claimableRewards(address(_mockToken));
+    IVault.Reward[] memory _rewards = vault.claimableRewards(address(_mockToken), true);
     assertEq(address(_rewards[0].token), address(crv));
     assertEq(_rewards[0].amount, 0.5 ether);
 

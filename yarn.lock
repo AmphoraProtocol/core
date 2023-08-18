@@ -1624,9 +1624,9 @@ flatted@^2.0.0:
   version "1.5.3"
   resolved "https://github.com/foundry-rs/forge-std#fc560fa34fa12a335a50c35d92e55a6628ca467c"
 
-"forge-std@https://github.com/foundry-rs/forge-std.git#2b58ecbcf3dfde7a75959dc7b4eb3d0670278de6":
-  version "1.5.2"
-  resolved "https://github.com/foundry-rs/forge-std.git#2b58ecbcf3dfde7a75959dc7b4eb3d0670278de6"
+"forge-std@https://github.com/foundry-rs/forge-std.git#74cfb77e308dd188d2f58864aaf44963ae6b88b1":
+  version "1.6.0"
+  resolved "https://github.com/foundry-rs/forge-std.git#74cfb77e308dd188d2f58864aaf44963ae6b88b1"
 
 fs-extra@^11.0.0:
   version "11.1.1"

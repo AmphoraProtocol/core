@@ -190,12 +190,17 @@ interface IVault {
   /// @notice Claims available rewards from multiple tokens
   /// @dev    Transfers a percentage of the crv and cvx rewards to claim AMPH tokens
   /// @param _tokenAddresses The addresses of the erc20 tokens
-  function claimRewards(address[] memory _tokenAddresses) external;
+  /// @param _claimExtraRewards True if it should claim the extra rewards from convex
+  function claimRewards(address[] memory _tokenAddresses, bool _claimExtraRewards) external;
 
   /// @notice Returns an array of tokens and amounts available for claim
   /// @param _tokenAddress The address of erc20 token
+  /// @param _claimExtraRewards True if it should claim the extra rewards from convex
   /// @return _rewards The array of tokens and amount available for claim
-  function claimableRewards(address _tokenAddress) external view returns (Reward[] memory _rewards);
+  function claimableRewards(
+    address _tokenAddress,
+    bool _claimExtraRewards
+  ) external view returns (Reward[] memory _rewards);
 
   /**
    * @notice Function used by the VaultController to transfer tokens

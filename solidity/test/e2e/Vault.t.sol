@@ -119,11 +119,11 @@ contract E2EVault is CommonE2EBase {
 
     vm.warp(block.timestamp + 5 days);
 
-    IVault.Reward[] memory _rewards = bobVault.claimableRewards(address(usdtStableLP));
+    IVault.Reward[] memory _rewards = bobVault.claimableRewards(address(usdtStableLP), true);
     address[] memory _tokens = new address[](1);
     _tokens[0] = address(usdtStableLP);
     vm.prank(bob);
-    bobVault.claimRewards(_tokens);
+    bobVault.claimRewards(_tokens, true);
 
     assertTrue(_rewards[0].amount != 0);
     assertTrue(_rewards[1].amount != 0);
@@ -159,7 +159,7 @@ contract E2EVault is CommonE2EBase {
     vaultController.changeClaimerContract(IAMPHClaimer(address(0)));
 
     // check that amph was not claimed
-    IVault.Reward[] memory _rewardsInZero = bobVault.claimableRewards(address(usdtStableLP));
+    IVault.Reward[] memory _rewardsInZero = bobVault.claimableRewards(address(usdtStableLP), true);
     for (uint256 _i; _i < _rewardsInZero.length; _i++) {
       if (address(_rewardsInZero[_i].token) == address(amphToken)) revert('fail: amph was claimed'); // if finds amph rewards trigger a revert
     }
@@ -169,7 +169,7 @@ contract E2EVault is CommonE2EBase {
     uint256 _amphBalanceBeforeClaimingInZero = amphToken.balanceOf(bob);
 
     vm.prank(bob);
-    bobVault.claimRewards(_tokens);
+    bobVault.claimRewards(_tokens, true);
 
     uint256 _balanceAfterCRV = IERC20(CRV_ADDRESS).balanceOf(bob);
     uint256 _balanceAfterCVX = IERC20(CVX_ADDRESS).balanceOf(bob);
@@ -206,12 +206,12 @@ contract E2EVault is CommonE2EBase {
 
     for (uint256 _i; _i < 10; ++_i) {
       vm.warp(block.timestamp + 5 days);
-      IVault.Reward[] memory _rewards = bobVault.claimableRewards(address(usdtStableLP));
+      IVault.Reward[] memory _rewards = bobVault.claimableRewards(address(usdtStableLP), true);
       _totalCRVClaimed += _rewards[0].amount;
       _totalCVXClaimed += _rewards[1].amount;
 
       vm.prank(bob);
-      bobVault.claimRewards(_tokens);
+      bobVault.claimRewards(_tokens, true);
     }
 
     uint256 _balanceAfterCRV = IERC20(CRV_ADDRESS).balanceOf(bob);
@@ -259,8 +259,8 @@ contract E2EVault is CommonE2EBase {
     assertEq(bobVault.balances(address(usdtStableLP)), 0);
     assertEq(usdtStableLP.balanceOf(bob), bobCurveLPBalance);
 
-    IVault.Reward[] memory _rewards = bobVault.claimableRewards(address(usdtStableLP));
-    IVault.Reward[] memory _rewards2 = bobVault.claimableRewards(address(gearLP));
+    IVault.Reward[] memory _rewards = bobVault.claimableRewards(address(usdtStableLP), true);
+    IVault.Reward[] memory _rewards2 = bobVault.claimableRewards(address(gearLP), true);
 
     address[] memory _tokensToClaim = new address[](2);
     _tokensToClaim[0] = address(gearLP);
@@ -271,12 +271,15 @@ contract E2EVault is CommonE2EBase {
 
     // claim
     vm.startPrank(bob);
-    bobVault.claimRewards(_tokensToClaim);
+    bobVault.claimRewards(_tokensToClaim, true);
     vm.stopPrank();
 
     // governance should have received the tokens
     assertGt(IERC20(CRV_ADDRESS).balanceOf(address(governor)), _balanceCrvGovBefore);
     assertGt(IERC20(CVX_ADDRESS).balanceOf(address(governor)), _balanceCvxGovBefore);
+
+    assertEq(_rewards.length, 3);
+    assertEq(_rewards2.length, 4);
 
     assertTrue(_rewards[0].amount != 0); // _rewards[0] = CRV rewards
     assertTrue(_rewards[1].amount != 0); // _rewards[1] = CVX rewards
@@ -295,6 +298,82 @@ contract E2EVault is CommonE2EBase {
     // When calling the view method claimable it doesn't affect the CVX supply so the rewards don't change between claims
     assertApproxEqAbs(amphToken.balanceOf(bob), _balanceBeforeAMPH + _rewards[2].amount + _rewards2[3].amount, 10);
     assertEq(IERC20(GEAR_ADDRESS).balanceOf(bob), _balanceVirtualBefore + _rewards2[2].amount);
+  }
+
+  function testClaimMultipleCurveLPWithoutExtraRewards() public {
+    uint256 _depositAmount = 0.1 ether;
+
+    // deposit and stake
+    vm.startPrank(bob);
+    gearLP.approve(address(bobVault), _depositAmount);
+    bobVault.depositERC20(address(gearLP), _depositAmount);
+
+    usdtStableLP.approve(address(bobVault), _depositAmount);
+    bobVault.depositERC20(address(usdtStableLP), _depositAmount);
+    vm.stopPrank();
+
+    assertEq(usdtStableLP.balanceOf(bob), bobCurveLPBalance - _depositAmount);
+
+    uint256 _balanceBeforeCRV = IERC20(CRV_ADDRESS).balanceOf(bob);
+    uint256 _balanceBeforeCVX = IERC20(CVX_ADDRESS).balanceOf(bob);
+    uint256 _balanceVirtualBefore = IERC20(GEAR_ADDRESS).balanceOf(bob);
+    uint256 _balanceBeforeAMPH = amphToken.balanceOf(bob);
+
+    vm.prank(BOOSTER);
+    IBaseRewardPool(USDT_LP_REWARDS_ADDRESS).queueNewRewards(_depositAmount);
+
+    vm.prank(BOOSTER);
+    IBaseRewardPool(GEAR_LP_REWARDS_ADDRESS).queueNewRewards(_depositAmount);
+
+    vm.prank(GEAR_VIRTUAL_REWARDS_OPERATOR_CONTRACT);
+    IVirtualBalanceRewardPool(GEAR_LP_VIRTUAL_REWARDS_CONTRACT).queueNewRewards(_depositAmount);
+
+    // pass time
+    vm.warp(block.timestamp + 5 days);
+
+    // Withdraw and unstake usdtCurveLP
+    vm.prank(bob);
+    bobVault.withdrawERC20(address(usdtStableLP), _depositAmount);
+    assertEq(bobVault.balances(address(usdtStableLP)), 0);
+    assertEq(usdtStableLP.balanceOf(bob), bobCurveLPBalance);
+
+    IVault.Reward[] memory _rewards = bobVault.claimableRewards(address(usdtStableLP), false);
+    IVault.Reward[] memory _rewards2 = bobVault.claimableRewards(address(gearLP), false);
+
+    address[] memory _tokensToClaim = new address[](2);
+    _tokensToClaim[0] = address(gearLP);
+    _tokensToClaim[1] = address(usdtStableLP);
+
+    uint256 _balanceCrvGovBefore = IERC20(CRV_ADDRESS).balanceOf(address(governor));
+    uint256 _balanceCvxGovBefore = IERC20(CVX_ADDRESS).balanceOf(address(governor));
+
+    // claim
+    vm.startPrank(bob);
+    bobVault.claimRewards(_tokensToClaim, false);
+    vm.stopPrank();
+
+    // governance should have received the tokens
+    assertGt(IERC20(CRV_ADDRESS).balanceOf(address(governor)), _balanceCrvGovBefore);
+    assertGt(IERC20(CVX_ADDRESS).balanceOf(address(governor)), _balanceCvxGovBefore);
+
+    assertEq(_rewards.length, 3);
+    assertEq(_rewards2.length, 3);
+    assertTrue(_rewards[0].amount != 0); // _rewards[0] = CRV rewards
+    assertTrue(_rewards[1].amount != 0); // _rewards[1] = CVX rewards
+    assertTrue(_rewards[2].amount != 0); // _rewards[2] = AMPH rewards
+    assertTrue(_rewards2[0].amount != 0); // _rewards2[0] = CRV rewards
+    assertTrue(_rewards2[1].amount != 0); // _rewards2[1] = CVX rewards
+    assertTrue(_rewards2[2].amount != 0); // _rewards2[2] = AMPH rewards
+    assertApproxEqAbs(
+      IERC20(CRV_ADDRESS).balanceOf(bob), _balanceBeforeCRV + _rewards[0].amount + _rewards2[0].amount, 1
+    );
+    assertApproxEqAbs(
+      IERC20(CVX_ADDRESS).balanceOf(bob), _balanceBeforeCVX + _rewards[1].amount + _rewards2[1].amount, 1
+    );
+    // This 10 wei difference is because of the claiming order or the rewards and is an acceptable difference.
+    // When calling the view method claimable it doesn't affect the CVX supply so the rewards don't change between claims
+    assertApproxEqAbs(amphToken.balanceOf(bob), _balanceBeforeAMPH + _rewards[2].amount + _rewards2[2].amount, 10);
+    assertEq(IERC20(GEAR_ADDRESS).balanceOf(bob), _balanceVirtualBefore);
   }
 
   function testClaimWhenOperatorChanged() public {
@@ -353,8 +432,8 @@ contract E2EVault is CommonE2EBase {
       ICVX(CVX_ADDRESS).updateOperator();
     }
 
-    IVault.Reward[] memory _rewards = bobVault.claimableRewards(address(usdtStableLP));
-    IVault.Reward[] memory _rewards2 = bobVault.claimableRewards(address(gearLP));
+    IVault.Reward[] memory _rewards = bobVault.claimableRewards(address(usdtStableLP), true);
+    IVault.Reward[] memory _rewards2 = bobVault.claimableRewards(address(gearLP), true);
 
     address[] memory _tokensToClaim = new address[](2);
     _tokensToClaim[0] = address(gearLP);
@@ -365,7 +444,7 @@ contract E2EVault is CommonE2EBase {
 
     // claim
     vm.startPrank(bob);
-    bobVault.claimRewards(_tokensToClaim);
+    bobVault.claimRewards(_tokensToClaim, true);
     vm.stopPrank();
 
     // governance should have received the tokens

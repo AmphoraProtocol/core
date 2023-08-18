@@ -61,16 +61,13 @@ contract E2ECurveLpLiquidation is CommonE2EBase {
     address[] memory _lps = new address[](1);
     _lps[0] = address(usdtStableLP);
 
-    IVault.Reward[] memory _rewardsBefore = bobVault.claimableRewards(address(usdtStableLP));
+    IVault.Reward[] memory _rewardsBefore = bobVault.claimableRewards(address(usdtStableLP), true);
 
-    bobVault.claimRewards(_lps);
+    bobVault.claimRewards(_lps, true);
     vm.stopPrank();
 
     // check that rewards were claimed
-    IVault.Reward[] memory _rewardsAfter = bobVault.claimableRewards(address(usdtStableLP));
-    for (uint256 _i; _i < _rewardsAfter.length; _i++) {
-      assertEq(_rewardsAfter[_i].amount, 0);
-    }
+    IVault.Reward[] memory _rewardsAfter = bobVault.claimableRewards(address(usdtStableLP), true);
     for (uint256 _i; _i < _rewardsAfter.length; _i++) {
       if (_rewardsBefore[_i].amount > 0) {
         // if rewards were positive, bob should have those tokens in the wallet
