@@ -89,6 +89,12 @@ interface IGovernorCharlieEvents {
     bytes32 indexed _txHash, address indexed _target, uint256 _value, string _signature, bytes _data, uint256 _eta
   );
 
+  /// @notice Emitted when a new governance token is set
+  event NewTokenSet(address _oldToken, address _newToken);
+
+  /// @notice Emitted when a max whitelist period is set
+  event MaxWhitelistPeriodSet(uint256 _oldMaxWhitelistPeriod, uint256 _newMaxWhitelistPeriod);
+
   /*///////////////////////////////////////////////////////////////
                               TALLY EVENTS
   //////////////////////////////////////////////////////////////*/

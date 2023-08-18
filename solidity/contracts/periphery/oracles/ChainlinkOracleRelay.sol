@@ -5,10 +5,11 @@ import {IOracleRelay, OracleRelay} from '@contracts/periphery/oracles/OracleRela
 import {ChainlinkStalePriceLib} from '@contracts/periphery/oracles/ChainlinkStalePriceLib.sol';
 import {AggregatorV2V3Interface} from '@chainlink/interfaces/AggregatorV2V3Interface.sol';
 import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
+import {IChainlinkOracleRelay} from '@interfaces/periphery/IChainlinkOracleRelay.sol';
 
 /// @notice Oracle that wraps a chainlink oracle.
 ///         The oracle returns (chainlinkPrice) * mul / div
-contract ChainlinkOracleRelay is OracleRelay, Ownable {
+contract ChainlinkOracleRelay is IChainlinkOracleRelay, OracleRelay, Ownable {
   /// @notice Emitted when the amount is zero
   error ChainlinkOracle_ZeroAmount();
 
@@ -64,7 +65,10 @@ contract ChainlinkOracleRelay is OracleRelay, Ownable {
   /// @dev Only the owner can call this function
   function setStalePriceDelay(uint256 _stalePriceDelay) external onlyOwner {
     if (_stalePriceDelay == 0) revert ChainlinkOracle_ZeroAmount();
+    uint256 _oldStalePriceDelay = stalePriceDelay;
     stalePriceDelay = _stalePriceDelay;
+
+    emit StalePriceDelaySet(_oldStalePriceDelay, _stalePriceDelay);
   }
 
   /// @notice Returns last second value of the oracle

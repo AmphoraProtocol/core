@@ -83,6 +83,8 @@ contract UnitCTokenOracleCurrentValue is Base {
 }
 
 contract UnitCTokenOracleChangeAnchoredView is Base {
+  event AnchoredViewChanged(address indexed _oldAnchoredView, address indexed _newAnchoredView);
+
   function testCTokenOracleChangeAnchoredViewRevertWhenCalledByNonOwner(address _caller) public {
     vm.assume(_caller != cTokenOracle.owner());
 
@@ -98,5 +100,15 @@ contract UnitCTokenOracleChangeAnchoredView is Base {
     cTokenOracle.changeAnchoredView(_newAnchoredView);
 
     assertEq(address(cTokenOracle.anchoredViewUnderlying()), _newAnchoredView);
+  }
+
+  function testCTokenOracleEmitEvent(address _newAnchoredView) public {
+    vm.assume(_newAnchoredView != address(_underlyingAnchoredView));
+
+    vm.startPrank(cTokenOracle.owner());
+    vm.expectEmit(true, true, true, true);
+    emit AnchoredViewChanged(address(cTokenOracle.anchoredViewUnderlying()), _newAnchoredView);
+    cTokenOracle.changeAnchoredView(_newAnchoredView);
+    vm.stopPrank();
   }
 }

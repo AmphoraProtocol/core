@@ -565,7 +565,10 @@ contract GovernorCharlie is IGovernorCharlie {
    * @param  _token The new token address
    */
   function setNewToken(address _token) external onlyGov {
+    address _oldAmph = address(amph);
     amph = IAMPH(_token);
+
+    emit NewTokenSet(_oldAmph, _token);
   }
 
   /**
@@ -573,7 +576,10 @@ contract GovernorCharlie is IGovernorCharlie {
    * @param  _second How many seconds to whitelist for
    */
   function setMaxWhitelistPeriod(uint256 _second) external onlyGov {
+    uint256 _oldSeconds = maxWhitelistPeriod;
     maxWhitelistPeriod = _second;
+
+    emit MaxWhitelistPeriodSet(_oldSeconds, _second);
   }
 
   /**
