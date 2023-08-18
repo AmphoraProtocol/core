@@ -9,18 +9,16 @@ import {IBooster} from '@interfaces/utils/IBooster.sol';
 import {IBaseRewardPool} from '@interfaces/utils/IBaseRewardPool.sol';
 import {IVirtualBalanceRewardPool} from '@interfaces/utils/IVirtualBalanceRewardPool.sol';
 
-import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {Context} from '@openzeppelin/contracts/utils/Context.sol';
-import {SafeERC20Upgradeable} from '@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol';
-import {IERC20Upgradeable} from '@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol';
 import {ICVX} from '@interfaces/utils/ICVX.sol';
+import {SafeERC20, IERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 /// @notice Vault contract, our implementation of maker-vault like vault
 /// @dev Major differences:
 /// 1. multi-collateral
 /// 2. generate interest in USDA
 contract Vault is IVault, Context {
-  using SafeERC20Upgradeable for IERC20;
+  using SafeERC20 for IERC20;
 
   /// @dev The CVX token
   ICVX public immutable CVX;
@@ -89,7 +87,7 @@ contract Vault is IVault, Context {
   function depositERC20(address _token, uint256 _amount) external override onlyMinter {
     if (CONTROLLER.tokenId(_token) == 0) revert Vault_TokenNotRegistered();
     if (_amount == 0) revert Vault_AmountZero();
-    SafeERC20Upgradeable.safeTransferFrom(IERC20Upgradeable(_token), _msgSender(), address(this), _amount);
+    IERC20(_token).safeTransferFrom(_msgSender(), address(this), _amount);
     if (CONTROLLER.tokenCollateralType(_token) == IVaultController.CollateralType.CurveLPStakedOnConvex) {
       uint256 _poolId = CONTROLLER.tokenPoolId(_token);
       /// If it's type CurveLPStakedOnConvex then pool id can't be 0
@@ -130,7 +128,7 @@ contract Vault is IVault, Context {
     // check if the account is solvent
     if (!CONTROLLER.checkVault(vaultInfo.id)) revert Vault_OverWithdrawal();
     // transfer the token to the owner
-    SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(_tokenAddress), _msgSender(), _amount);
+    IERC20(_tokenAddress).safeTransfer(_msgSender(), _amount);
     // modify total deposited
     CONTROLLER.modifyTotalDeposited(vaultInfo.id, _amount, _tokenAddress, false);
     emit Withdraw(_tokenAddress, _amount);
@@ -193,11 +191,11 @@ contract Vault is IVault, Context {
       for (uint256 _j; _j < _extraRewards;) {
         IVirtualBalanceRewardPool _virtualReward = _rewardsContract.extraRewards(_j);
         IERC20 _rewardToken = _virtualReward.rewardToken();
-        uint256 _earnedReward = _virtualReward.earned(address(this));
+        uint256 _rewardBalanceBefore = _rewardToken.balanceOf(address(this));
+        _virtualReward.getReward();
+        uint256 _earnedReward = _rewardToken.balanceOf(address(this)) - _rewardBalanceBefore;
         if (_earnedReward != 0) {
-          _virtualReward.getReward();
-          // TODO: We should use safeTransfer
-          _rewardToken.transfer(_msgSender(), _earnedReward);
+          _rewardToken.safeTransfer(_msgSender(), _earnedReward);
           emit ClaimedReward(address(_rewardToken), _earnedReward);
         }
         unchecked {
@@ -289,7 +287,7 @@ contract Vault is IVault, Context {
   /// @param _amount The amount of tokens to move
   function controllerTransfer(address _token, address _to, uint256 _amount) external override onlyVaultController {
     balances[_token] -= _amount;
-    SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(_token), _to, _amount);
+    IERC20(_token).safeTransfer(_to, _amount);
   }
 
   /// @notice Function used by the VaultController to withdraw from convex
