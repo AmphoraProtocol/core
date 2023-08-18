@@ -15,16 +15,16 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
   uint256 internal constant _BASE = 1 ether;
 
   /// @dev Constant used in the formula
-  uint256 internal constant _FIFTY_MILLIONS = 50_000_000 * 1e6;
+  uint256 internal constant _FIFTY_MILLIONS = 50_000_000_000_000; // 50_000_000 * 1e6;
 
   /// @dev Constant used in the formula
-  uint256 internal constant _TWENTY_FIVE_THOUSANDS = 25_000 * 1e6;
+  uint256 internal constant _TWENTY_FIVE_THOUSANDS = 25_000_000_000; // 25_000 * 1e6;
 
   /// @dev Constant used in the formula
-  uint256 internal constant _FIFTY = 50 * 1e6;
+  uint256 internal constant _FIFTY = 50_000_000; // 50 * 1e6;
 
   /// @dev The base supply of AMPH per cliff, denominated in 1e6
-  uint256 public constant BASE_SUPPLY_PER_CLIFF = 8_000_000 * 1e6;
+  uint256 public constant BASE_SUPPLY_PER_CLIFF = 8_000_000_000_000; // 8_000_000 * 1e6;
 
   /// @dev The total number of cliffs (for both tokens)
   uint256 public constant TOTAL_CLIFFS = 1000;

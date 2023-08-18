@@ -13,8 +13,8 @@ contract ExponentialNoError {
   uint256 public constant DOUBLE_SCALE = 1e36;
   uint256 public constant HALF_EXP_SCALE = EXP_SCALE / 2;
   uint256 public constant MANTISSA_ONE = EXP_SCALE;
-  uint256 public constant UINT192_MAX = 2 ** 192 - 1;
-  uint256 public constant UINT128_MAX = 2 ** 128 - 1;
+  uint256 public constant UINT192_MAX = type(uint192).max;
+  uint256 public constant UINT128_MAX = type(uint128).max;
 
   struct Exp {
     uint256 mantissa;
