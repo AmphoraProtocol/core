@@ -863,22 +863,28 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
   /// @return _borrowPower The borrowing power of the vault
   //solhint-disable-next-line code-complexity
   function _getVaultBorrowingPower(IVault _vault) private returns (uint192 _borrowPower) {
-    // loop over each registed token, adding the indivuduals ltv to the total ltv of the vault
+    CollateralInfo memory _collateral;
+    address _tokenAddress;
+    uint256 _balance;
+    uint192 _rawPrice;
+    uint192 _tokenValue;
+
+    // loop over each registered token, adding the individuals ltv to the total ltv of the vault
     for (uint192 _i; _i < enabledTokens.length; ++_i) {
-      CollateralInfo memory _collateral = tokenAddressCollateralInfo[enabledTokens[_i]];
+      _collateral = tokenAddressCollateralInfo[enabledTokens[_i]];
       // if the ltv is 0, continue
       if (_collateral.ltv == 0) continue;
       // get the address of the token through the array of enabled tokens
       // note that index 0 of enabledTokens corresponds to a vaultId of 1, so we must subtract 1 from i to get the correct index
-      address _tokenAddress = enabledTokens[_i];
+      _tokenAddress = enabledTokens[_i];
       // the balance is the vault's token balance of the current collateral token in the loop
-      uint256 _balance = _vault.balances(_tokenAddress);
+      _balance = _vault.balances(_tokenAddress);
       if (_balance == 0) continue;
       // the raw price is simply the oracle price of the token
-      uint192 _rawPrice = _safeu192(_collateral.oracle.currentValue());
+      _rawPrice = _safeu192(_collateral.oracle.currentValue());
       if (_rawPrice == 0) continue;
       // the token value is equal to the price * balance * tokenLTV
-      uint192 _tokenValue = _safeu192(
+      _tokenValue = _safeu192(
         _truncate(_truncate(_balance * _collateral.ltv * _getPriceWithDecimals(_rawPrice, _collateral.decimals)))
       );
       // increase the ltv of the vault by the token value
