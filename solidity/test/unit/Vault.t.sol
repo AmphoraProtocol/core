@@ -97,6 +97,11 @@ abstract contract Base is DSTestPlus, TestConstants {
       abi.encodeWithSelector(IVirtualBalanceRewardPool.rewardToken.selector),
       abi.encode(mockVirtualRewardsToken)
     );
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenCrvRewardsContract.selector),
+      abi.encode(address(baseRewards))
+    );
   }
 
   function depositCurveLpTokenMockCalls(
@@ -345,6 +350,7 @@ contract UnitVaultWithdrawERC20 is Base {
 
   function setUp() public virtual override {
     super.setUp();
+
     vm.mockCall(
       address(mockVaultController),
       abi.encodeWithSelector(IVaultController.tokenId.selector, address(_mockToken)),
@@ -411,9 +417,9 @@ contract UnitVaultWithdrawERC20 is Base {
   }
 
   function testRevertIfUnstakeOnConvexFails(uint256 _amount) public {
-    vm.assume(_amount > 0);
+    vm.assume(_amount > 0 && _amount <= 100_000 ether);
 
-    depositCurveLpTokenMockCalls(1 ether, address(_mockToken), 1, IVaultController.CollateralType.CurveLPStakedOnConvex);
+    depositCurveLpTokenMockCalls(_amount, address(_mockToken), 1, IVaultController.CollateralType.CurveLPStakedOnConvex);
 
     vm.mockCall(
       address(mockVaultController),
@@ -435,9 +441,9 @@ contract UnitVaultWithdrawERC20 is Base {
   }
 
   function testExpectCallWithdrawOnConvex(uint256 _amount) public {
-    vm.assume(_amount > 0);
+    vm.assume(_amount > 0 && _amount <= 100_000 ether);
 
-    depositCurveLpTokenMockCalls(1 ether, address(_mockToken), 1, IVaultController.CollateralType.CurveLPStakedOnConvex);
+    depositCurveLpTokenMockCalls(_amount, address(_mockToken), 1, IVaultController.CollateralType.CurveLPStakedOnConvex);
 
     vm.mockCall(
       address(mockVaultController),
@@ -531,31 +537,75 @@ contract UnitVaultControllerWithdrawAndUnwrap is Base {
     vault.controllerWithdrawAndUnwrap(_rewardPool, _amount);
   }
 
-  function testControllerWithdrawAndUnwrap(IBaseRewardPool _rewardPool, uint256 _amount) public {
-    vm.assume(address(_rewardPool) != address(vm));
+  function testControllerWithdrawAndUnwrap(uint256 _amount) public {
+    vm.assume(address(baseRewards) != address(vm) && address(baseRewards) > address(10));
+    vm.assume(_amount > 0 && _amount < type(uint256).max / 2);
 
     vm.mockCall(
-      address(_rewardPool), abi.encodeWithSelector(IBaseRewardPool.withdrawAndUnwrap.selector), abi.encode(true)
+      address(baseRewards), abi.encodeWithSelector(IBaseRewardPool.withdrawAndUnwrap.selector), abi.encode(true)
     );
 
     vm.expectCall(
-      address(_rewardPool), abi.encodeWithSelector(IBaseRewardPool.withdrawAndUnwrap.selector, _amount, false)
+      address(baseRewards), abi.encodeWithSelector(IBaseRewardPool.withdrawAndUnwrap.selector, _amount, false)
     );
 
-    vm.prank(address(mockVaultController));
-    vault.controllerWithdrawAndUnwrap(_rewardPool, _amount);
-  }
-
-  function testRevertControllerWithdrawAndUnwrap(IBaseRewardPool _rewardPool, uint256 _amount) public {
-    vm.assume(address(_rewardPool) != address(vm));
+    depositCurveLpTokenMockCalls(_amount, address(_mockToken), 1, IVaultController.CollateralType.CurveLPStakedOnConvex);
 
     vm.mockCall(
-      address(_rewardPool), abi.encodeWithSelector(IBaseRewardPool.withdrawAndUnwrap.selector), abi.encode(false)
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenCollateralType.selector),
+      abi.encode(IVaultController.CollateralType.CurveLPStakedOnConvex)
     );
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenPoolId.selector, address(_mockToken)),
+      abi.encode(1)
+    );
+    vm.mockCall(
+      address(mockVaultController), abi.encodeWithSelector(IVaultController.BOOSTER.selector), abi.encode(BOOSTER)
+    );
+    vm.mockCall(address(_mockToken), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
+    vm.mockCall(BOOSTER, abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(true));
+
+    vm.prank(vaultOwner);
+    vault.depositERC20(address(_mockToken), _amount);
+
+    vm.prank(address(mockVaultController));
+    vault.controllerWithdrawAndUnwrap(baseRewards, _amount);
+  }
+
+  function testRevertControllerWithdrawAndUnwrap(uint256 _amount) public {
+    vm.assume(address(baseRewards) != address(vm) && address(baseRewards) > address(10));
+    vm.assume(_amount > 0 && _amount < type(uint256).max / 2);
+
+    vm.mockCall(
+      address(baseRewards), abi.encodeWithSelector(IBaseRewardPool.withdrawAndUnwrap.selector), abi.encode(false)
+    );
+
+    depositCurveLpTokenMockCalls(_amount, address(_mockToken), 1, IVaultController.CollateralType.CurveLPStakedOnConvex);
+
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenCollateralType.selector),
+      abi.encode(IVaultController.CollateralType.CurveLPStakedOnConvex)
+    );
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenPoolId.selector, address(_mockToken)),
+      abi.encode(1)
+    );
+    vm.mockCall(
+      address(mockVaultController), abi.encodeWithSelector(IVaultController.BOOSTER.selector), abi.encode(BOOSTER)
+    );
+    vm.mockCall(address(_mockToken), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
+    vm.mockCall(BOOSTER, abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(true));
+
+    vm.prank(vaultOwner);
+    vault.depositERC20(address(_mockToken), _amount);
 
     vm.expectRevert(IVault.Vault_WithdrawAndUnstakeOnConvexFailed.selector);
     vm.prank(address(mockVaultController));
-    vault.controllerWithdrawAndUnwrap(_rewardPool, _amount);
+    vault.controllerWithdrawAndUnwrap(baseRewards, _amount);
   }
 }
 
@@ -595,11 +645,29 @@ contract UnitVaultModifyLiability is Base {
 
 contract UnitVaultClaimRewards is Base {
   IERC20 public otherMockToken = IERC20(newAddress());
+  uint256 public crvDeposit = 100 ether;
 
   IVaultController.CollateralInfo public collateralInfo;
 
   function setUp() public virtual override {
     super.setUp();
+    vm.mockCall(address(crv), abi.encodeWithSelector(IERC20.transferFrom.selector), abi.encode(true));
+    vm.mockCall(address(crv), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(crvDeposit));
+
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenCollateralType.selector, address(crv)),
+      abi.encode(IVaultController.CollateralType.Single)
+    );
+
+    vm.mockCall(
+      address(mockVaultController),
+      abi.encodeWithSelector(IVaultController.tokenId.selector, address(crv)),
+      abi.encode(2)
+    );
+
+    vm.prank(vaultOwner);
+    vault.depositERC20(address(crv), crvDeposit);
 
     collateralInfo = IVaultController.CollateralInfo({
       tokenId: 1,
@@ -695,6 +763,7 @@ contract UnitVaultClaimRewards is Base {
     );
 
     vm.expectCall(address(crv), abi.encodeWithSelector(IERC20.transfer.selector, vaultOwner, 0.5 ether));
+    vm.mockCall(address(crv), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(crvDeposit + 1 ether));
 
     vm.prank(vaultOwner);
     vault.claimRewards(_tokens, true);
@@ -727,6 +796,8 @@ contract UnitVaultClaimRewards is Base {
 
     vm.mockCall(address(mockVirtualRewardsToken), abi.encodeWithSelector(IERC20.transfer.selector), abi.encode(true));
 
+    vm.mockCall(address(crv), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(crvDeposit + 1 ether));
+
     vm.expectCall(
       address(mockVirtualRewardsToken), abi.encodeWithSelector(IERC20.transfer.selector, vaultOwner, tokenBalanceChange)
     );
@@ -755,6 +826,7 @@ contract UnitVaultClaimRewards is Base {
     );
 
     vm.expectCall(address(mockVirtualRewardsPool), abi.encodeWithSelector(IVirtualBalanceRewardPool.earned.selector), 0);
+    vm.mockCall(address(crv), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(crvDeposit + 1 ether));
 
     vm.expectCall(address(mockVirtualRewardsToken), abi.encodeWithSelector(IERC20.transfer.selector), 0);
     vm.expectCall(address(crv), abi.encodeWithSelector(IERC20.transfer.selector, vaultOwner, 0.5 ether));
@@ -816,6 +888,8 @@ contract UnitVaultClaimRewards is Base {
       abi.encodeWithSelector(IAMPHClaimer.claimAmph.selector, 1, 2 * tokenBalanceChange, 2 ether, vaultOwner)
     );
 
+    vm.mockCall(address(crv), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(crvDeposit + 2 ether));
+
     vm.expectCall(address(crv), abi.encodeWithSelector(IERC20.transfer.selector, vaultOwner, 1.5 ether));
     vm.prank(vaultOwner);
     vault.claimRewards(_tokens, true);
@@ -843,6 +917,9 @@ contract UnitVaultClaimRewards is Base {
     vm.expectCall(
       address(mockVirtualRewardsToken), abi.encodeWithSelector(IERC20.transfer.selector, vaultOwner, tokenBalanceChange)
     );
+
+    vm.mockCall(address(crv), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(crvDeposit + 1 ether));
+
     // user gets the full amount
     vm.expectCall(address(crv), abi.encodeWithSelector(IERC20.transfer.selector, vaultOwner, 1 ether));
     vm.prank(vaultOwner);
@@ -957,6 +1034,10 @@ contract UnitVaultClaimableRewards is Base {
       abi.encode(0, 0.5 ether, 3 ether)
     );
 
+    vm.mockCall(address(crv), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(0));
+
+    vm.mockCall(address(cvx), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(0));
+
     vm.mockCall(address(mockAmphClaimer), abi.encodeWithSelector(IAMPHClaimer.AMPH.selector), abi.encode(mockAmphToken));
 
     IVault.Reward[] memory _rewards = vault.claimableRewards(address(_mockToken), true);
@@ -998,6 +1079,10 @@ contract UnitVaultClaimableRewards is Base {
       abi.encode(0, 0.5 ether, 3 ether)
     );
 
+    vm.mockCall(address(crv), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(0));
+
+    vm.mockCall(address(cvx), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(0));
+
     vm.mockCall(address(mockAmphClaimer), abi.encodeWithSelector(IAMPHClaimer.AMPH.selector), abi.encode(mockAmphToken));
 
     IVault.Reward[] memory _rewards = vault.claimableRewards(address(_mockToken), false);
@@ -1034,6 +1119,10 @@ contract UnitVaultClaimableRewards is Base {
       abi.encodeWithSelector(IVirtualBalanceRewardPool.earned.selector, address(vault)),
       abi.encode(1 ether)
     );
+
+    vm.mockCall(address(crv), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(0));
+
+    vm.mockCall(address(cvx), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(0));
 
     IVault.Reward[] memory _rewards = vault.claimableRewards(address(_mockToken), true);
 
@@ -1076,6 +1165,10 @@ contract UnitVaultClaimableRewards is Base {
       abi.encodeWithSelector(IAMPHClaimer.claimable.selector, address(vault), 1, 0, 1 ether),
       abi.encode(0, 0.5 ether, 3 ether)
     );
+
+    vm.mockCall(address(crv), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(0));
+
+    vm.mockCall(address(cvx), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(0));
 
     vm.mockCall(address(mockAmphClaimer), abi.encodeWithSelector(IAMPHClaimer.AMPH.selector), abi.encode(mockAmphToken));
 

@@ -138,6 +138,59 @@ contract E2EVault is CommonE2EBase {
     assertEq(IERC20(CVX_ADDRESS).balanceOf(address(bobVault)), 0);
   }
 
+  function testClaimableCurveLPRewardsAfterThirdPartyClaimed() public {
+    uint256 _bobCRV = 1000 ether;
+    deal(address(crv), bob, _bobCRV);
+
+    uint256 _depositAmount = 10 ether;
+
+    vm.startPrank(bob);
+    usdtStableLP.approve(address(bobVault), _depositAmount);
+    bobVault.depositERC20(address(usdtStableLP), _depositAmount);
+
+    crv.approve(address(bobVault), _bobCRV);
+    bobVault.depositERC20(address(crv), _bobCRV);
+    vm.stopPrank();
+
+    vm.prank(BOOSTER);
+    IBaseRewardPool(USDT_LP_REWARDS_ADDRESS).queueNewRewards(_depositAmount);
+
+    uint256 _balanceBeforeCRV = IERC20(CRV_ADDRESS).balanceOf(bob);
+    uint256 _balanceBeforeCVX = IERC20(CVX_ADDRESS).balanceOf(bob);
+    uint256 _balanceBeforeAMPH = amphToken.balanceOf(bob);
+    assertEq(IERC20(CRV_ADDRESS).balanceOf(address(governor)), 0);
+
+    vm.warp(block.timestamp + 5 days);
+
+    IVault.Reward[] memory _rewards = bobVault.claimableRewards(address(usdtStableLP), true);
+    address[] memory _tokens = new address[](1);
+    _tokens[0] = address(usdtStableLP);
+
+    // Here we force claim the rewards of the vault
+    IBaseRewardPool(USDT_LP_REWARDS_ADDRESS).getReward(address(bobVault), true);
+
+    IVault.Reward[] memory _rewards2 = bobVault.claimableRewards(address(usdtStableLP), true);
+    assertEq(_rewards.length, _rewards2.length);
+    assertEq(address(_rewards[0].token), address(_rewards2[0].token));
+    assertEq(_rewards[0].amount, _rewards2[0].amount);
+    assertEq(address(_rewards[1].token), address(_rewards2[1].token));
+    assertEq(_rewards[1].amount, _rewards2[1].amount);
+    assertEq(address(_rewards[2].token), address(_rewards2[2].token));
+    assertEq(_rewards[2].amount, _rewards2[2].amount);
+
+    vm.prank(bob);
+    bobVault.claimRewards(_tokens, true);
+
+    // _rewards[0] should be CRV and _rewards[1] AMPH in this case
+    assertEq(IERC20(CRV_ADDRESS).balanceOf(bob), _balanceBeforeCRV + _rewards[0].amount);
+    assertEq(IERC20(CVX_ADDRESS).balanceOf(bob), _balanceBeforeCVX + _rewards[1].amount);
+    assertEq(amphToken.balanceOf(bob), _balanceBeforeAMPH + _rewards[2].amount);
+    assertGt(IERC20(CRV_ADDRESS).balanceOf(address(governor)), 0);
+    assertGt(IERC20(CVX_ADDRESS).balanceOf(address(governor)), 0);
+    assertEq(IERC20(CRV_ADDRESS).balanceOf(address(bobVault)), _bobCRV);
+    assertEq(IERC20(CVX_ADDRESS).balanceOf(address(bobVault)), 0);
+  }
+
   function testClaimCurveLPRewardsWithClaimerAsZeroAddress() public {
     uint256 _depositAmount = 10 ether;
 

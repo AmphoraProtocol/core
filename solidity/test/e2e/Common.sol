@@ -88,6 +88,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateO
   IERC20 public uni = IERC20(label(UNI_ADDRESS, 'UNI'));
   IERC20 public aave = IERC20(label(AAVE_ADDRESS, 'AAVE'));
   IERC20 public dydx = IERC20(label(DYDX_ADDRESS, 'DYDX'));
+  IERC20 public crv = IERC20(label(CRV_ADDRESS, 'CRV'));
   IERC20 public usdtStableLP = IERC20(label(USDT_LP_ADDRESS, 'USDT_LP'));
   IERC20 public threeCrvLP = IERC20(label(THREE_CRV_LP_ADDRESS, 'THREE_CRV_LP'));
   /// gearLP is a curveLP token that provides extra rewards compared to usdtLP
@@ -272,6 +273,11 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateO
     // Register the triCrypto2 pool as collateral
     vaultController.registerErc20(
       TRI_CRYPTO_LP_TOKEN, OTHER_LTV, address(triCryptoOracle), LIQUIDATION_INCENTIVE, type(uint256).max, 0
+    );
+
+    // Register CRV as acceptable erc20 to vault controller. ONLY FOR TESTING PURPOSES
+    vaultController.registerErc20(
+      CRV_ADDRESS, WETH_LTV, address(anchoredViewEth), LIQUIDATION_INCENTIVE, type(uint256).max, 0
     );
 
     // Register USDA as acceptable erc20 to vault controller

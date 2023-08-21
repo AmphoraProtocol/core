@@ -118,11 +118,7 @@ contract Vault is IVault, Context {
     // calculate interest before withdrawing to make sure the vault is solvent
     CONTROLLER.calculateInterest();
 
-    if (isTokenStaked[_tokenAddress]) {
-      if (!CONTROLLER.tokenCrvRewardsContract(_tokenAddress).withdrawAndUnwrap(_amount, false)) {
-        revert Vault_WithdrawAndUnstakeOnConvexFailed();
-      }
-    }
+    if (isTokenStaked[_tokenAddress]) _withdrawAndUnwrap(CONTROLLER.tokenCrvRewardsContract(_tokenAddress), _amount);
     // reduce balance
     balances[_tokenAddress] -= _amount;
     // check if the account is solvent
@@ -177,15 +173,9 @@ contract Vault is IVault, Context {
       }
 
       IBaseRewardPool _rewardsContract = _collateralInfo.crvRewardsContract;
-      uint256 _crvReward = _rewardsContract.earned(address(this));
 
-      if (_crvReward != 0) {
-        // Claim the CRV reward
-        _totalCrvReward += _crvReward;
-        uint256 _cvxBalanceBefore = CVX.balanceOf(address(this));
-        _rewardsContract.getReward(address(this), false);
-        _totalCvxReward += CVX.balanceOf(address(this)) - _cvxBalanceBefore;
-      }
+      // Claim the CRV reward
+      _rewardsContract.getReward(address(this), false);
 
       if (_claimExtraRewards) {
         // Loop and claim all virtual rewards
@@ -193,9 +183,8 @@ contract Vault is IVault, Context {
         for (uint256 _j; _j < _extraRewards;) {
           IVirtualBalanceRewardPool _virtualReward = _rewardsContract.extraRewards(_j);
           IERC20 _rewardToken = _virtualReward.rewardToken();
-          uint256 _rewardBalanceBefore = _rewardToken.balanceOf(address(this));
           _virtualReward.getReward();
-          uint256 _earnedReward = _rewardToken.balanceOf(address(this)) - _rewardBalanceBefore;
+          uint256 _earnedReward = _rewardToken.balanceOf(address(this)) - balances[address(_rewardToken)];
           if (_earnedReward != 0) {
             _rewardToken.safeTransfer(_msgSender(), _earnedReward);
             emit ClaimedReward(address(_rewardToken), _earnedReward);
@@ -209,6 +198,8 @@ contract Vault is IVault, Context {
         ++_i;
       }
     }
+    _totalCrvReward += (CRV.balanceOf(address(this)) - balances[address(CRV)]);
+    _totalCvxReward += (CVX.balanceOf(address(this)) - balances[address(CVX)]);
 
     if (_totalCrvReward > 0 || _totalCvxReward > 0) {
       if (address(_amphClaimer) != address(0)) {
@@ -253,8 +244,12 @@ contract Vault is IVault, Context {
 
     uint256 _rewardsAmount = (_claimExtraRewards) ? _rewardsContract.extraRewardsLength() : 0;
 
-    uint256 _crvReward = _rewardsContract.earned(address(this));
-    uint256 _cvxReward = _calculateExpectedCVXReward(_crvReward, _rewardsContract.operator());
+    uint256 _crvBalanceDiff = CRV.balanceOf(address(this)) - balances[address(CRV)];
+    uint256 _crvEarned = _rewardsContract.earned(address(this));
+    uint256 _crvReward = _crvEarned + _crvBalanceDiff;
+
+    uint256 _cvxBalanceDiff = CVX.balanceOf(address(this)) - balances[address(CVX)];
+    uint256 _cvxReward = _calculateExpectedCVXReward(_crvEarned, _rewardsContract.operator()) + _cvxBalanceDiff;
 
     // +3 for CRV, CVX and AMPH
     _rewards = new Reward[](_rewardsAmount+3);
@@ -265,7 +260,9 @@ contract Vault is IVault, Context {
     for (_i; _i < _rewardsAmount;) {
       IVirtualBalanceRewardPool _virtualReward = _rewardsContract.extraRewards(_i);
       IERC20 _rewardToken = _virtualReward.rewardToken();
-      uint256 _earnedReward = _virtualReward.earned(address(this));
+
+      uint256 _rewardTokenBalanceDiff = _rewardToken.balanceOf(address(this)) - balances[address(_rewardToken)];
+      uint256 _earnedReward = _virtualReward.earned(address(this)) + _rewardTokenBalanceDiff;
       _rewards[_i + 2] = Reward(_rewardToken, _earnedReward);
 
       unchecked {
@@ -305,7 +302,7 @@ contract Vault is IVault, Context {
     IBaseRewardPool _rewardPool,
     uint256 _amount
   ) external override onlyVaultController {
-    if (!_rewardPool.withdrawAndUnwrap(_amount, false)) revert Vault_WithdrawAndUnstakeOnConvexFailed();
+    _withdrawAndUnwrap(_rewardPool, _amount);
   }
 
   /// @notice Function used by the VaultController to reduce a vault's liability
@@ -331,6 +328,11 @@ contract Vault is IVault, Context {
   function _depositAndStakeOnConvex(address _token, IBooster _booster, uint256 _amount, uint256 _poolId) internal {
     IERC20(_token).approve(address(_booster), _amount);
     if (!_booster.deposit(_poolId, _amount, true)) revert Vault_DepositAndStakeOnConvexFailed();
+  }
+
+  /// @dev Internal function for withdrawing and unstaking from convex
+  function _withdrawAndUnwrap(IBaseRewardPool _rewardPool, uint256 _amount) internal {
+    if (!_rewardPool.withdrawAndUnwrap(_amount, false)) revert Vault_WithdrawAndUnstakeOnConvexFailed();
   }
 
   /// @notice Used to calculate the expected CVX reward for a given CRV amount
