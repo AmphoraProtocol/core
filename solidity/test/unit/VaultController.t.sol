@@ -143,6 +143,7 @@ abstract contract VaultBase is Base {
   uint192 internal _borrowAmount = 5 ether;
 
   IBaseRewardPool internal _crvRewards = IBaseRewardPool(mockContract(newAddress(), 'crvRewards'));
+  address internal _stakingToken = label(newAddress(), 'stakingToken');
 
   function setUp() public virtual override {
     super.setUp();
@@ -192,6 +193,10 @@ abstract contract VaultBase is Base {
 
     vm.prank(vaultOwnerWbtc);
     _vaultWbtc.depositERC20(WBTC_ADDRESS, _wbtcDeposit);
+
+    vm.mockCall(
+      address(_crvRewards), abi.encodeWithSelector(IBaseRewardPool.stakingToken.selector), abi.encode(_stakingToken)
+    );
 
     vm.mockCall(
       address(vaultController.BOOSTER()),

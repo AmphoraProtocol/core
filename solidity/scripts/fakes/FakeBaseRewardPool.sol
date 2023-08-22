@@ -137,6 +137,10 @@ contract FakeBaseRewardPool is IBaseRewardPool {
       if (_cvxAmount > _amtTillMax) _cvxAmount = _amtTillMax;
     }
   }
+
+  function stakingToken() external view returns (address _stakingToken) {
+    _stakingToken = address(uint160(address(this)) + 1);
+  }
 }
 
 contract FakeCVX is MintableToken {

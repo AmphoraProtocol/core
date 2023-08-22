@@ -361,6 +361,11 @@ interface IVaultController {
   /// @return _vaultAddress The address of the targetted vault
   function vaultIdVaultAddress(uint96 _vaultID) external view returns (address _vaultAddress);
 
+  /// @notice Returns true if a base reward contract was approved by governance
+  /// @param _baseRewardContract The address of the baseRewardcontract to check
+  /// @return _approved True if approved by governance
+  function baseRewardContracts(address _baseRewardContract) external view returns (bool _approved);
+
   /// @notice Mapping of token address to collateral info
   function tokenAddressCollateralInfo(address _token)
     external

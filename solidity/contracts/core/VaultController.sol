@@ -42,6 +42,9 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
   /// @dev Mapping of token address to collateral info
   mapping(address => CollateralInfo) public tokenAddressCollateralInfo;
 
+  /// @dev Mapping of all the approved BaseRewardContracts from convex
+  mapping(address => bool) public baseRewardContracts;
+
   /// @dev Array of enabled tokens addresses
   address[] public enabledTokens;
 
@@ -323,6 +326,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
   }
 
   /// @notice Register a new token to be used as collateral
+  /// @dev Rebasing tokens are not compatible with amphora due to internal balance tracking
   /// @param _tokenAddress The address of the token to register
   /// @param _ltv The ltv of the token, 1e18=100%
   /// @param _oracleAddress The address of oracle to fetch the price of the token
@@ -346,6 +350,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
       _collateral.collateralType = CollateralType.CurveLPStakedOnConvex;
       _collateral.crvRewardsContract = IBaseRewardPool(_crvRewards);
       _collateral.poolId = _poolId;
+      baseRewardContracts[_crvRewards] = true;
     } else {
       _collateral.collateralType = CollateralType.Single;
       _collateral.crvRewardsContract = IBaseRewardPool(address(0));
@@ -398,6 +403,11 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
       _collateral.collateralType = CollateralType.CurveLPStakedOnConvex;
       _collateral.crvRewardsContract = IBaseRewardPool(_crvRewards);
       _collateral.poolId = _poolId;
+      baseRewardContracts[_crvRewards] = true;
+    } else {
+      _collateral.collateralType = CollateralType.Single;
+      _collateral.crvRewardsContract = IBaseRewardPool(address(0));
+      _collateral.poolId = 0;
     }
     // set the oracle of the token
     _collateral.oracle = IOracleRelay(_oracleAddress);
@@ -672,9 +682,8 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
     usda.vaultControllerBurn(_msgSender(), _usdaToRepurchase);
 
     // withdraw from convex
-    CollateralInfo memory _assetInfo = tokenAddressCollateralInfo[_assetAddress];
-    if (_vault.isTokenStaked(_assetAddress)) {
-      _vault.controllerWithdrawAndUnwrap(_assetInfo.crvRewardsContract, _tokensToLiquidate);
+    if (_vault.currentPoolIds(_assetAddress) != 0) {
+      _vault.controllerWithdrawAndUnwrap(_assetAddress, _tokensToLiquidate);
     }
 
     uint192 _liquidationFee = getLiquidationFee(uint192(_tokensToLiquidate), _assetAddress);

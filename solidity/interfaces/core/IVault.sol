@@ -34,11 +34,11 @@ interface IVault {
   event ClaimedReward(address _token, uint256 _amount);
 
   /**
-   * Emited when staking a crvLP token on convex manually
+   * Emited when migrating a crvLP token on convex manually
    * @param _token The address of the token to stake
    * @param _amount The amount to stake
    */
-  event Staked(address _token, uint256 _amount);
+  event Migrated(address _token, uint256 _amount);
 
   /*///////////////////////////////////////////////////////////////
                               ERRORS
@@ -71,17 +71,17 @@ interface IVault {
   /// @notice Thrown when trying to withdraw and unstake from convex
   error Vault_WithdrawAndUnstakeOnConvexFailed();
 
-  /// @notice Thrown when trying to claim rewards with a non CurveLPStakedOnConvex token
-  error Vault_TokenNotCurveLP();
+  /// @notice Thrown when trying to claim rewards with a non staked token
+  error Vault_TokenNotStaked();
 
   /// @notice Thrown when trying to stake with 0 balance
   error Vault_TokenZeroBalance();
 
-  /// @notice Thrown when a crvLP token can not be staked
-  error Vault_TokenCanNotBeStaked();
+  /// @notice Thrown when a token is already migrated and trying to migrate again
+  error Vault_TokenAlreadyMigrated();
 
-  /// @notice Thrown when a token is already staked and trying to stake again
-  error Vault_TokenAlreadyStaked();
+  /// @notice Thrown when the base reward contract was not approved by governance
+  error Vault_InvalidBaseRewardContract();
 
   /*///////////////////////////////////////////////////////////////
                               STRUCTS
@@ -119,11 +119,12 @@ interface IVault {
   function balances(address _token) external view returns (uint256 _balance);
 
   /**
-   * @notice Returns if the token in staked
+   * @notice Returns the pool that the token is staked on
+   * @dev Returns 0 if not staked
    * @param _token The address of the token
-   * @return _isStaked True if the token is staked
+   * @return _poolId The poolId that the token is staked on
    */
-  function isTokenStaked(address _token) external view returns (bool _isStaked);
+  function currentPoolIds(address _token) external view returns (uint256 _poolId);
 
   /**
    * @notice Returns the current vault base liability
@@ -180,12 +181,12 @@ interface IVault {
   /// @dev    This can be called if the convex pool didn't exist when the token was registered
   ///         and was later updated
   /// @param _tokenAddress The address of erc20 crvLP token
-  function stakeCrvLPCollateral(address _tokenAddress) external;
+  function migrateCrvLPCollateral(address _tokenAddress) external;
 
   /// @notice Returns true when user can manually stake their token balance
   /// @param _token The address of the token to check
-  /// @return _canStake Returns true if the token can be staked manually
-  function canStake(address _token) external view returns (bool _canStake);
+  /// @return _canMigrate Returns true if the token can be staked manually
+  function canMigrate(address _token) external view returns (bool _canMigrate);
 
   /// @notice Claims available rewards from multiple tokens
   /// @dev    Transfers a percentage of the crv and cvx rewards to claim AMPH tokens
@@ -202,6 +203,16 @@ interface IVault {
     bool _claimExtraRewards
   ) external view returns (Reward[] memory _rewards);
 
+  /// @notice Used to claim rewards from past baseRewardContract
+  /// @param _baseRewardContract The base reward contract to claim from
+  /// @param _claimMainReward True to claim the base rewards also (CRV and CVX)
+  /// @param _extraIndexesToClaim Indexes to claim the extra rewards
+  function claimPreviousRewards(
+    IBaseRewardPool _baseRewardContract,
+    bool _claimMainReward,
+    uint256[] memory _extraIndexesToClaim
+  ) external;
+
   /**
    * @notice Function used by the VaultController to transfer tokens
    * @param _token The address of the token to transfer
@@ -213,10 +224,10 @@ interface IVault {
   /**
    * @notice function used by the VaultController to withdraw from convex
    * callable by the VaultController only
-   * @param _rewardPool pool to withdraw
+   * @param _tokenAddress The token address to withdraw from the rewards contract
    * @param _amount amount of coins to withdraw
    */
-  function controllerWithdrawAndUnwrap(IBaseRewardPool _rewardPool, uint256 _amount) external;
+  function controllerWithdrawAndUnwrap(address _tokenAddress, uint256 _amount) external;
 
   /**
    * @notice Modifies a vault's liability. Can only be called by VaultController

@@ -21,6 +21,7 @@ contract FakeBooster is IBooster {
   mapping(uint256 => PoolInfo) public poolInfos;
   uint256 public pools;
   bool public isShutdown = false;
+  address public poolManager = address(0);
 
   constructor() {
     owner = msg.sender;
@@ -78,4 +79,12 @@ contract FakeBooster is IBooster {
   }
 
   function shutdownSystem() external {}
+
+  function addPool(address, address, uint256) external returns (bool) {
+    return true;
+  }
+
+  function poolLength() external view returns (uint256) {
+    return 0;
+  }
 }
