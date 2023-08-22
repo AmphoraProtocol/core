@@ -951,7 +951,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
     int256 _reserveRatio = int256(_ui18);
     // calculate the value at the curve. this vault controller is a USDA vault and will reference
     // the vault at address 0
-    int256 _intCurveVal = curveMaster.getValueAt(address(0x00), _reserveRatio);
+    int256 _intCurveVal = curveMaster.getValueAt(address(0), _reserveRatio);
     // cast the integer curve value to a u192
     uint192 _curveVal = _safeu192(uint256(_intCurveVal));
     // calculate the amount of total outstanding loans before and after this interest accrual

@@ -532,6 +532,8 @@ contract UnitVaultControllerRegisterERC20 is Base {
   ) public {
     vm.assume(address(_token) > address(10));
     vm.assume(_decimals <= 18);
+    vm.assume(address(_token) != address(vaultController));
+    vm.assume(address(_token) != address(vm));
     mockContract(address(_token), 'token');
     vm.mockCall(address(_token), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(_decimals));
     vm.expectRevert('Ownable: caller is not the owner');
@@ -558,6 +560,8 @@ contract UnitVaultControllerRegisterERC20 is Base {
   ) public {
     vm.assume(_liquidationIncentive < 1 ether && _liquidationIncentive > 0.2 ether);
     vm.assume(address(_token) > address(10));
+    vm.assume(address(_token) != address(vaultController));
+    vm.assume(address(_token) != address(vm));
     mockContract(address(_token), 'token');
 
     vm.mockCall(address(_token), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(uint8(18)));
@@ -574,6 +578,8 @@ contract UnitVaultControllerRegisterERC20 is Base {
   ) public {
     vm.assume(_ltv < 0.95 ether);
     vm.assume(address(_token) > address(10));
+    vm.assume(address(_token) != address(vaultController));
+    vm.assume(address(_token) != address(vm));
     vm.mockCall(
       address(booster),
       abi.encodeWithSelector(IBooster.poolInfo.selector, 136),
@@ -590,6 +596,8 @@ contract UnitVaultControllerRegisterERC20 is Base {
   function testRegisterCurveLPToken(address _oracle, uint64 _ltv, uint256 _cap, uint8 _decimals) public {
     vm.assume(_ltv < 0.95 ether);
     vm.assume(_decimals <= 18);
+    vm.assume(address(_oracle) != address(vaultController));
+    vm.assume(address(_oracle) != address(vm));
     address _token = newAddress();
     mockContract(address(_token), 'token');
     vm.mockCall(address(_token), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(_decimals));
@@ -618,6 +626,8 @@ contract UnitVaultControllerRegisterERC20 is Base {
 
   function testRegisterERC20(IERC20 _token, address _oracle, uint8 _decimals) public {
     vm.assume(address(_token) > address(10));
+    vm.assume(address(_token) != address(vaultController));
+    vm.assume(address(_token) != address(vm));
     vm.assume(_decimals <= 18);
     vm.expectEmit(false, false, false, true);
     emit RegisteredErc20(address(_token), WETH_LTV, _oracle, LIQUIDATION_INCENTIVE, type(uint256).max);
@@ -637,9 +647,13 @@ contract UnitVaultControllerRegisterERC20 is Base {
 
   function testRevertIfRegisterERC20WithMoreThan18Decimals(IERC20 _token, address _oracle, uint8 _decimals) public {
     vm.assume(address(_token) > address(10));
+    vm.assume(address(_token) != address(vaultController));
+    vm.assume(address(_token) != address(vm));
     vm.assume(_decimals > 18);
+
     mockContract(address(_token), 'token');
     vm.mockCall(address(_token), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(_decimals));
+
     vm.expectRevert(IVaultController.VaultController_TooManyDecimals.selector);
     vm.prank(governance);
     vaultController.registerErc20(address(_token), WETH_LTV, _oracle, LIQUIDATION_INCENTIVE, type(uint256).max, 0);
@@ -653,6 +667,8 @@ contract UnitVaultControllerRegisterERC20 is Base {
   ) public {
     vm.assume(_ltv < 0.95 ether);
     vm.assume(_decimals > 18);
+    vm.assume(address(_oracle) != address(vaultController));
+    vm.assume(address(_oracle) != address(vm));
     address _token = newAddress();
     mockContract(address(_token), 'token');
     vm.mockCall(address(_token), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(_decimals));
@@ -934,6 +950,8 @@ contract UnitVaultControllerLiquidateVault is VaultBase, ExponentialNoError {
   function testLiquidateWithCurveLpAsCollateral() public {
     vm.mockCall(address(usdtLp), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
 
+    vm.mockCall(address(usdtLp), abi.encodeWithSelector(IERC20.allowance.selector), abi.encode(0));
+
     vm.mockCall(address(vaultController.BOOSTER()), abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(true));
 
     vm.prank(vaultOwner);
@@ -986,6 +1004,8 @@ contract UnitVaultControllerLiquidateVault is VaultBase, ExponentialNoError {
 
   function testLiquidateWhenLiquidationFeeIsZero() public {
     vm.mockCall(address(usdtLp), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
+
+    vm.mockCall(address(usdtLp), abi.encodeWithSelector(IERC20.allowance.selector), abi.encode(0));
 
     vm.mockCall(address(vaultController.BOOSTER()), abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(true));
 
@@ -1136,6 +1156,8 @@ contract UnitVaultControllerSimulateLiquidateVault is VaultBase, ExponentialNoEr
 
   function testSimulateLiquidateVault() public {
     vm.mockCall(address(usdtLp), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
+
+    vm.mockCall(address(usdtLp), abi.encodeWithSelector(IERC20.allowance.selector), abi.encode(0));
 
     vm.mockCall(address(vaultController.BOOSTER()), abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(true));
 

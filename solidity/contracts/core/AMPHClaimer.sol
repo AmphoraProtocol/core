@@ -126,7 +126,7 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
   /// @param _token The token to recover
   /// @param _amount The amount to recover
   function recoverDust(address _token, uint256 _amount) external override onlyOwner {
-    IERC20(_token).transfer(owner(), _amount);
+    IERC20(_token).safeTransfer(owner(), _amount);
 
     emit RecoveredDust(_token, owner(), _amount);
   }

@@ -20,11 +20,11 @@ import {ERC20Permit, IERC20, ERC20} from '@openzeppelin/contracts/token/ERC20/ex
 contract WUSDA is IWUSDA, ERC20Permit {
   using SafeERC20 for IERC20;
 
-  /// @notice The reference to the usda token.
-  address public immutable USDA;
-
   /// @notice The amount to substract from the first depositor to prevent 'first depositor attack'
   uint256 public constant BOOTSTRAP_MINT = 10_000;
+
+  /// @notice The reference to the usda token.
+  address public immutable USDA;
 
   /// @param _usdaToken The usda ERC20 token address.
   /// @param _name The wUSDA ERC20 name.

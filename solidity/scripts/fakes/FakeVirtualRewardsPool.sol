@@ -6,7 +6,6 @@ import {IBooster} from '@interfaces/utils/IBooster.sol';
 import {IVirtualBalanceRewardPool} from '@interfaces/utils/IVirtualBalanceRewardPool.sol';
 
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import {SafeERC20Upgradeable} from '@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol';
 
 struct Rewards {
   uint256 lastClaimTime;

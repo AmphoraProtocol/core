@@ -1,6 +1,6 @@
 {
   "name": "@amphora-protocol/core",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "description": "",
   "homepage": "https://github.com/AmphoraProtocol/core#readme",
@@ -45,7 +45,6 @@
     "@defi-wonderland/isolmate": "https://github.com/defi-wonderland/isolmate.git#59e18043c2450fef550f1744b3705ce9ebcaf1c8",
     "@defi-wonderland/solidity-utils": "0.0.0-6c86c0fc",
     "@openzeppelin/contracts": "4.8.2",
-    "@openzeppelin/contracts-upgradeable": "4.8.1",
     "@uniswap/v2-core": "1.0.1",
     "@uniswap/v2-periphery": "https://github.com/Uniswap/v2-periphery.git#0335e8f7e1bd1e8d8329fd300aea2ef2f36dd19f",
     "@uniswap/v3-core": "https://github.com/defi-wonderland/uniswap-v3-core.git#00c65edac6862bb0ddfbfd6554d20f259bc9f735",

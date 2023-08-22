@@ -3,7 +3,6 @@
 pragma solidity >=0.8.4 <0.9.0;
 
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import {IERC20Upgradeable} from '@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol';
 
 import {Vault} from '@contracts/core/Vault.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
@@ -86,6 +85,7 @@ abstract contract Base is DSTestPlus, TestConstants {
 
   function setUp() public virtual {
     vm.mockCall(address(_mockToken), abi.encodeWithSelector(IERC20.transfer.selector), abi.encode(true));
+    vm.mockCall(address(_mockToken), abi.encodeWithSelector(IERC20.allowance.selector), abi.encode(0));
     // solhint-disable-next-line reentrancy
     vault = new Vault(1, vaultOwner, address(mockVaultController), cvx, crv);
 
@@ -132,6 +132,7 @@ abstract contract Base is DSTestPlus, TestConstants {
     );
 
     vm.mockCall(_token, abi.encodeWithSelector(IERC20.transferFrom.selector), abi.encode(true));
+    vm.mockCall(_token, abi.encodeWithSelector(IERC20.allowance.selector), abi.encode(0));
 
     vm.mockCall(
       address(mockVaultController),
@@ -285,6 +286,7 @@ contract UnitVaultDepositERC20 is Base {
       address(mockVaultController), abi.encodeWithSelector(IVaultController.BOOSTER.selector), abi.encode(BOOSTER)
     );
     vm.mockCall(address(_mockToken), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
+    vm.mockCall(address(_mockToken), abi.encodeWithSelector(IERC20.allowance.selector), abi.encode(0));
     vm.mockCall(BOOSTER, abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(false));
     vm.expectRevert(IVault.Vault_DepositAndStakeOnConvexFailed.selector);
 
@@ -317,6 +319,7 @@ contract UnitVaultDepositERC20 is Base {
       address(mockVaultController), abi.encodeWithSelector(IVaultController.BOOSTER.selector), abi.encode(BOOSTER)
     );
     vm.mockCall(address(_mockToken), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
+    vm.mockCall(address(_mockToken), abi.encodeWithSelector(IERC20.allowance.selector), abi.encode(0));
     vm.mockCall(BOOSTER, abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(false));
     vm.expectRevert(IVault.Vault_DepositAndStakeOnConvexFailed.selector);
 
@@ -346,6 +349,7 @@ contract UnitVaultDepositERC20 is Base {
       address(mockVaultController), abi.encodeWithSelector(IVaultController.BOOSTER.selector), abi.encode(BOOSTER)
     );
     vm.mockCall(address(_mockToken), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
+    vm.mockCall(address(_mockToken), abi.encodeWithSelector(IERC20.allowance.selector), abi.encode(0));
     vm.mockCall(BOOSTER, abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(true));
 
     vm.expectCall(BOOSTER, abi.encodeWithSelector(IBooster.deposit.selector, 1, _amount, true));
@@ -399,6 +403,7 @@ contract UnitVaultDepositERC20 is Base {
       address(mockVaultController), abi.encodeWithSelector(IVaultController.BOOSTER.selector), abi.encode(BOOSTER)
     );
     vm.mockCall(address(_mockToken), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
+    vm.mockCall(address(_mockToken), abi.encodeWithSelector(IERC20.allowance.selector), abi.encode(0));
     vm.mockCall(BOOSTER, abi.encodeWithSelector(IBooster.deposit.selector), abi.encode(true));
 
     vm.expectCall(BOOSTER, abi.encodeWithSelector(IBooster.deposit.selector, 1, _amount, true));
@@ -799,6 +804,7 @@ contract UnitVaultClaimRewards is Base {
     vm.mockCall(address(stakeToken), abi.encodeWithSelector(IERC20.transferFrom.selector), abi.encode(true));
     vm.mockCall(address(crv), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(crvDeposit));
     vm.mockCall(address(otherMockToken), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
+    vm.mockCall(address(otherMockToken), abi.encodeWithSelector(IERC20.allowance.selector), abi.encode(0));
     vm.mockCall(address(otherMockToken), abi.encodeWithSelector(IERC20.transfer.selector), abi.encode(true));
     vm.mockCall(address(otherMockToken), abi.encodeWithSelector(IERC20.transferFrom.selector), abi.encode(true));
 
@@ -862,14 +868,15 @@ contract UnitVaultClaimRewards is Base {
     vm.mockCall(address(mockAmphClaimer), abi.encodeWithSelector(IAMPHClaimer.AMPH.selector), abi.encode(mockAmphToken));
 
     vm.mockCall(address(crv), abi.encodeWithSelector(IERC20.transfer.selector), abi.encode(true));
+    vm.mockCall(address(cvx), abi.encodeWithSelector(IERC20.transfer.selector), abi.encode(true));
     vm.mockCall(address(crv), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
     vm.mockCall(address(cvx), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
+    vm.mockCall(address(crv), abi.encodeWithSelector(IERC20.allowance.selector), abi.encode(0));
+    vm.mockCall(address(cvx), abi.encodeWithSelector(IERC20.allowance.selector), abi.encode(0));
 
     vm.mockCall(
       address(mockAmphClaimer), abi.encodeWithSelector(IAMPHClaimer.claimAmph.selector), abi.encode(0, 0.5 ether, 0)
     );
-
-    vm.mockCall(address(cvx), abi.encodeWithSelector(IERC20.transfer.selector), abi.encode(true));
 
     vm.mockCall(
       address(mockVaultController),
@@ -1080,6 +1087,7 @@ contract UnitVaultClaimRewards is Base {
     vm.mockCall(address(mockAmphClaimer), abi.encodeWithSelector(IAMPHClaimer.AMPH.selector), abi.encode(mockAmphToken));
 
     vm.mockCall(address(crv), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
+    vm.mockCall(address(crv), abi.encodeWithSelector(IERC20.allowance.selector), abi.encode(0));
 
     vm.mockCall(
       address(mockAmphClaimer), abi.encodeWithSelector(IAMPHClaimer.claimAmph.selector), abi.encode(0, 2 ether, 0)
@@ -1756,10 +1764,11 @@ contract UnitVaultClaimPreviousRewards is Base {
     vm.mockCall(address(mockAmphClaimer), abi.encodeWithSelector(IAMPHClaimer.AMPH.selector), abi.encode(mockAmphToken));
 
     vm.mockCall(address(crv), abi.encodeWithSelector(IERC20.transfer.selector), abi.encode(true));
+    vm.mockCall(address(cvx), abi.encodeWithSelector(IERC20.transfer.selector), abi.encode(true));
+    vm.mockCall(address(crv), abi.encodeWithSelector(IERC20.allowance.selector), abi.encode(0));
+    vm.mockCall(address(cvx), abi.encodeWithSelector(IERC20.allowance.selector), abi.encode(0));
     vm.mockCall(address(crv), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
     vm.mockCall(address(cvx), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
-
-    vm.mockCall(address(cvx), abi.encodeWithSelector(IERC20.transfer.selector), abi.encode(true));
 
     vm.mockCall(
       address(mockVaultController),

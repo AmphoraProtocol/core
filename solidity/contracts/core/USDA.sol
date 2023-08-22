@@ -12,11 +12,13 @@ import {IERC20Metadata, IERC20} from '@openzeppelin/contracts/token/ERC20/extens
 import {Pausable} from '@openzeppelin/contracts/security/Pausable.sol';
 import {Context} from '@openzeppelin/contracts/utils/Context.sol';
 import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
+import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 /// @notice USDA token contract, handles all minting/burning of usda
 /// @dev extends UFragments
 contract USDA is Pausable, UFragments, IUSDA, ExponentialNoError, Roles {
   using EnumerableSet for EnumerableSet.AddressSet;
+  using SafeERC20 for IERC20;
 
   bytes32 public constant VAULT_CONTROLLER_ROLE = keccak256('VAULT_CONTROLLER');
 
@@ -100,7 +102,7 @@ contract USDA is Pausable, UFragments, IUSDA, ExponentialNoError, Roles {
   /// @notice Business logic to deposit sUSD and mint USDA for the caller
   function _deposit(uint256 _susdAmount, address _target) internal paysInterest whenNotPaused {
     if (_susdAmount == 0) revert USDA_ZeroAmount();
-    sUSD.transferFrom(_msgSender(), address(this), _susdAmount);
+    sUSD.safeTransferFrom(_msgSender(), address(this), _susdAmount);
     _mint(_target, _susdAmount);
     // Account for the susd received
     reserveAmount += _susdAmount;
@@ -150,7 +152,7 @@ contract USDA is Pausable, UFragments, IUSDA, ExponentialNoError, Roles {
     if (_susdAmount > this.balanceOf(_msgSender())) revert USDA_InsufficientFunds();
     // Account for the susd withdrawn
     reserveAmount -= _susdAmount;
-    sUSD.transfer(_target, _susdAmount);
+    sUSD.safeTransfer(_target, _susdAmount);
     _burn(_msgSender(), _susdAmount);
 
     emit Withdraw(_target, _susdAmount);
@@ -203,7 +205,7 @@ contract USDA is Pausable, UFragments, IUSDA, ExponentialNoError, Roles {
     if (_susdAmount == 0) revert USDA_ZeroAmount();
     // Account for the susd received
     reserveAmount += _susdAmount;
-    sUSD.transferFrom(_msgSender(), address(this), _susdAmount);
+    sUSD.safeTransferFrom(_msgSender(), address(this), _susdAmount);
     _donation(_susdAmount);
   }
 
@@ -213,7 +215,7 @@ contract USDA is Pausable, UFragments, IUSDA, ExponentialNoError, Roles {
     // All sUSD sent directly to the contract is not accounted into the reserveAmount
     // This function allows governance to recover it
     uint256 _amount = sUSD.balanceOf(address(this)) - reserveAmount;
-    sUSD.transfer(_to, _amount);
+    sUSD.safeTransfer(_to, _amount);
 
     emit RecoveredDust(owner(), _amount);
   }
@@ -243,7 +245,7 @@ contract USDA is Pausable, UFragments, IUSDA, ExponentialNoError, Roles {
     // Account for the susd withdrawn
     reserveAmount -= _susdAmount;
     // ensure transfer success
-    sUSD.transfer(_target, _susdAmount);
+    sUSD.safeTransfer(_target, _susdAmount);
 
     emit VaultControllerTransfer(_target, _susdAmount);
   }

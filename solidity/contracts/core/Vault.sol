@@ -338,7 +338,7 @@ contract Vault is IVault, Context {
 
   /// @dev Internal function for depositing and staking on convex
   function _depositAndStakeOnConvex(address _token, IBooster _booster, uint256 _amount, uint256 _poolId) internal {
-    IERC20(_token).approve(address(_booster), _amount);
+    IERC20(_token).safeIncreaseAllowance(address(_booster), _amount);
     if (!_booster.deposit(_poolId, _amount, true)) revert Vault_DepositAndStakeOnConvexFailed();
   }
 
@@ -395,15 +395,15 @@ contract Vault is IVault, Context {
   /// @param _totalCrvReward The total CRV reward claimed
   /// @param _totalCvxReward The total CVX reward claimed
   function _swapRewardsForAmphAndSendToMinter(uint256 _totalCrvReward, uint256 _totalCvxReward) internal {
-    if (_totalCrvReward > 0 || _totalCvxReward > 0) {
+    if (_totalCrvReward > 0) {
       IAMPHClaimer _amphClaimer = CONTROLLER.claimerContract();
       if (address(_amphClaimer) != address(0)) {
         // Approve amounts for it to be taken
         (uint256 _takenCVX, uint256 _takenCRV, uint256 _claimableAmph) =
           _amphClaimer.claimable(address(this), this.id(), _totalCvxReward, _totalCrvReward);
         if (_claimableAmph != 0) {
-          CRV.approve(address(_amphClaimer), _takenCRV);
-          CVX.approve(address(_amphClaimer), _takenCVX);
+          CRV.safeIncreaseAllowance(address(_amphClaimer), _takenCRV);
+          IERC20(CVX).safeIncreaseAllowance(address(_amphClaimer), _takenCVX);
 
           // Claim AMPH tokens depending on how much CRV and CVX was claimed
           _amphClaimer.claimAmph(this.id(), _totalCvxReward, _totalCrvReward, _msgSender());
@@ -413,8 +413,8 @@ contract Vault is IVault, Context {
         }
       }
 
-      if (_totalCvxReward > 0) CVX.transfer(_msgSender(), _totalCvxReward);
-      if (_totalCrvReward > 0) CRV.transfer(_msgSender(), _totalCrvReward);
+      if (_totalCvxReward > 0) IERC20(CVX).safeTransfer(_msgSender(), _totalCvxReward);
+      if (_totalCrvReward > 0) CRV.safeTransfer(_msgSender(), _totalCrvReward);
 
       emit ClaimedReward(address(CRV), _totalCrvReward);
       emit ClaimedReward(address(CVX), _totalCvxReward);

@@ -86,10 +86,8 @@ contract TestFrontrunningAttack is Test {
 
   function testNotSuccessfullFrontrunning() public {
     address _alice = makeAddr('Alice');
-    address _bob = makeAddr('Bob');
 
     uint256 _oneWeiDeposit = 1;
-    uint256 _depositAmt = 1 ether;
 
     // 1. Alice is the first to deposit 1 wei
     vm.startPrank(_alice);

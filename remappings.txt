@@ -11,7 +11,6 @@ solady/=node_modules/solady/src
 
 @chainlink/=node_modules/@chainlink/contracts/src/v0.8
 @openzeppelin/contracts/=node_modules/@openzeppelin/contracts
-@openzeppelin/contracts-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable
 @uniswap/v2-core/=node_modules/@uniswap/v2-core
 @uniswap/v2-periphery/=node_modules/@uniswap/v2-periphery
 @uniswap/v3-core/=node_modules/@uniswap/v3-core
