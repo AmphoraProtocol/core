@@ -33,4 +33,16 @@ contract UnitVaultDeployerDeployVault is Base {
     assertEq(address(_vault.CRV()), address(crv));
     assertEq(address(_vault.CVX()), address(cvx));
   }
+
+  function testDeployVaultDoesntCollision(uint96 _id, address _owner) public {
+    vm.assume(_id > 1);
+
+    vm.prank(address(mockVaultController));
+    IVault _vaultByController = vaultDeployer.deployVault(_id, _owner);
+
+    vm.prank(newAddress());
+    IVault _vaultByRandom = vaultDeployer.deployVault(_id, _owner);
+
+    assert(address(_vaultByController) != address(_vaultByRandom));
+  }
 }
