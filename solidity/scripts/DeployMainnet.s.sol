@@ -5,6 +5,8 @@ import {Deploy, DeployVars} from '@scripts/Deploy.s.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import {UniswapV3OracleRelay} from '@contracts/periphery/oracles/UniswapV3OracleRelay.sol';
 import {ChainlinkOracleRelay} from '@contracts/periphery/oracles/ChainlinkOracleRelay.sol';
+import {GovernorCharlie} from '@contracts/governance/GovernorCharlie.sol';
+import {CTokenOracle} from '@contracts/periphery/oracles/CTokenOracle.sol';
 
 contract DeployMainnet is Deploy {
   address public deployer = vm.rememberKey(vm.envUint('DEPLOYER_MAINNNET_PRIVATE_KEY'));
@@ -29,6 +31,7 @@ contract DeployMainnet is Deploy {
 
     // Deploy protocol
     _deploy(_deployVars);
+
     vm.stopBroadcast();
   }
 }
