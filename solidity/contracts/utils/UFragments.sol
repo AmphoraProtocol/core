@@ -5,18 +5,16 @@ pragma solidity ^0.8.9;
 import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 import {IERC20Metadata} from '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
 
-/**
- * @title uFragments ERC20 token
- * @notice USDA uses the uFragments concept from the Ideal Money project to play interest
- *      Implementation is shamelessly borrowed from Ampleforth project
- *      uFragments is a normal ERC20 token, but its supply can be adjusted by splitting and
- *      combining tokens proportionally across all wallets.
- *
- *
- *      uFragment balances are internally represented with a hidden denomination, 'gons'.
- *      We support splitting the currency in expansion and combining the currency on contraction by
- *      changing the exchange rate between the hidden 'gons' and the public 'fragments'.
- */
+// @title uFragments ERC20 token
+// @notice USDA uses the uFragments concept from the Ideal Money project to play interest
+//      Implementation is shamelessly borrowed from Ampleforth project
+//      uFragments is a normal ERC20 token, but its supply can be adjusted by splitting and
+//      combining tokens proportionally across all wallets.
+//
+//
+//      uFragment balances are internally represented with a hidden denomination, 'gons'.
+//      We support splitting the currency in expansion and combining the currency on contraction by
+//      changing the exchange rate between the hidden 'gons' and the public 'fragments'.
 contract UFragments is Ownable, IERC20Metadata {
   // PLEASE READ BEFORE CHANGING ANY ACCOUNTING OR MATH
   // Anytime there is division, there is a risk of numerical instability from rounding errors. In
@@ -105,61 +103,47 @@ contract UFragments is Ownable, IERC20Metadata {
     emit Transfer(address(this), address(0x0), _totalSupply);
   }
 
-  /**
-   * @param _monetaryPolicy The address of the monetary policy contract to use for authentication.
-   */
+  // @param _monetaryPolicy The address of the monetary policy contract to use for authentication.
   function setMonetaryPolicy(address _monetaryPolicy) external onlyOwner {
     monetaryPolicy = _monetaryPolicy;
     emit LogMonetaryPolicyUpdated(_monetaryPolicy);
   }
 
-  /**
-   * @notice returns the total supply
-   * @return __totalSupply The total number of fragments.
-   */
+  // @notice returns the total supply
+  // @return __totalSupply The total number of fragments.
   function totalSupply() external view override returns (uint256 __totalSupply) {
     return _totalSupply;
   }
 
-  /**
-   * @param _who The address to query.
-   * @return _balance The balance of the specified address.
-   */
+  // @param _who The address to query.
+  // @return _balance The balance of the specified address.
   function balanceOf(address _who) external view override returns (uint256 _balance) {
     return _gonBalances[_who] / _gonsPerFragment;
   }
 
-  /**
-   * @param _who The address to query.
-   * @return _balance The gon balance of the specified address.
-   */
+  // @param _who The address to query.
+  // @return _balance The gon balance of the specified address.
   function scaledBalanceOf(address _who) external view returns (uint256 _balance) {
     return _gonBalances[_who];
   }
 
-  /**
-   *  @notice Returns the scaled total supply
-   * @return __totalGons the total number of gons.
-   */
+  // @notice Returns the scaled total supply
+  // @return __totalGons the total number of gons.
   function scaledTotalSupply() external view returns (uint256 __totalGons) {
     return _totalGons;
   }
 
-  /**
-   * @notice Returns the nonces of a given address
-   * @param _who The address to query.
-   * @return _addressNonces The number of successful permits by the specified address.
-   */
+  // @notice Returns the nonces of a given address
+  // @param _who The address to query.
+  // @return _addressNonces The number of successful permits by the specified address.
   function nonces(address _who) public view returns (uint256 _addressNonces) {
     return _nonces[_who];
   }
 
-  /**
-   * @notice Returns the EIP712 domain separator
-   * @return _domainSeparator The computed DOMAIN_SEPARATOR to be used off-chain services
-   *         which implement EIP-712.
-   *         https://eips.ethereum.org/EIPS/eip-2612
-   */
+  // @notice Returns the EIP712 domain separator
+  // @return _domainSeparator The computed DOMAIN_SEPARATOR to be used off-chain services
+  //         which implement EIP-712.
+  //         https://eips.ethereum.org/EIPS/eip-2612
   function DOMAIN_SEPARATOR() public view returns (bytes32 _domainSeparator) {
     uint256 _chainId;
     assembly {
@@ -170,12 +154,10 @@ contract UFragments is Ownable, IERC20Metadata {
     );
   }
 
-  /**
-   * @notice Transfer tokens to a specified address.
-   * @param _to The address to transfer to.
-   * @param _value The amount to be transferred.
-   * @return _success True on success, false otherwise.
-   */
+  // @notice Transfer tokens to a specified address.
+  // @param _to The address to transfer to.
+  // @param _value The amount to be transferred.
+  // @return _success True on success, false otherwise.
   function transfer(address _to, uint256 _value) external override validRecipient(_to) returns (bool _success) {
     uint256 _gonValue = _value * _gonsPerFragment;
 
@@ -186,11 +168,9 @@ contract UFragments is Ownable, IERC20Metadata {
     return true;
   }
 
-  /**
-   * @notice Transfer all of the sender's wallet balance to a specified address.
-   * @param _to The address to transfer to.
-   * @return _success True on success, false otherwise.
-   */
+  // @notice Transfer all of the sender's wallet balance to a specified address.
+  // @param _to The address to transfer to.
+  // @return _success True on success, false otherwise.
   function transferAll(address _to) external validRecipient(_to) returns (bool _success) {
     uint256 _gonValue = _gonBalances[msg.sender];
     uint256 _value = _gonValue / _gonsPerFragment;
@@ -202,23 +182,19 @@ contract UFragments is Ownable, IERC20Metadata {
     return true;
   }
 
-  /**
-   * @notice Function to check the amount of tokens that an owner has allowed to a spender.
-   * @param _owner The address which owns the funds.
-   * @param _spender The address which will spend the funds.
-   * @return _remaining The number of tokens still available for the _spender.
-   */
+  // @notice Function to check the amount of tokens that an owner has allowed to a spender.
+  // @param _owner The address which owns the funds.
+  // @param _spender The address which will spend the funds.
+  // @return _remaining The number of tokens still available for the _spender.
   function allowance(address _owner, address _spender) external view override returns (uint256 _remaining) {
     return _allowedFragments[_owner][_spender];
   }
 
-  /**
-   * @notice Transfer tokens from one address to another.
-   * @param _from The address you want to send tokens from.
-   * @param _to The address you want to transfer to.
-   * @param _value The amount of tokens to be transferred.
-   * @return _success True on success, false otherwise.
-   */
+  // @notice Transfer tokens from one address to another.
+  // @param _from The address you want to send tokens from.
+  // @param _to The address you want to transfer to.
+  // @param _value The amount of tokens to be transferred.
+  // @return _success True on success, false otherwise.
   function transferFrom(
     address _from,
     address _to,
@@ -234,12 +210,10 @@ contract UFragments is Ownable, IERC20Metadata {
     return true;
   }
 
-  /**
-   * @notice Transfer all balance tokens from one address to another.
-   * @param _from The address you want to send tokens from.
-   * @param _to The address you want to transfer to.
-   * @return _success True on success, false otherwise.
-   */
+  // @notice Transfer all balance tokens from one address to another.
+  // @param _from The address you want to send tokens from.
+  // @param _to The address you want to transfer to.
+  // @return _success True on success, false otherwise.
   function transferAllFrom(address _from, address _to) external validRecipient(_to) returns (bool _success) {
     uint256 _gonValue = _gonBalances[_from];
     uint256 _value = _gonValue / _gonsPerFragment;
@@ -253,18 +227,16 @@ contract UFragments is Ownable, IERC20Metadata {
     return true;
   }
 
-  /**
-   * @notice Approve the passed address to spend the specified amount of tokens on behalf of
-   * msg.sender. This method is included for ERC20 compatibility.
-   * increaseAllowance and decreaseAllowance should be used instead.
-   * Changing an allowance with this method brings the risk that someone may transfer both
-   * the old and the new allowance - if they are both greater than zero - if a transfer
-   * transaction is mined before the later approve() call is mined.
-   *
-   * @param _spender The address which will spend the funds.
-   * @param _value The amount of tokens to be spent.
-   * @return _success True on success, false otherwise.
-   */
+  // @notice Approve the passed address to spend the specified amount of tokens on behalf of
+  // msg.sender. This method is included for ERC20 compatibility.
+  // increaseAllowance and decreaseAllowance should be used instead.
+  // Changing an allowance with this method brings the risk that someone may transfer both
+  // the old and the new allowance - if they are both greater than zero - if a transfer
+  // transaction is mined before the later approve() call is mined.
+  //
+  // @param _spender The address which will spend the funds.
+  // @param _value The amount of tokens to be spent.
+  // @return _success True on success, false otherwise.
   function approve(address _spender, uint256 _value) external override returns (bool _success) {
     _allowedFragments[msg.sender][_spender] = _value;
 
@@ -272,14 +244,12 @@ contract UFragments is Ownable, IERC20Metadata {
     return true;
   }
 
-  /**
-   * @notice Increase the amount of tokens that an owner has allowed to a spender.
-   * This method should be used instead of approve() to avoid the double approval vulnerability
-   * described above.
-   * @param _spender The address which will spend the funds.
-   * @param _addedValue The amount of tokens to increase the allowance by.
-   * @return _success True on success, false otherwise.
-   */
+  // @notice Increase the amount of tokens that an owner has allowed to a spender.
+  // This method should be used instead of approve() to avoid the double approval vulnerability
+  // described above.
+  // @param _spender The address which will spend the funds.
+  // @param _addedValue The amount of tokens to increase the allowance by.
+  // @return _success True on success, false otherwise.
   function increaseAllowance(address _spender, uint256 _addedValue) public returns (bool _success) {
     _allowedFragments[msg.sender][_spender] = _allowedFragments[msg.sender][_spender] + _addedValue;
 
@@ -287,13 +257,10 @@ contract UFragments is Ownable, IERC20Metadata {
     return true;
   }
 
-  /**
-   * @notice Decrease the amount of tokens that an owner has allowed to a spender.
-   *
-   * @param _spender The address which will spend the funds.
-   * @param _subtractedValue The amount of tokens to decrease the allowance by.
-   * @return _success True on success, false otherwise.
-   */
+  // @notice Decrease the amount of tokens that an owner has allowed to a spender.
+  // @param _spender The address which will spend the funds.
+  // @param _subtractedValue The amount of tokens to decrease the allowance by.
+  // @return _success True on success, false otherwise.
   function decreaseAllowance(address _spender, uint256 _subtractedValue) external returns (bool _success) {
     uint256 _oldValue = _allowedFragments[msg.sender][_spender];
     _allowedFragments[msg.sender][_spender] = (_subtractedValue >= _oldValue) ? 0 : _oldValue - _subtractedValue;
@@ -302,16 +269,14 @@ contract UFragments is Ownable, IERC20Metadata {
     return true;
   }
 
-  /**
-   * @notice Allows for approvals to be made via secp256k1 signatures.
-   * @param _owner The owner of the funds
-   * @param _spender The _spender
-   * @param _value The amount
-   * @param _deadline The deadline timestamp, type(uint256).max for max deadline
-   * @param _v Signature param
-   * @param _s Signature param
-   * @param _r Signature param
-   */
+  // @notice Allows for approvals to be made via secp256k1 signatures.
+  // @param _owner The owner of the funds
+  // @param _spender The _spender
+  // @param _value The amount
+  // @param _deadline The deadline timestamp, type(uint256).max for max deadline
+  // @param _v Signature param
+  // @param _s Signature param
+  // @param _r Signature param
   function permit(
     address _owner,
     address _spender,

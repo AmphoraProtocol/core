@@ -879,13 +879,16 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
     uint192 _tokenValue;
 
     // loop over each registered token, adding the individuals ltv to the total ltv of the vault
-    for (uint192 _i; _i < enabledTokens.length; ++_i) {
-      _collateral = tokenAddressCollateralInfo[enabledTokens[_i]];
+    for (uint192 _i; _i < enabledTokens.length;) {
+      unchecked {
+        ++_i;
+      }
+      _collateral = tokenAddressCollateralInfo[enabledTokens[_i - 1]];
       // if the ltv is 0, continue
       if (_collateral.ltv == 0) continue;
       // get the address of the token through the array of enabled tokens
       // note that index 0 of enabledTokens corresponds to a vaultId of 1, so we must subtract 1 from i to get the correct index
-      _tokenAddress = enabledTokens[_i];
+      _tokenAddress = enabledTokens[_i - 1];
       // the balance is the vault's token balance of the current collateral token in the loop
       _balance = _vault.balances(_tokenAddress);
       if (_balance == 0) continue;

@@ -1,13 +1,11 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-/**
- * @title Exponential module for storing fixed-precision decimals
- * @author Compound
- * @notice Exp is a struct which stores decimals with a fixed precision of 18 decimal places.
- *         Thus, if we wanted to store the 5.1, mantissa would store 5.1e18. That is:
- *         `Exp({mantissa: 5100000000000000000})`.
- */
+// @title Exponential module for storing fixed-precision decimals
+// @author Compound
+// @notice Exp is a struct which stores decimals with a fixed precision of 18 decimal places.
+//        Thus, if we wanted to store the 5.1, mantissa would store 5.1e18. That is:
+//        `Exp({mantissa: 5100000000000000000})`.
 contract ExponentialNoError {
   uint256 public constant EXP_SCALE = 1e18;
   uint256 public constant DOUBLE_SCALE = 1e36;
@@ -24,10 +22,8 @@ contract ExponentialNoError {
     uint256 mantissa;
   }
 
-  /**
-   * @dev Truncates the given exp to a whole number value.
-   *      For example, truncate(Exp{mantissa: 15 * EXP_SCALE}) = 15
-   */
+  // @dev Truncates the given exp to a whole number value.
+  //      For example, truncate(Exp{mantissa: 15 * EXP_SCALE}) = 15
   function _truncate(Exp memory _exp) internal pure returns (uint256 _result) {
     return _exp.mantissa / EXP_SCALE;
   }
@@ -46,17 +42,13 @@ contract ExponentialNoError {
     return uint128(_u);
   }
 
-  /**
-   * @dev Multiply an Exp by a scalar, then truncate to return an unsigned integer.
-   */
+  // @dev Multiply an Exp by a scalar, then truncate to return an unsigned integer.
   function _mulScalarTruncate(Exp memory _a, uint256 _scalar) internal pure returns (uint256 _result) {
     Exp memory _product = _mul(_a, _scalar);
     return _truncate(_product);
   }
 
-  /**
-   * @dev Multiply an Exp by a scalar, truncate, then _add an to an unsigned integer, returning an unsigned integer.
-   */
+  // @dev Multiply an Exp by a scalar, truncate, then _add an to an unsigned integer, returning an unsigned integer.
   function _mulScalarTruncateAddUInt(
     Exp memory _a,
     uint256 _scalar,
@@ -66,30 +58,22 @@ contract ExponentialNoError {
     return _add(_truncate(_product), _addend);
   }
 
-  /**
-   * @dev Checks if first Exp is less than second Exp.
-   */
+  // @dev Checks if first Exp is less than second Exp.
   function _lessThanExp(Exp memory _left, Exp memory _right) internal pure returns (bool _result) {
     return _left.mantissa < _right.mantissa;
   }
 
-  /**
-   * @dev Checks if left Exp <= right Exp.
-   */
+  // @dev Checks if left Exp <= right Exp.
   function _lessThanOrEqualExp(Exp memory _left, Exp memory _right) internal pure returns (bool _result) {
     return _left.mantissa <= _right.mantissa;
   }
 
-  /**
-   * @dev Checks if left Exp > right Exp.
-   */
+  // @dev Checks if left Exp > right Exp.
   function _greaterThanExp(Exp memory _left, Exp memory _right) internal pure returns (bool _result) {
     return _left.mantissa > _right.mantissa;
   }
 
-  /**
-   * @dev returns true if Exp is exactly zero
-   */
+  // @dev returns true if Exp is exactly zero
   function _isZeroExp(Exp memory _value) internal pure returns (bool _result) {
     return _value.mantissa == 0;
   }

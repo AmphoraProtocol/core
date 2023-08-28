@@ -152,15 +152,13 @@ interface IGovernorCharlie is IGovernorCharlieEvents {
                               LOGIC
     //////////////////////////////////////////////////////////////*/
 
-  /**
-   * @notice Function used to propose a new proposal. Sender must have delegates above the proposal threshold
-   * @param _targets Target addresses for proposal calls
-   * @param _values Eth values for proposal calls
-   * @param _signatures Function signatures for proposal calls
-   * @param _calldatas Calldatas for proposal calls
-   * @param _description String description of the proposal
-   * @return _proposalId Proposal id of new proposal
-   */
+  // @notice Function used to propose a new proposal. Sender must have delegates above the proposal threshold
+  // @param _targets Target addresses for proposal calls
+  // @param _values Eth values for proposal calls
+  // @param _signatures Function signatures for proposal calls
+  // @param _calldatas Calldatas for proposal calls
+  // @param _description String description of the proposal
+  // @return _proposalId Proposal id of new proposal
   function propose(
     address[] memory _targets,
     uint256[] memory _values,
@@ -169,15 +167,13 @@ interface IGovernorCharlie is IGovernorCharlieEvents {
     string memory _description
   ) external returns (uint256 _proposalId);
 
-  /**
-   * @notice Function used to propose a new emergency proposal. Sender must have delegates above the proposal threshold
-   * @param _targets Target addresses for proposal calls
-   * @param _values Eth values for proposal calls
-   * @param _signatures Function signatures for proposal calls
-   * @param _calldatas Calldatas for proposal calls
-   * @param _description String description of the proposal
-   * @return _proposalId Proposal id of new proposal
-   */
+  // @notice Function used to propose a new emergency proposal. Sender must have delegates above the proposal threshold
+  // @param _targets Target addresses for proposal calls
+  // @param _values Eth values for proposal calls
+  // @param _signatures Function signatures for proposal calls
+  // @param _calldatas Calldatas for proposal calls
+  // @param _description String description of the proposal
+  // @return _proposalId Proposal id of new proposal
   function proposeEmergency(
     address[] memory _targets,
     uint256[] memory _values,
@@ -186,16 +182,12 @@ interface IGovernorCharlie is IGovernorCharlieEvents {
     string memory _description
   ) external returns (uint256 _proposalId);
 
-  /**
-   * @notice Queues a proposal of state succeeded
-   * @param _proposalId The id of the proposal to queue
-   */
+  // @notice Queues a proposal of state succeeded
+  // @param _proposalId The id of the proposal to queue
   function queue(uint256 _proposalId) external;
 
-  /**
-   * @notice Executes a queued proposal if eta has passed
-   * @param _proposalId The id of the proposal to execute
-   */
+  // @notice Executes a queued proposal if eta has passed
+  // @param _proposalId The id of the proposal to execute
   function execute(uint256 _proposalId) external payable;
 
   /// @notice Executes a transaction
@@ -212,21 +204,17 @@ interface IGovernorCharlie is IGovernorCharlieEvents {
     uint256 _eta
   ) external payable;
 
-  /**
-   * @notice Cancels a proposal only if sender is the proposer, or proposer delegates dropped below proposal threshold
-   * @notice whitelistGuardian can cancel proposals from whitelisted addresses
-   * @param _proposalId The id of the proposal to cancel
-   */
+  // @notice Cancels a proposal only if sender is the proposer, or proposer delegates dropped below proposal threshold
+  // @notice whitelistGuardian can cancel proposals from whitelisted addresses
+  // @param _proposalId The id of the proposal to cancel
   function cancel(uint256 _proposalId) external;
 
-  /**
-   * @notice Gets actions of a proposal
-   * @param _proposalId The id of the proposal
-   * @return _targets The proposal targets
-   * @return _values The proposal values
-   * @return _signatures The proposal signatures
-   * @return _calldatas The proposal calldata
-   */
+  // @notice Gets actions of a proposal
+  // @param _proposalId The id of the proposal
+  // @return _targets The proposal targets
+  // @return _values The proposal values
+  // @return _signatures The proposal signatures
+  // @return _calldatas The proposal calldata
   function getActions(uint256 _proposalId)
     external
     view
@@ -237,127 +225,89 @@ interface IGovernorCharlie is IGovernorCharlieEvents {
       bytes[] memory _calldatas
     );
 
-  /**
-   * @notice Returns the proposal
-   * @param _proposalId The id of proposal
-   * @return _proposal The proposal
-   */
+  // @notice Returns the proposal
+  // @param _proposalId The id of proposal
+  // @return _proposal The proposal
   function getProposal(uint256 _proposalId) external view returns (Proposal memory _proposal);
 
-  /**
-   * @notice Gets the receipt for a voter on a given proposal
-   * @param _proposalId The id of proposal
-   * @param _voter The address of the voter
-   * @return _receipt The voting receipt
-   */
+  // @notice Gets the receipt for a voter on a given proposal
+  // @param _proposalId The id of proposal
+  // @param _voter The address of the voter
+  // @return _receipt The voting receipt
   function getReceipt(uint256 _proposalId, address _voter) external view returns (Receipt memory _receipt);
 
-  /**
-   * @notice Gets the state of a proposal
-   * @param _proposalId The id of the proposal
-   * @return _proposalState Proposal state
-   */
+  // @notice Gets the state of a proposal
+  // @param _proposalId The id of the proposal
+  // @return _proposalState Proposal state
   function state(uint256 _proposalId) external view returns (ProposalState _proposalState);
 
-  /**
-   * @notice Cast a vote for a proposal
-   * @param _proposalId The id of the proposal to vote on
-   * @param _support The support value for the vote. 0=against, 1=for, 2=abstain
-   */
+  // @notice Cast a vote for a proposal
+  // @param _proposalId The id of the proposal to vote on
+  // @param _support The support value for the vote. 0=against, 1=for, 2=abstain
   function castVote(uint256 _proposalId, uint8 _support) external;
 
-  /**
-   * @notice Cast a vote for a proposal with a reason
-   * @param _proposalId The id of the proposal to vote on
-   * @param _support The support value for the vote. 0=against, 1=for, 2=abstain
-   * @param _reason The reason given for the vote by the voter
-   */
+  // @notice Cast a vote for a proposal with a reason
+  // @param _proposalId The id of the proposal to vote on
+  // @param _support The support value for the vote. 0=against, 1=for, 2=abstain
+  // @param _reason The reason given for the vote by the voter
   function castVoteWithReason(uint256 _proposalId, uint8 _support, string calldata _reason) external;
 
-  /**
-   * @notice Cast a vote for a proposal by signature
-   * @dev External override function that accepts EIP-712 signatures for voting on proposals.
-   */
+  // @notice Cast a vote for a proposal by signature
+  // @dev External override function that accepts EIP-712 signatures for voting on proposals.
   function castVoteBySig(uint256 _proposalId, uint8 _support, uint8 _v, bytes32 _r, bytes32 _s) external;
 
-  /**
-   * @notice View function which returns if an account is whitelisted
-   * @param _account Account to check white list status of
-   * @return _isWhitelisted If the account is whitelisted
-   */
+  // @notice View function which returns if an account is whitelisted
+  // @param _account Account to check white list status of
+  // @return _isWhitelisted If the account is whitelisted
   function isWhitelisted(address _account) external view returns (bool _isWhitelisted);
 
-  /**
-   * @notice Used to update the timelock period
-   * @param _proposalTimelockDelay The proposal holding period
-   */
+  // @notice Used to update the timelock period
+  // @param _proposalTimelockDelay The proposal holding period
   function setDelay(uint256 _proposalTimelockDelay) external;
 
-  /**
-   * @notice Used to update the emergency timelock period
-   * @param _emergencyTimelockDelay The proposal holding period
-   */
+  // @notice Used to update the emergency timelock period
+  // @param _emergencyTimelockDelay The proposal holding period
   function setEmergencyDelay(uint256 _emergencyTimelockDelay) external;
 
-  /**
-   * @notice Governance function for setting the voting delay
-   * @param _newVotingDelay The new voting delay, in blocks
-   */
+  // @notice Governance function for setting the voting delay
+  // @param _newVotingDelay The new voting delay, in blocks
   function setVotingDelay(uint256 _newVotingDelay) external;
 
-  /**
-   * @notice Governance function for setting the voting period
-   * @param _newVotingPeriod The new voting period, in blocks
-   */
+  // @notice Governance function for setting the voting period
+  // @param _newVotingPeriod The new voting period, in blocks
   function setVotingPeriod(uint256 _newVotingPeriod) external;
 
-  /**
-   * @notice Governance function for setting the emergency voting period
-   * @param _newEmergencyVotingPeriod The new voting period, in blocks
-   */
+  // @notice Governance function for setting the emergency voting period
+  // @param _newEmergencyVotingPeriod The new voting period, in blocks
   function setEmergencyVotingPeriod(uint256 _newEmergencyVotingPeriod) external;
 
-  /**
-   * @notice Governance function for setting the proposal threshold
-   * @param _newProposalThreshold The new proposal threshold
-   */
+  // @notice Governance function for setting the proposal threshold
+  // @param _newProposalThreshold The new proposal threshold
   function setProposalThreshold(uint256 _newProposalThreshold) external;
 
-  /**
-   * @notice Governance function for setting the quorum
-   * @param _newQuorumVotes The new proposal quorum
-   */
+  // @notice Governance function for setting the quorum
+  // @param _newQuorumVotes The new proposal quorum
   function setQuorumVotes(uint256 _newQuorumVotes) external;
 
-  /**
-   * @notice Governance function for setting the emergency quorum
-   * @param _newEmergencyQuorumVotes The new proposal quorum
-   */
+  // @notice Governance function for setting the emergency quorum
+  // @param _newEmergencyQuorumVotes The new proposal quorum
   function setEmergencyQuorumVotes(uint256 _newEmergencyQuorumVotes) external;
 
-  /**
-   * @notice Governance function for setting the whitelist expiration as a timestamp
-   * for an account. Whitelist status allows accounts to propose without meeting threshold
-   * @param _account Account address to set whitelist expiration for
-   * @param _expiration Expiration for account whitelist status as timestamp (if now < expiration, whitelisted)
-   */
+  // @notice Governance function for setting the whitelist expiration as a timestamp
+  // for an account. Whitelist status allows accounts to propose without meeting threshold
+  // @param _account Account address to set whitelist expiration for
+  // @param _expiration Expiration for account whitelist status as timestamp (if now < expiration, whitelisted)
   function setWhitelistAccountExpiration(address _account, uint256 _expiration) external;
 
-  /**
-   * @notice Governance function for setting the whitelistGuardian. WhitelistGuardian can cancel proposals from whitelisted addresses
-   * @param _account Account to set whitelistGuardian to (0x0 to remove whitelistGuardian)
-   */
+  // @notice Governance function for setting the whitelistGuardian. WhitelistGuardian can cancel proposals from whitelisted addresses
+  // @param _account Account to set whitelistGuardian to (0x0 to remove whitelistGuardian)
   function setWhitelistGuardian(address _account) external;
 
-  /**
-   * @notice Governance function for setting the optimistic voting delay
-   * @param _newOptimisticVotingDelay The new optimistic voting delay, in blocks
-   */
+  // @notice Governance function for setting the optimistic voting delay
+  // @param _newOptimisticVotingDelay The new optimistic voting delay, in blocks
   function setOptimisticDelay(uint256 _newOptimisticVotingDelay) external;
 
-  /**
-   * @notice Governance function for setting the optimistic quorum
-   * @param _newOptimisticQuorumVotes The new optimistic quorum votes, in blocks
-   */
+  // @notice Governance function for setting the optimistic quorum
+  // @param _newOptimisticQuorumVotes The new optimistic quorum votes, in blocks
   function setOptimisticQuorumVotes(uint256 _newOptimisticQuorumVotes) external;
 }

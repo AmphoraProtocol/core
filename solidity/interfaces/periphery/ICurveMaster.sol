@@ -8,27 +8,21 @@ interface ICurveMaster {
                             EVENTS
     //////////////////////////////////////////////////////////////*/
 
-  /**
-   * @notice Emited when the owner changes the vault controller address
-   * @param _oldVaultControllerAddress The old address of the vault controller
-   * @param _newVaultControllerAddress The new address of the vault controller
-   */
+  // @notice Emited when the owner changes the vault controller address
+  // @param _oldVaultControllerAddress The old address of the vault controller
+  // @param _newVaultControllerAddress The new address of the vault controller
   event VaultControllerSet(address _oldVaultControllerAddress, address _newVaultControllerAddress);
 
-  /**
-   * @notice Emited when the owner changes the curve address
-   * @param _oldCurveAddress The old address of the curve
-   * @param _token The token to set
-   * @param _newCurveAddress The new address of the curve
-   */
+  // @notice Emited when the owner changes the curve address
+  // @param _oldCurveAddress The old address of the curve
+  // @param _token The token to set
+  // @param _newCurveAddress The new address of the curve
   event CurveSet(address _oldCurveAddress, address _token, address _newCurveAddress);
 
-  /**
-   * @notice Emited when the owner changes the curve address skipping the checks
-   * @param _oldCurveAddress The old address of the curve
-   * @param _token The token to set
-   * @param _newCurveAddress The new address of the curve
-   */
+  // @notice Emited when the owner changes the curve address skipping the checks
+  // @param _oldCurveAddress The old address of the curve
+  // @param _token The token to set
+  // @param _newCurveAddress The new address of the curve
   event CurveForceSet(address _oldCurveAddress, address _token, address _newCurveAddress);
 
   /*///////////////////////////////////////////////////////////////

@@ -1,8 +1,8 @@
 ds-test/=node_modules/ds-test/src
 forge-std/=node_modules/forge-std/src
 isolmate/=node_modules/@defi-wonderland/isolmate/src
-unit-v2-core/=node_modules/@uniswap/v2-core/contracts
-unit-v2-periphery/=node_modules/@uniswap/v2-periphery/contracts
+uni-v2-core/=node_modules/@uniswap/v2-core/contracts
+uni-v2-periphery/=node_modules/@uniswap/v2-periphery/contracts
 uni-v3-core/=node_modules/@uniswap/v3-core/contracts
 uni-v3-periphery/=node_modules/@uniswap/v3-periphery/contracts
 solidity-utils/=node_modules/@defi-wonderland/solidity-utils/solidity

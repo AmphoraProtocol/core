@@ -14,41 +14,34 @@ interface IVaultController {
   /*///////////////////////////////////////////////////////////////
                             EVENTS
     //////////////////////////////////////////////////////////////*/
-  /**
-   * @notice Emited when payInterest is called to accrue interest and distribute it
-   * @param _epoch The block timestamp when the function called
-   * @param _amount The increase amount of the interest factor
-   * @param _curveVal The value at the curve
-   */
+
+  // @notice Emited when payInterest is called to accrue interest and distribute it
+  // @param _epoch The block timestamp when the function called
+  // @param _amount The increase amount of the interest factor
+  // @param _curveVal The value at the curve
   event InterestEvent(uint64 _epoch, uint192 _amount, uint256 _curveVal);
 
-  /**
-   * @notice Emited when a new protocol fee is being set
-   * @param _protocolFee The new fee for the protocol
-   */
+  // @notice Emited when a new protocol fee is being set
+  // @param _protocolFee The new fee for the protocol
   event NewProtocolFee(uint192 _protocolFee);
 
-  /**
-   * @notice Emited when a new erc20 token is being registered as acceptable collateral
-   * @param _tokenAddress The addres of the erc20 token
-   * @param _ltv The loan to value amount of the erc20
-   * @param _oracleAddress The address of the oracle to use to fetch the price
-   * @param _liquidationIncentive The liquidation penalty for the token
-   * @param _cap The maximum amount that can be deposited
-   */
+  // @notice Emited when a new erc20 token is being registered as acceptable collateral
+  // @param _tokenAddress The addres of the erc20 token
+  // @param _ltv The loan to value amount of the erc20
+  // @param _oracleAddress The address of the oracle to use to fetch the price
+  // @param _liquidationIncentive The liquidation penalty for the token
+  // @param _cap The maximum amount that can be deposited
   event RegisteredErc20(
     address _tokenAddress, uint256 _ltv, address _oracleAddress, uint256 _liquidationIncentive, uint256 _cap
   );
 
-  /**
-   * @notice Emited when the information about an acceptable erc20 token is being update
-   * @param _tokenAddress The addres of the erc20 token to update
-   * @param _ltv The new loan to value amount of the erc20
-   * @param _oracleAddress The new address of the oracle to use to fetch the price
-   * @param _liquidationIncentive The new liquidation penalty for the token
-   * @param _cap The maximum amount that can be deposited
-   * @param _poolId The convex pool id of a crv lp token
-   */
+  // @notice Emited when the information about an acceptable erc20 token is being update
+  // @param _tokenAddress The addres of the erc20 token to update
+  // @param _ltv The new loan to value amount of the erc20
+  // @param _oracleAddress The new address of the oracle to use to fetch the price
+  // @param _liquidationIncentive The new liquidation penalty for the token
+  // @param _cap The maximum amount that can be deposited
+  // @param _poolId The convex pool id of a crv lp token
   event UpdateRegisteredErc20(
     address _tokenAddress,
     uint256 _ltv,
@@ -58,44 +51,35 @@ interface IVaultController {
     uint256 _poolId
   );
 
-  /**
-   * @notice Emited when a new vault is being minted
-   * @param _vaultAddress The address of the new vault
-   * @param _vaultId The id of the vault
-   * @param _vaultOwner The address of the owner of the vault
-   */
+  // @notice Emited when a new vault is being minted
+  // @param _vaultAddress The address of the new vault
+  // @param _vaultId The id of the vault
+  // @param _vaultOwner The address of the owner of the vault
   event NewVault(address _vaultAddress, uint256 _vaultId, address _vaultOwner);
 
-  /**
-   * @notice Emited when the owner registers a curve master
-   * @param _curveMasterAddress The address of the curve master
-   */
+  // @notice Emited when the owner registers a curve master
+  // @param _curveMasterAddress The address of the curve master
   event RegisterCurveMaster(address _curveMasterAddress);
-  /**
-   * @notice Emited when someone successfully borrows USDA
-   * @param _vaultId The id of the vault that borrowed against
-   * @param _vaultAddress The address of the vault that borrowed against
-   * @param _borrowAmount The amounnt that was borrowed
-   * @param _fee The fee assigned to the treasury
-   */
+
+  // @notice Emited when someone successfully borrows USDA
+  // @param _vaultId The id of the vault that borrowed against
+  // @param _vaultAddress The address of the vault that borrowed against
+  // @param _borrowAmount The amounnt that was borrowed
+  // @param _fee The fee assigned to the treasury
   event BorrowUSDA(uint256 _vaultId, address _vaultAddress, uint256 _borrowAmount, uint256 _fee);
 
-  /**
-   * @notice Emited when someone successfully repayed a vault's loan
-   * @param _vaultId The id of the vault that was repayed
-   * @param _vaultAddress The address of the vault that was repayed
-   * @param _repayAmount The amount that was repayed
-   */
+  // @notice Emited when someone successfully repayed a vault's loan
+  // @param _vaultId The id of the vault that was repayed
+  // @param _vaultAddress The address of the vault that was repayed
+  // @param _repayAmount The amount that was repayed
   event RepayUSDA(uint256 _vaultId, address _vaultAddress, uint256 _repayAmount);
 
-  /**
-   * @notice Emited when someone successfully liquidates a vault
-   * @param _vaultId The id of the vault that was liquidated
-   * @param _assetAddress The address of the token that was liquidated
-   * @param _usdaToRepurchase The amount of USDA that was repurchased
-   * @param _tokensToLiquidate The number of tokens that were taken from the vault and sent to the liquidator
-   * @param _liquidationFee The number of tokens that were taken from the fee and sent to the treasury
-   */
+  // @notice Emited when someone successfully liquidates a vault
+  // @param _vaultId The id of the vault that was liquidated
+  // @param _assetAddress The address of the token that was liquidated
+  // @param _usdaToRepurchase The amount of USDA that was repurchased
+  // @param _tokensToLiquidate The number of tokens that were taken from the vault and sent to the liquidator
+  // @param _liquidationFee The number of tokens that were taken from the fee and sent to the treasury
   event Liquidate(
     uint256 _vaultId,
     address _assetAddress,
@@ -104,38 +88,28 @@ interface IVaultController {
     uint256 _liquidationFee
   );
 
-  /**
-   * @notice Emited when governance changes the claimer contract
-   *  @param _oldClaimerContract The old claimer contract
-   *  @param _newClaimerContract The new claimer contract
-   */
+  // @notice Emited when governance changes the claimer contract
+  //  @param _oldClaimerContract The old claimer contract
+  //  @param _newClaimerContract The new claimer contract
   event ChangedClaimerContract(IAMPHClaimer _oldClaimerContract, IAMPHClaimer _newClaimerContract);
 
-  /**
-   * @notice Emited when the owner registers the USDA contract
-   * @param _usdaContractAddress The address of the USDA contract
-   */
+  // @notice Emited when the owner registers the USDA contract
+  // @param _usdaContractAddress The address of the USDA contract
   event RegisterUSDA(address _usdaContractAddress);
 
-  /**
-   * @notice Emited when governance changes the initial borrowing fee
-   *  @param _oldBorrowingFee The old borrowing fee
-   *  @param _newBorrowingFee The new borrowing fee
-   */
+  // @notice Emited when governance changes the initial borrowing fee
+  //  @param _oldBorrowingFee The old borrowing fee
+  //  @param _newBorrowingFee The new borrowing fee
   event ChangedInitialBorrowingFee(uint192 _oldBorrowingFee, uint192 _newBorrowingFee);
 
-  /**
-   * @notice Emited when governance changes the liquidation fee
-   *  @param _oldLiquidationFee The old liquidation fee
-   *  @param _newLiquidationFee The new liquidation fee
-   */
+  // @notice Emited when governance changes the liquidation fee
+  //  @param _oldLiquidationFee The old liquidation fee
+  //  @param _newLiquidationFee The new liquidation fee
   event ChangedLiquidationFee(uint192 _oldLiquidationFee, uint192 _newLiquidationFee);
 
-  /**
-   * @notice Emited when collaterals are migrated from old vault controller
-   *  @param _oldVaultController The old vault controller migrated from
-   *  @param _tokenAddresses The list of new collaterals
-   */
+  // @notice Emited when collaterals are migrated from old vault controller
+  //  @param _oldVaultController The old vault controller migrated from
+  //  @param _tokenAddresses The list of new collaterals
   event CollateralsMigratedFrom(IVaultController _oldVaultController, address[] _tokenAddresses);
 
   /*///////////////////////////////////////////////////////////////

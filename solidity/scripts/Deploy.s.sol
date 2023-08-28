@@ -199,11 +199,9 @@ abstract contract Deploy is Script, TestConstants, CreateOracles {
     }
   }
 
-  /**
-   *  @notice Creates a fake oracle
-   *  @param _price The price to set for the oracle
-   *  @return _oracle Address of the fake oracle
-   */
+  //  @notice Creates a fake oracle
+  //  @param _price The price to set for the oracle
+  //  @return _oracle Address of the fake oracle
   function _createFakeOracle(uint256 _price) internal returns (address _oracle) {
     // Deploy for convex rewards
     FakeWethOracle fakeRewardsOracle1 = new FakeWethOracle();
@@ -212,12 +210,10 @@ abstract contract Deploy is Script, TestConstants, CreateOracles {
     _oracle = address(fakeRewardsOracle1);
   }
 
-  /**
-   *  @notice Creates a fake lp token
-   *  @param _minter The address that's gonna receive the tokens
-   *  @param _amount The amount of tokens to mint
-   *  @return _lpToken The address of the lp token
-   */
+  //  @notice Creates a fake lp token
+  //  @param _minter The address that's gonna receive the tokens
+  //  @param _amount The amount of tokens to mint
+  //  @return _lpToken The address of the lp token
   function _createFakeLp(address _minter, uint256 _amount) internal returns (address _lpToken) {
     MintableToken fakeLp1 = new MintableToken('LPToken',uint8(18));
     fakeLp1.mint(_minter, _amount);

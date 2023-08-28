@@ -108,15 +108,13 @@ contract GovernorCharlie is IGovernorCharlie {
     _;
   }
 
-  /**
-   * @notice Function used to propose a new proposal. Sender must have delegates above the proposal threshold
-   * @param _targets Target addresses for proposal calls
-   * @param _values Eth values for proposal calls
-   * @param _signatures Function signatures for proposal calls
-   * @param _calldatas Calldatas for proposal calls
-   * @param _description String description of the proposal
-   * @return _proposalId Proposal id of new proposal
-   */
+  // @notice Function used to propose a new proposal. Sender must have delegates above the proposal threshold
+  // @param _targets Target addresses for proposal calls
+  // @param _values Eth values for proposal calls
+  // @param _signatures Function signatures for proposal calls
+  // @param _calldatas Calldatas for proposal calls
+  // @param _description String description of the proposal
+  // @return _proposalId Proposal id of new proposal
   function propose(
     address[] memory _targets,
     uint256[] memory _values,
@@ -127,15 +125,13 @@ contract GovernorCharlie is IGovernorCharlie {
     _proposalId = _propose(_targets, _values, _signatures, _calldatas, _description, false);
   }
 
-  /**
-   * @notice Function used to propose a new emergency proposal. Sender must have delegates above the proposal threshold
-   * @param _targets Target addresses for proposal calls
-   * @param _values Eth values for proposal calls
-   * @param _signatures Function signatures for proposal calls
-   * @param _calldatas Calldatas for proposal calls
-   * @param _description String description of the proposal
-   * @return _proposalId Proposal id of new proposal
-   */
+  // @notice Function used to propose a new emergency proposal. Sender must have delegates above the proposal threshold
+  // @param _targets Target addresses for proposal calls
+  // @param _values Eth values for proposal calls
+  // @param _signatures Function signatures for proposal calls
+  // @param _calldatas Calldatas for proposal calls
+  // @param _description String description of the proposal
+  // @return _proposalId Proposal id of new proposal
   function proposeEmergency(
     address[] memory _targets,
     uint256[] memory _values,
@@ -146,16 +142,14 @@ contract GovernorCharlie is IGovernorCharlie {
     _proposalId = _propose(_targets, _values, _signatures, _calldatas, _description, true);
   }
 
-  /**
-   * @notice Function used to propose a new proposal. Sender must have delegates above the proposal threshold
-   * @param _targets Target addresses for proposal calls
-   * @param _values Eth values for proposal calls
-   * @param _signatures Function signatures for proposal calls
-   * @param _calldatas Calldatas for proposal calls
-   * @param _description String description of the proposal
-   * @param _emergency Bool to determine if proposal an emergency proposal
-   * @return _proposalId Proposal id of new proposal
-   */
+  // @notice Function used to propose a new proposal. Sender must have delegates above the proposal threshold
+  // @param _targets Target addresses for proposal calls
+  // @param _values Eth values for proposal calls
+  // @param _signatures Function signatures for proposal calls
+  // @param _calldatas Calldatas for proposal calls
+  // @param _description String description of the proposal
+  // @param _emergency Bool to determine if proposal an emergency proposal
+  // @return _proposalId Proposal id of new proposal
   function _propose(
     address[] memory _targets,
     uint256[] memory _values,
@@ -248,10 +242,8 @@ contract GovernorCharlie is IGovernorCharlie {
     _proposalId = _newProposal.id;
   }
 
-  /**
-   * @notice Queues a proposal of state succeeded
-   * @param _proposalId The id of the proposal to queue
-   */
+  // @notice Queues a proposal of state succeeded
+  // @param _proposalId The id of the proposal to queue
   function queue(uint256 _proposalId) external override {
     if (state(_proposalId) != ProposalState.Succeeded) revert GovernorCharlie_ProposalNotSucceeded();
     Proposal storage _proposal = proposals[_proposalId];
@@ -302,10 +294,8 @@ contract GovernorCharlie is IGovernorCharlie {
     emit QueueTransaction(_txHash, _target, _value, _signature, _data, _eta);
   }
 
-  /**
-   * @notice Executes a queued proposal if eta has passed
-   * @param _proposalId The id of the proposal to execute
-   */
+  // @notice Executes a queued proposal if eta has passed
+  // @param _proposalId The id of the proposal to execute
   function execute(uint256 _proposalId) external payable override {
     if (state(_proposalId) != ProposalState.Queued) revert GovernorCharlie_ProposalNotQueued();
     Proposal storage _proposal = proposals[_proposalId];
@@ -353,11 +343,9 @@ contract GovernorCharlie is IGovernorCharlie {
     emit ExecuteTransaction(_txHash, _target, _value, _signature, _data, _eta);
   }
 
-  /**
-   * @notice Cancels a proposal only if sender is the proposer, or proposer delegates dropped below proposal threshold
-   * @notice whitelistGuardian can cancel proposals from whitelisted addresses
-   * @param _proposalId The id of the proposal to cancel
-   */
+  // @notice Cancels a proposal only if sender is the proposer, or proposer delegates dropped below proposal threshold
+  // @notice whitelistGuardian can cancel proposals from whitelisted addresses
+  // @param _proposalId The id of the proposal to cancel
   function cancel(uint256 _proposalId) external override {
     if (state(_proposalId) == ProposalState.Executed) revert GovernorCharlie_ProposalAlreadyExecuted();
 
@@ -408,14 +396,12 @@ contract GovernorCharlie is IGovernorCharlie {
     emit CancelTransaction(_txHash, _target, _value, _signature, _data, _eta);
   }
 
-  /**
-   * @notice Gets actions of a proposal
-   * @param _proposalId The id of the proposal
-   * @return _targets The proposal targets
-   * @return _values The proposal values
-   * @return _signatures The proposal signatures
-   * @return _calldatas The proposal calldata
-   */
+  // @notice Gets actions of a proposal
+  // @param _proposalId The id of the proposal
+  // @return _targets The proposal targets
+  // @return _values The proposal values
+  // @return _signatures The proposal signatures
+  // @return _calldatas The proposal calldata
   function getActions(uint256 _proposalId)
     external
     view
@@ -431,21 +417,17 @@ contract GovernorCharlie is IGovernorCharlie {
     return (_proposal.targets, _proposal.values, _proposal.signatures, _proposal.calldatas);
   }
 
-  /**
-   * @notice Returns the proposal
-   * @param _proposalId The id of proposal
-   * @return _proposal The proposal
-   */
+  // @notice Returns the proposal
+  // @param _proposalId The id of proposal
+  // @return _proposal The proposal
   function getProposal(uint256 _proposalId) external view returns (Proposal memory _proposal) {
     _proposal = proposals[_proposalId];
   }
 
-  /**
-   * @notice Gets the receipt for a voter on a given proposal
-   * @param _proposalId The id of proposal
-   * @param _voter The address of the voter
-   * @return _votingReceipt The voting receipt
-   */
+  // @notice Gets the receipt for a voter on a given proposal
+  // @param _proposalId The id of proposal
+  // @param _voter The address of the voter
+  // @return _votingReceipt The voting receipt
   function getReceipt(
     uint256 _proposalId,
     address _voter
@@ -453,11 +435,9 @@ contract GovernorCharlie is IGovernorCharlie {
     _votingReceipt = proposalReceipts[_proposalId][_voter];
   }
 
-  /**
-   * @notice Gets the state of a proposal
-   * @param _proposalId The id of the proposal
-   * @return _state Proposal state
-   */
+  // @notice Gets the state of a proposal
+  // @param _proposalId The id of the proposal
+  // @return _state Proposal state
   // solhint-disable-next-line code-complexity
   function state(uint256 _proposalId) public view override returns (ProposalState _state) {
     if (proposalCount < _proposalId || _proposalId <= initialProposalId) revert GovernorCharlie_InvalidProposalId();
@@ -477,33 +457,27 @@ contract GovernorCharlie is IGovernorCharlie {
     _state = ProposalState.Queued;
   }
 
-  /**
-   * @notice Cast a vote for a proposal
-   * @param _proposalId The id of the proposal to vote on
-   * @param _support The support value for the vote. 0=against, 1=for, 2=abstain
-   */
+  // @notice Cast a vote for a proposal
+  // @param _proposalId The id of the proposal to vote on
+  // @param _support The support value for the vote. 0=against, 1=for, 2=abstain
   function castVote(uint256 _proposalId, uint8 _support) external override {
     uint96 _numberOfVotes = _castVoteInternal(msg.sender, _proposalId, _support);
     emit VoteCastIndexed(msg.sender, _proposalId, _support, _numberOfVotes, '');
     emit VoteCast(msg.sender, _proposalId, _support, _numberOfVotes, '');
   }
 
-  /**
-   * @notice Cast a vote for a proposal with a reason
-   * @param _proposalId The id of the proposal to vote on
-   * @param _support The support value for the vote. 0=against, 1=for, 2=abstain
-   * @param _reason The reason given for the vote by the voter
-   */
+  // @notice Cast a vote for a proposal with a reason
+  // @param _proposalId The id of the proposal to vote on
+  // @param _support The support value for the vote. 0=against, 1=for, 2=abstain
+  // @param _reason The reason given for the vote by the voter
   function castVoteWithReason(uint256 _proposalId, uint8 _support, string calldata _reason) external override {
     uint96 _numberOfVotes = _castVoteInternal(msg.sender, _proposalId, _support);
     emit VoteCastIndexed(msg.sender, _proposalId, _support, _numberOfVotes, _reason);
     emit VoteCast(msg.sender, _proposalId, _support, _numberOfVotes, _reason);
   }
 
-  /**
-   * @notice Cast a vote for a proposal by signature
-   * @dev External override function that accepts EIP-712 signatures for voting on proposals.
-   */
+  // @notice Cast a vote for a proposal by signature
+  // @dev External override function that accepts EIP-712 signatures for voting on proposals.
   function castVoteBySig(uint256 _proposalId, uint8 _support, uint8 _v, bytes32 _r, bytes32 _s) external override {
     bytes32 _domainSeparator =
       keccak256(abi.encode(DOMAIN_TYPEHASH, keccak256(bytes(NAME)), _getChainIdInternal(), address(this)));
@@ -521,13 +495,11 @@ contract GovernorCharlie is IGovernorCharlie {
     emit VoteCast(_signatory, _proposalId, _support, _numberOfVotes, '');
   }
 
-  /**
-   * @notice Internal function that caries out voting logic
-   * @param _voter The voter that is casting their vote
-   * @param _proposalId The id of the proposal to vote on
-   * @param _support The support value for the vote. 0=against, 1=for, 2=abstain
-   * @return _numberOfVotes The number of votes cast
-   */
+  // @notice Internal function that caries out voting logic
+  // @param _voter The voter that is casting their vote
+  // @param _proposalId The id of the proposal to vote on
+  // @param _support The support value for the vote. 0=against, 1=for, 2=abstain
+  // @return _numberOfVotes The number of votes cast
   function _castVoteInternal(
     address _voter,
     uint256 _proposalId,
@@ -551,19 +523,15 @@ contract GovernorCharlie is IGovernorCharlie {
     _numberOfVotes = _votes;
   }
 
-  /**
-   * @notice View function which returns if an account is whitelisted
-   * @param _account Account to check white list status of
-   * @return _isWhitelisted If the account is whitelisted
-   */
+  // @notice View function which returns if an account is whitelisted
+  // @param _account Account to check white list status of
+  // @return _isWhitelisted If the account is whitelisted
   function isWhitelisted(address _account) public view override returns (bool _isWhitelisted) {
     return (whitelistAccountExpirations[_account] > block.timestamp);
   }
 
-  /**
-   * @notice Governance function for setting the governance token
-   * @param  _token The new token address
-   */
+  // @notice Governance function for setting the governance token
+  // @param  _token The new token address
   function setNewToken(address _token) external onlyGov {
     address _oldAmph = address(amph);
     amph = IAMPH(_token);
@@ -571,10 +539,8 @@ contract GovernorCharlie is IGovernorCharlie {
     emit NewTokenSet(_oldAmph, _token);
   }
 
-  /**
-   * @notice Governance function for setting the max whitelist period
-   * @param  _second How many seconds to whitelist for
-   */
+  // @notice Governance function for setting the max whitelist period
+  // @param  _second How many seconds to whitelist for
   function setMaxWhitelistPeriod(uint256 _second) external onlyGov {
     uint256 _oldSeconds = maxWhitelistPeriod;
     maxWhitelistPeriod = _second;
@@ -582,10 +548,8 @@ contract GovernorCharlie is IGovernorCharlie {
     emit MaxWhitelistPeriodSet(_oldSeconds, _second);
   }
 
-  /**
-   * @notice Used to update the timelock period
-   * @param _proposalTimelockDelay The proposal holding period
-   */
+  // @notice Used to update the timelock period
+  // @param _proposalTimelockDelay The proposal holding period
   function setDelay(uint256 _proposalTimelockDelay) public override onlyGov {
     uint256 _oldTimelockDelay = proposalTimelockDelay;
     proposalTimelockDelay = _proposalTimelockDelay;
@@ -593,10 +557,8 @@ contract GovernorCharlie is IGovernorCharlie {
     emit NewDelay(_oldTimelockDelay, proposalTimelockDelay);
   }
 
-  /**
-   * @notice Used to update the emergency timelock period
-   * @param _emergencyTimelockDelay The proposal holding period
-   */
+  // @notice Used to update the emergency timelock period
+  // @param _emergencyTimelockDelay The proposal holding period
   function setEmergencyDelay(uint256 _emergencyTimelockDelay) public override onlyGov {
     uint256 _oldEmergencyTimelockDelay = emergencyTimelockDelay;
     emergencyTimelockDelay = _emergencyTimelockDelay;
@@ -604,10 +566,8 @@ contract GovernorCharlie is IGovernorCharlie {
     emit NewEmergencyDelay(_oldEmergencyTimelockDelay, emergencyTimelockDelay);
   }
 
-  /**
-   * @notice Governance function for setting the voting delay
-   * @param _newVotingDelay The new voting delay, in blocks
-   */
+  // @notice Governance function for setting the voting delay
+  // @param _newVotingDelay The new voting delay, in blocks
   function setVotingDelay(uint256 _newVotingDelay) external override onlyGov {
     uint256 _oldVotingDelay = votingDelay;
     votingDelay = _newVotingDelay;
@@ -615,10 +575,8 @@ contract GovernorCharlie is IGovernorCharlie {
     emit VotingDelaySet(_oldVotingDelay, votingDelay);
   }
 
-  /**
-   * @notice Governance function for setting the voting period
-   * @param _newVotingPeriod The new voting period, in blocks
-   */
+  // @notice Governance function for setting the voting period
+  // @param _newVotingPeriod The new voting period, in blocks
   function setVotingPeriod(uint256 _newVotingPeriod) external override onlyGov {
     uint256 _oldVotingPeriod = votingPeriod;
     votingPeriod = _newVotingPeriod;
@@ -626,10 +584,8 @@ contract GovernorCharlie is IGovernorCharlie {
     emit VotingPeriodSet(_oldVotingPeriod, votingPeriod);
   }
 
-  /**
-   * @notice Governance function for setting the emergency voting period
-   * @param _newEmergencyVotingPeriod The new voting period, in blocks
-   */
+  // @notice Governance function for setting the emergency voting period
+  // @param _newEmergencyVotingPeriod The new voting period, in blocks
   function setEmergencyVotingPeriod(uint256 _newEmergencyVotingPeriod) external override onlyGov {
     uint256 _oldEmergencyVotingPeriod = emergencyVotingPeriod;
     emergencyVotingPeriod = _newEmergencyVotingPeriod;
@@ -637,10 +593,8 @@ contract GovernorCharlie is IGovernorCharlie {
     emit EmergencyVotingPeriodSet(_oldEmergencyVotingPeriod, emergencyVotingPeriod);
   }
 
-  /**
-   * @notice Governance function for setting the proposal threshold
-   * @param _newProposalThreshold The new proposal threshold
-   */
+  // @notice Governance function for setting the proposal threshold
+  // @param _newProposalThreshold The new proposal threshold
   function setProposalThreshold(uint256 _newProposalThreshold) external override onlyGov {
     uint256 _oldProposalThreshold = proposalThreshold;
     proposalThreshold = _newProposalThreshold;
@@ -648,10 +602,8 @@ contract GovernorCharlie is IGovernorCharlie {
     emit ProposalThresholdSet(_oldProposalThreshold, proposalThreshold);
   }
 
-  /**
-   * @notice Governance function for setting the quorum
-   * @param _newQuorumVotes The new proposal quorum
-   */
+  // @notice Governance function for setting the quorum
+  // @param _newQuorumVotes The new proposal quorum
   function setQuorumVotes(uint256 _newQuorumVotes) external override onlyGov {
     uint256 _oldQuorumVotes = quorumVotes;
     quorumVotes = _newQuorumVotes;
@@ -659,10 +611,8 @@ contract GovernorCharlie is IGovernorCharlie {
     emit NewQuorum(_oldQuorumVotes, quorumVotes);
   }
 
-  /**
-   * @notice Governance function for setting the emergency quorum
-   * @param _newEmergencyQuorumVotes The new proposal quorum
-   */
+  // @notice Governance function for setting the emergency quorum
+  // @param _newEmergencyQuorumVotes The new proposal quorum
   function setEmergencyQuorumVotes(uint256 _newEmergencyQuorumVotes) external override onlyGov {
     uint256 _oldEmergencyQuorumVotes = emergencyQuorumVotes;
     emergencyQuorumVotes = _newEmergencyQuorumVotes;
@@ -670,12 +620,10 @@ contract GovernorCharlie is IGovernorCharlie {
     emit NewEmergencyQuorum(_oldEmergencyQuorumVotes, emergencyQuorumVotes);
   }
 
-  /**
-   * @notice Governance function for setting the whitelist expiration as a timestamp
-   * for an account. Whitelist status allows accounts to propose without meeting threshold
-   * @param _account Account address to set whitelist expiration for
-   * @param _expiration Expiration for account whitelist status as timestamp (if now < expiration, whitelisted)
-   */
+  // @notice Governance function for setting the whitelist expiration as a timestamp
+  // for an account. Whitelist status allows accounts to propose without meeting threshold
+  // @param _account Account address to set whitelist expiration for
+  // @param _expiration Expiration for account whitelist status as timestamp (if now < expiration, whitelisted)
   function setWhitelistAccountExpiration(address _account, uint256 _expiration) external override onlyGov {
     if (_expiration >= (maxWhitelistPeriod + block.timestamp)) revert GovernorCharlie_ExpirationExceedsMax();
     whitelistAccountExpirations[_account] = _expiration;
@@ -683,10 +631,8 @@ contract GovernorCharlie is IGovernorCharlie {
     emit WhitelistAccountExpirationSet(_account, _expiration);
   }
 
-  /**
-   * @notice Governance function for setting the whitelistGuardian. WhitelistGuardian can cancel proposals from whitelisted addresses
-   * @param _account Account to set whitelistGuardian to (0x0 to remove whitelistGuardian)
-   */
+  // @notice Governance function for setting the whitelistGuardian. WhitelistGuardian can cancel proposals from whitelisted addresses
+  // @param _account Account to set whitelistGuardian to (0x0 to remove whitelistGuardian)
   function setWhitelistGuardian(address _account) external override onlyGov {
     address _oldGuardian = whitelistGuardian;
     whitelistGuardian = _account;
@@ -694,10 +640,8 @@ contract GovernorCharlie is IGovernorCharlie {
     emit WhitelistGuardianSet(_oldGuardian, whitelistGuardian);
   }
 
-  /**
-   * @notice Governance function for setting the optimistic voting delay
-   * @param _newOptimisticVotingDelay The new optimistic voting delay, in blocks
-   */
+  // @notice Governance function for setting the optimistic voting delay
+  // @param _newOptimisticVotingDelay The new optimistic voting delay, in blocks
   function setOptimisticDelay(uint256 _newOptimisticVotingDelay) external override onlyGov {
     uint256 _oldOptimisticVotingDelay = optimisticVotingDelay;
     optimisticVotingDelay = _newOptimisticVotingDelay;
@@ -705,10 +649,8 @@ contract GovernorCharlie is IGovernorCharlie {
     emit OptimisticVotingDelaySet(_oldOptimisticVotingDelay, optimisticVotingDelay);
   }
 
-  /**
-   * @notice Governance function for setting the optimistic quorum
-   * @param _newOptimisticQuorumVotes The new optimistic quorum votes, in blocks
-   */
+  // @notice Governance function for setting the optimistic quorum
+  // @param _newOptimisticQuorumVotes The new optimistic quorum votes, in blocks
   function setOptimisticQuorumVotes(uint256 _newOptimisticQuorumVotes) external override onlyGov {
     uint256 _oldOptimisticQuorumVotes = optimisticQuorumVotes;
     optimisticQuorumVotes = _newOptimisticQuorumVotes;

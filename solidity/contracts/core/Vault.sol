@@ -210,8 +210,8 @@ contract Vault is IVault, Context {
         ++_i;
       }
     }
-    _totalCrvReward += (CRV.balanceOf(address(this)) - balances[address(CRV)]);
-    _totalCvxReward += (CVX.balanceOf(address(this)) - balances[address(CVX)]);
+    _totalCrvReward = (CRV.balanceOf(address(this)) - balances[address(CRV)]);
+    _totalCvxReward = (CVX.balanceOf(address(this)) - balances[address(CVX)]);
 
     _swapRewardsForAmphAndSendToMinter(_totalCrvReward, _totalCvxReward);
   }
