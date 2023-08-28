@@ -7,7 +7,6 @@ import {IBooster} from '@interfaces/utils/IBooster.sol';
 import {FakeBaseRewardPool} from '@scripts/fakes/FakeBaseRewardPool.sol';
 
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import {SafeERC20Upgradeable} from '@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol';
 
 struct PoolInfo {
   address lptoken;
@@ -15,11 +14,11 @@ struct PoolInfo {
 }
 
 contract FakeBooster is IBooster {
-  using SafeERC20Upgradeable for IERC20;
-
   address public owner;
   mapping(uint256 => PoolInfo) public poolInfos;
   uint256 public pools;
+  bool public isShutdown = false;
+  address public poolManager = address(0);
 
   constructor() {
     owner = msg.sender;
@@ -74,5 +73,15 @@ contract FakeBooster is IBooster {
     FakeBaseRewardPool(_crvRewards).stakeForUser(_amount, msg.sender);
 
     return true;
+  }
+
+  function shutdownSystem() external {}
+
+  function addPool(address, address, uint256) external returns (bool) {
+    return true;
+  }
+
+  function poolLength() external view returns (uint256) {
+    return 0;
   }
 }

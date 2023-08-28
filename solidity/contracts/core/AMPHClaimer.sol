@@ -15,16 +15,16 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
   uint256 internal constant _BASE = 1 ether;
 
   /// @dev Constant used in the formula
-  uint256 internal constant _FIFTY_MILLIONS = 50_000_000 * 1e6;
+  uint256 internal constant _FIFTY_MILLIONS = 50_000_000_000_000; // 50_000_000 * 1e6;
 
   /// @dev Constant used in the formula
-  uint256 internal constant _TWENTY_FIVE_THOUSANDS = 25_000 * 1e6;
+  uint256 internal constant _TWENTY_FIVE_THOUSANDS = 25_000_000_000; // 25_000 * 1e6;
 
   /// @dev Constant used in the formula
-  uint256 internal constant _FIFTY = 50 * 1e6;
+  uint256 internal constant _FIFTY = 50_000_000; // 50 * 1e6;
 
   /// @dev The base supply of AMPH per cliff, denominated in 1e6
-  uint256 public constant BASE_SUPPLY_PER_CLIFF = 8_000_000 * 1e6;
+  uint256 public constant BASE_SUPPLY_PER_CLIFF = 8_000_000_000_000; // 8_000_000 * 1e6;
 
   /// @dev The total number of cliffs (for both tokens)
   uint256 public constant TOTAL_CLIFFS = 1000;
@@ -126,7 +126,7 @@ contract AMPHClaimer is IAMPHClaimer, Ownable {
   /// @param _token The token to recover
   /// @param _amount The amount to recover
   function recoverDust(address _token, uint256 _amount) external override onlyOwner {
-    IERC20(_token).transfer(owner(), _amount);
+    IERC20(_token).safeTransfer(owner(), _amount);
 
     emit RecoveredDust(_token, owner(), _amount);
   }

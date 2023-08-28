@@ -251,16 +251,22 @@ contract UnitGovernorCharlieExecute is Base {
 }
 
 contract UnitGovernorCharlieSetters is Base {
+  event NewTokenSet(address _oldToken, address _newToken);
+  event MaxWhitelistPeriodSet(uint256 _oldMaxWhitelistPeriod, uint256 _newMaxWhitelistPeriod);
+
   function testRevertsWhenSetNotTokenNotGovernorCharlie() public {
     vm.expectRevert(IGovernorCharlie.GovernorCharlie_NotGovernorCharlie.selector);
     governor.setNewToken(newAddress());
   }
 
   function testSetNewToken() public {
-    vm.prank(address(governor));
+    vm.startPrank(address(governor));
     address _newToken = newAddress();
+    vm.expectEmit(true, true, true, true);
+    emit NewTokenSet(address(governor.amph()), _newToken);
     governor.setNewToken(_newToken);
     assertEq(address(governor.amph()), _newToken);
+    vm.stopPrank();
   }
 
   function testRevertsWhenSetMaxWhitelistPeriodNotGovernorCharlie() public {
@@ -269,9 +275,12 @@ contract UnitGovernorCharlieSetters is Base {
   }
 
   function testSetMaxWhitelistPeriod() public {
-    vm.prank(address(governor));
+    vm.startPrank(address(governor));
+    vm.expectEmit(true, true, true, true);
+    emit MaxWhitelistPeriodSet(governor.maxWhitelistPeriod(), 1);
     governor.setMaxWhitelistPeriod(1);
     assertEq(governor.maxWhitelistPeriod(), 1);
+    vm.stopPrank();
   }
 
   function testRevertsWhenSetDelayNotGovernorCharlie() public {

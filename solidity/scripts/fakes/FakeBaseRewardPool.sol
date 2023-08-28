@@ -6,7 +6,6 @@ import {IBooster} from '@interfaces/utils/IBooster.sol';
 import {IVirtualBalanceRewardPool} from '@interfaces/utils/IVirtualBalanceRewardPool.sol';
 
 import {ERC20, IERC20} from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
-import {SafeERC20Upgradeable} from '@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol';
 
 import {FakeVirtualRewardsPool} from './FakeVirtualRewardsPool.sol';
 import {MintableToken} from './MintableToken.sol';
@@ -26,6 +25,7 @@ contract FakeBaseRewardPool is IBaseRewardPool {
   IVirtualBalanceRewardPool[] public extraRewards;
   address public owner;
   IERC20 public lptoken;
+  address public operator = address(0);
 
   constructor(
     address _booster,
@@ -135,6 +135,10 @@ contract FakeBaseRewardPool is IBaseRewardPool {
       uint256 _amtTillMax = CVX.maxSupply() - _supply;
       if (_cvxAmount > _amtTillMax) _cvxAmount = _amtTillMax;
     }
+  }
+
+  function stakingToken() external view returns (address _stakingToken) {
+    _stakingToken = address(uint160(address(this)) + 1);
   }
 }
 

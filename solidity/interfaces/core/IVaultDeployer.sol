@@ -5,18 +5,14 @@ import {IVault} from '@interfaces/core/IVault.sol';
 import {IVaultController} from '@interfaces/core/IVaultController.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-/**
- * @notice Deployer of Vaults
- * @dev    This contract is needed to reduce the size of the VaultController contract
- */
+// @notice Deployer of Vaults
+// @dev    This contract is needed to reduce the size of the VaultController contract
 interface IVaultDeployer {
   /*///////////////////////////////////////////////////////////////
                               ERRORS
   //////////////////////////////////////////////////////////////*/
 
-  /**
-   * @notice Thrown when someone other than the vault controller tries to call the method
-   */
+  // @notice Thrown when someone other than the vault controller tries to call the method
   error VaultDeployer_OnlyVaultController();
 
   /*///////////////////////////////////////////////////////////////

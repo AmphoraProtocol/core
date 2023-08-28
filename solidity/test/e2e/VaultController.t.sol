@@ -57,14 +57,11 @@ contract E2EVaultController is CommonE2EBase {
     vm.stopPrank();
   }
 
-  /**
-   * ----------------------- Internal Functions -----------------------
-   */
-  /**
-   * @notice Takes interest factor and returns new interest factor - pulls block time from network and latestInterestTime from contract
-   * @param _interestFactor Current interest factor read from contract
-   * @return _newInterestFactor New interest factor based on time elapsed and reserve ratio
-   */
+  // ----------------------- Internal Functions -----------------------
+
+  // @notice Takes interest factor and returns new interest factor - pulls block time from network and latestInterestTime from contract
+  // @param _interestFactor Current interest factor read from contract
+  // @return _newInterestFactor New interest factor based on time elapsed and reserve ratio
   function _payInterestMath(uint192 _interestFactor) internal view returns (uint192 _newInterestFactor) {
     uint192 _latestInterestTime = vaultController.lastInterestTime();
     // vm.warp(block.timestamp + 1);
@@ -91,12 +88,10 @@ contract E2EVaultController is CommonE2EBase {
     _liability = _baseAmount * _currentInterestFactor;
   }
 
-  /**
-   * @notice Proper procedure: read interest factor from contract -> elapse time -> call this to predict balance -> pay_interest() -> compare
-   * @param _interestFactor CURRENT interest factor read from contract before any time has elapsed
-   * @param _user Whose balance to calculate interest on
-   * @return _balance Expected after pay_interest()
-   */
+  // @notice Proper procedure: read interest factor from contract -> elapse time -> call this to predict balance -> pay_interest() -> compare
+  // @param _interestFactor CURRENT interest factor read from contract before any time has elapsed
+  // @param _user Whose balance to calculate interest on
+  // @return _balance Expected after pay_interest()
   function _calculateBalance(uint192 _interestFactor, address _user) internal view returns (uint256 _balance) {
     uint192 _totalBaseLiability = vaultController.totalBaseLiability();
     uint192 _protocolFee = vaultController.protocolFee();
@@ -133,14 +128,12 @@ contract E2EVaultController is CommonE2EBase {
     _usdaToRepurchase = (_badFillPrice * _tokensToLiquidate) / 1 ether;
   }
 
-  /**
-   * @notice Returns the number of tokens to liquidate
-   * @param _vault The vault to target and liquidate
-   * @param _asset The asset to target
-   * @param _totalToLiquidate The expected number of tokens to liquidate
-   * @param _calculatedLiability The expected liability
-   * @return _finalTokensToLiquidate The final number of tokens to liquidate
-   */
+  // @notice Returns the number of tokens to liquidate
+  // @param _vault The vault to target and liquidate
+  // @param _asset The asset to target
+  // @param _totalToLiquidate The expected number of tokens to liquidate
+  // @param _calculatedLiability The expected liability
+  // @return _finalTokensToLiquidate The final number of tokens to liquidate
   function _calculatetokensToLiquidate(
     IVault _vault,
     address _asset,
@@ -161,12 +154,10 @@ contract E2EVaultController is CommonE2EBase {
     if (_finalTokensToLiquidate > _vaultTokenBalance) _finalTokensToLiquidate = _vaultTokenBalance;
   }
 
-  /**
-   * @notice Returns the total USDA to repurchase when liquidating
-   * @param _asset The asset's address to target
-   * @param _tokensToLiquidate The number of tokens to liquidate
-   * @return _usdaToRepurchase The number of USDA tokens to repurchase
-   */
+  // @notice Returns the total USDA to repurchase when liquidating
+  // @param _asset The asset's address to target
+  // @param _tokensToLiquidate The number of tokens to liquidate
+  // @return _usdaToRepurchase The number of USDA tokens to repurchase
   function _calculateUSDAToRepurchase(
     address _asset,
     uint256 _tokensToLiquidate
@@ -176,9 +167,7 @@ contract E2EVaultController is CommonE2EBase {
     _usdaToRepurchase = (_badFillPrice * _tokensToLiquidate) / 1 ether;
   }
 
-  /**
-   * ----------------------- Public Function Tests -----------------------
-   */
+  // ----------------------- Public Function Tests -----------------------
 
   function testMigrateFromOldVaultController() public {
     address[] memory _tokens = new address[](1);

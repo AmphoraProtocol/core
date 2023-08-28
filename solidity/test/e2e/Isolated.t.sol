@@ -711,10 +711,10 @@ contract E2EwUSDAUniV3 is IsolatedBase {
     // wrap some USDA
     vm.startPrank(gus);
     usdaToken.approve(address(wusda), usdaAmount);
-    wusda.deposit(usdaAmount);
+    wusda.wrap(usdaAmount);
     vm.stopPrank();
     assert(usdaToken.balanceOf(gus) == 0);
-    assert(wusda.balanceOf(gus) == wusda.underlyingToWrapper(usdaAmount));
+    assert(wusda.balanceOf(gus) == usdaAmount - wusda.BOOTSTRAP_MINT());
 
     // advance time, compare balances
     vm.warp(block.timestamp + 365 days);
@@ -723,9 +723,9 @@ contract E2EwUSDAUniV3 is IsolatedBase {
     uint256 _controlBalance = usdaToken.balanceOf(eric);
     assert(_controlBalance > usdaAmount);
 
-    uint256 _underlying = wusda.balanceOfUnderlying(gus);
+    uint256 _underlying = wusda.getUsdaByWUsda(wusda.balanceOf(gus));
     vm.prank(gus);
-    wusda.withdraw(_underlying - 1 ether);
+    wusda.unwrap(_underlying - 1 ether);
     assertApproxEqAbs(usdaToken.balanceOf(gus), _controlBalance, 1 ether);
 
     // wrap some more USDA
@@ -858,10 +858,9 @@ contract E2EwUSDAUniV3 is IsolatedBase {
     // unwrap and compare to control
     vm.startPrank(gus);
     uint256 _balanceBeforeUnwrap = wusda.balanceOf(gus);
-    wusda.withdrawAll();
+    wusda.unwrap(_balanceBeforeUnwrap);
     uint256 _balanceAfterUnwrap = wusda.balanceOf(gus);
-    // TODO: This check fails after changing the three crv oracle
-    // assert(_balanceBeforeUnwrap > _balanceAfterUnwrap);
+    assert(_balanceBeforeUnwrap > _balanceAfterUnwrap);
     vm.stopPrank();
   }
 }

@@ -5,9 +5,10 @@ import {IOracleRelay, OracleRelay} from '@contracts/periphery/oracles/OracleRela
 import {ICToken} from '@interfaces/periphery/ICToken.sol';
 import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
 import {IERC20Metadata} from '@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol';
+import {ICTokenOracle} from '@interfaces/periphery/ICTokenOracle.sol';
 
 /// @notice Oracle Relay for Compound cTokens
-contract CTokenOracle is OracleRelay, Ownable {
+contract CTokenOracle is ICTokenOracle, OracleRelay, Ownable {
   /// @notice The cETH address
   address public constant cETH_ADDRESS = 0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5;
   /// @notice The cToken contract
@@ -55,6 +56,9 @@ contract CTokenOracle is OracleRelay, Ownable {
   /// @notice Change the underlying oracle
   /// @param _anchoredViewUnderlying The new underlying oracle
   function changeAnchoredView(address _anchoredViewUnderlying) external onlyOwner {
+    address _oldAnchoredViewUnderlying = address(anchoredViewUnderlying);
     anchoredViewUnderlying = IOracleRelay(_anchoredViewUnderlying);
+
+    emit AnchoredViewChanged(_oldAnchoredViewUnderlying, _anchoredViewUnderlying);
   }
 }

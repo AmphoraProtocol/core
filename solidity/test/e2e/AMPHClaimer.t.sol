@@ -14,7 +14,6 @@ contract AMPHMath is AMPHClaimer {
 
 contract E2EAMPHClaimer is CommonE2EBase {
   IERC20 public cvx = IERC20(CVX_ADDRESS);
-  IERC20 public crv = IERC20(CRV_ADDRESS);
 
   AMPHMath internal _amphMath;
 

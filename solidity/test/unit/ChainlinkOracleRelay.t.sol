@@ -83,10 +83,19 @@ contract UnitTestChainlinkOracleRelayCurrentValue is Base {
 }
 
 contract UnitChainlinkOracleRelaySetStaleDelay is Base {
+  event StalePriceDelaySet(uint256 _oldStalePriceDelay, uint256 _newStalePriceDelay);
+
   function testChainlinkOracleRelaySetStaleDelay(uint256 _stalePeriod) public {
     vm.assume(_stalePeriod > 0);
     chainlinkOracleRelay.setStalePriceDelay(_stalePeriod);
     assertEq(chainlinkOracleRelay.stalePriceDelay(), _stalePeriod);
+  }
+
+  function testChainlinkOracleRelayEmitEvent(uint256 _stalePeriod) public {
+    vm.assume(_stalePeriod > 0);
+    vm.expectEmit(true, true, true, true);
+    emit StalePriceDelaySet(chainlinkOracleRelay.stalePriceDelay(), _stalePeriod);
+    chainlinkOracleRelay.setStalePriceDelay(_stalePeriod);
   }
 
   function testChainlinkOracleRelaySetStaleDelayRevertWithZero() public {

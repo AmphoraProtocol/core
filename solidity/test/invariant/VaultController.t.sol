@@ -52,9 +52,8 @@ contract InvariantVaultController is BaseInvariant, TestConstants {
   uint192 public liquidationFee = 0.005e18;
 
   function setUp() public {
-    /**
-     * --------------- Deploy Protocol ---------------
-     */
+    // --------------- Deploy Protocol ---------------
+
     address[] memory _tokens = new address[](0);
 
     // Deploy VaultDeployer
@@ -98,9 +97,8 @@ contract InvariantVaultController is BaseInvariant, TestConstants {
     // Add vault controller to usda
     usdaToken.addVaultController(address(vaultController));
 
-    /**
-     * --------------- Set up Handlers ---------------
-     */
+    // --------------- Set up Handlers ---------------
+
     excludeContract(address(amphoraToken));
     excludeContract(address(vaultController));
     excludeContract(address(amphoraClaimer));

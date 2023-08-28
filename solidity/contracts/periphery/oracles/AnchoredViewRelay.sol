@@ -65,18 +65,25 @@ contract AnchoredViewRelay is OracleRelay {
   ///      This is updated when calling other state changing functions that query the price
   /// @return _price the current price
   function peekValue() public view override returns (uint256 _price) {
-    _price = _getLastSecond();
+    uint256 _mainValue = mainRelay.peekValue();
+    uint256 _anchorPrice = anchorRelay.peekValue();
+    _price = _getLastSecond(_mainValue, _anchorPrice);
+  }
+
+  /// @notice returns the price with 18 decimals and allows state changes
+  /// @return _currentValue the current price
+  function currentValue() external override returns (uint256 _currentValue) {
+    uint256 _mainValue = mainRelay.currentValue();
+    uint256 _anchorPrice = anchorRelay.currentValue();
+    _currentValue = _getLastSecond(_mainValue, _anchorPrice);
   }
 
   /// @notice Compares the main value (chainlink) to the anchor value (uniswap v3)
   /// @dev The two prices must closely match +-buffer, or it will revert
   /// @return _mainValue The current value of oracle
-  function _getLastSecond() private view returns (uint256 _mainValue) {
-    // get the main price
-    _mainValue = mainRelay.peekValue();
+  function _getLastSecond(uint256 _mainPrice, uint256 _anchorPrice) private view returns (uint256 _mainValue) {
+    _mainValue = _mainPrice;
     require(_mainValue > 0, 'invalid oracle value');
-
-    uint256 _anchorPrice = anchorRelay.peekValue();
     require(_anchorPrice > 0, 'invalid anchor value');
 
     uint256 _buffer;

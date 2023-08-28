@@ -10,41 +10,36 @@ interface IAMPHClaimer {
                             EVENTS
     //////////////////////////////////////////////////////////////*/
 
-  /**
-   * @notice Emited when a vault claims AMPH
-   * @param _vaultClaimer The address of the vault that claimed
-   * @param _cvxTotalRewards The amount of CVX sent in exchange of AMPH
-   * @param _crvTotalRewards The amount of CRV sent in exchange of AMPH
-   * @param _amphAmount The amount of AMPH received
-   */
+  // @notice Emited when a vault claims AMPH
+  // @param _vaultClaimer The address of the vault that claimed
+  // @param _cvxTotalRewards The amount of CVX sent in exchange of AMPH
+  // @param _crvTotalRewards The amount of CRV sent in exchange of AMPH
+  // @param _amphAmount The amount of AMPH received
+
   event ClaimedAmph(
     address indexed _vaultClaimer, uint256 _cvxTotalRewards, uint256 _crvTotalRewards, uint256 _amphAmount
   );
 
-  /**
-   * @notice Emited when governance changes the vault controller
-   * @param _newVaultController The address of the new vault controller
-   */
+  // @notice Emited when governance changes the vault controller
+  // @param _newVaultController The address of the new vault controller
+
   event ChangedVaultController(address indexed _newVaultController);
 
-  /**
-   * @notice Emited when governance recovers a token from the contract
-   * @param _token the token recovered
-   * @param _receiver the receiver of the tokens
-   * @param _amount the amount recovered
-   */
+  // @notice Emited when governance recovers a token from the contract
+  // @param _token the token recovered
+  // @param _receiver the receiver of the tokens
+  // @param _amount the amount recovered
+
   event RecoveredDust(address indexed _token, address _receiver, uint256 _amount);
 
-  /**
-   * @notice Emited when governance changes the CVX reward fee
-   * @param _newCvxReward the new fee
-   */
+  // @notice Emited when governance changes the CVX reward fee
+  // @param _newCvxReward the new fee
+
   event ChangedCvxRewardFee(uint256 _newCvxReward);
 
-  /**
-   * @notice Emited when governance changes the CRV reward fee
-   * @param _newCrvReward the new fee
-   */
+  // @notice Emited when governance changes the CRV reward fee
+  // @param _newCrvReward the new fee
+
   event ChangedCrvRewardFee(uint256 _newCrvReward);
 
   /*///////////////////////////////////////////////////////////////

@@ -50,7 +50,7 @@ contract DeploySepolia is Deploy {
     );
 
     // Deploy protocol
-    (,, VaultController _vaultController,,,) = _deploy(_deployVars);
+    (,, VaultController _vaultController,,,,) = _deploy(_deployVars);
 
     // Register curveLP token
     _vaultController.registerErc20(

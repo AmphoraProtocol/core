@@ -42,6 +42,9 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
   /// @dev Mapping of token address to collateral info
   mapping(address => CollateralInfo) public tokenAddressCollateralInfo;
 
+  /// @dev Mapping of all the approved BaseRewardContracts from convex
+  mapping(address => bool) public baseRewardContracts;
+
   /// @dev Array of enabled tokens addresses
   address[] public enabledTokens;
 
@@ -316,13 +319,14 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
 
   /// @notice Updates the protocol fee
   /// @param _newProtocolFee The new protocol fee in terms of 1e18=100%
-  function changeProtocolFee(uint192 _newProtocolFee) external override onlyOwner {
+  function changeProtocolFee(uint192 _newProtocolFee) external override onlyOwner paysInterest {
     if (_newProtocolFee >= 1e18) revert VaultController_FeeTooLarge();
     protocolFee = _newProtocolFee;
     emit NewProtocolFee(_newProtocolFee);
   }
 
   /// @notice Register a new token to be used as collateral
+  /// @dev Rebasing tokens are not compatible with amphora due to internal balance tracking
   /// @param _tokenAddress The address of the token to register
   /// @param _ltv The ltv of the token, 1e18=100%
   /// @param _oracleAddress The address of oracle to fetch the price of the token
@@ -346,6 +350,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
       _collateral.collateralType = CollateralType.CurveLPStakedOnConvex;
       _collateral.crvRewardsContract = IBaseRewardPool(_crvRewards);
       _collateral.poolId = _poolId;
+      baseRewardContracts[_crvRewards] = true;
     } else {
       _collateral.collateralType = CollateralType.Single;
       _collateral.crvRewardsContract = IBaseRewardPool(address(0));
@@ -398,6 +403,11 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
       _collateral.collateralType = CollateralType.CurveLPStakedOnConvex;
       _collateral.crvRewardsContract = IBaseRewardPool(_crvRewards);
       _collateral.poolId = _poolId;
+      baseRewardContracts[_crvRewards] = true;
+    } else {
+      _collateral.collateralType = CollateralType.Single;
+      _collateral.crvRewardsContract = IBaseRewardPool(address(0));
+      _collateral.poolId = 0;
     }
     // set the oracle of the token
     _collateral.oracle = IOracleRelay(_oracleAddress);
@@ -610,7 +620,6 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
   }
 
   /// @notice Simulates the liquidation of an underwater vault
-  /// @dev Returns all zeros if vault is solvent
   /// @param _id The id of vault we want to target
   /// @param _assetAddress The address of the token the liquidator wishes to liquidate
   /// @param _tokensToLiquidate The number of tokens to liquidate
@@ -673,9 +682,8 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
     usda.vaultControllerBurn(_msgSender(), _usdaToRepurchase);
 
     // withdraw from convex
-    CollateralInfo memory _assetInfo = tokenAddressCollateralInfo[_assetAddress];
-    if (_vault.isTokenStaked(_assetAddress)) {
-      _vault.controllerWithdrawAndUnwrap(_assetInfo.crvRewardsContract, _tokensToLiquidate);
+    if (_vault.currentPoolIds(_assetAddress) != 0) {
+      _vault.controllerWithdrawAndUnwrap(_assetAddress, _tokensToLiquidate);
     }
 
     uint192 _liquidationFee = getLiquidationFee(uint192(_tokensToLiquidate), _assetAddress);
@@ -864,22 +872,31 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
   /// @return _borrowPower The borrowing power of the vault
   //solhint-disable-next-line code-complexity
   function _getVaultBorrowingPower(IVault _vault) private returns (uint192 _borrowPower) {
-    // loop over each registed token, adding the indivuduals ltv to the total ltv of the vault
-    for (uint192 _i; _i < enabledTokens.length; ++_i) {
-      CollateralInfo memory _collateral = tokenAddressCollateralInfo[enabledTokens[_i]];
+    CollateralInfo memory _collateral;
+    address _tokenAddress;
+    uint256 _balance;
+    uint192 _rawPrice;
+    uint192 _tokenValue;
+
+    // loop over each registered token, adding the individuals ltv to the total ltv of the vault
+    for (uint192 _i; _i < enabledTokens.length;) {
+      unchecked {
+        ++_i;
+      }
+      _collateral = tokenAddressCollateralInfo[enabledTokens[_i - 1]];
       // if the ltv is 0, continue
       if (_collateral.ltv == 0) continue;
       // get the address of the token through the array of enabled tokens
       // note that index 0 of enabledTokens corresponds to a vaultId of 1, so we must subtract 1 from i to get the correct index
-      address _tokenAddress = enabledTokens[_i];
+      _tokenAddress = enabledTokens[_i - 1];
       // the balance is the vault's token balance of the current collateral token in the loop
-      uint256 _balance = _vault.balances(_tokenAddress);
+      _balance = _vault.balances(_tokenAddress);
       if (_balance == 0) continue;
       // the raw price is simply the oracle price of the token
-      uint192 _rawPrice = _safeu192(_collateral.oracle.currentValue());
+      _rawPrice = _safeu192(_collateral.oracle.currentValue());
       if (_rawPrice == 0) continue;
       // the token value is equal to the price * balance * tokenLTV
-      uint192 _tokenValue = _safeu192(
+      _tokenValue = _safeu192(
         _truncate(_truncate(_balance * _collateral.ltv * _getPriceWithDecimals(_rawPrice, _collateral.decimals)))
       );
       // increase the ltv of the vault by the token value
@@ -937,7 +954,7 @@ contract VaultController is Pausable, IVaultController, ExponentialNoError, Owna
     int256 _reserveRatio = int256(_ui18);
     // calculate the value at the curve. this vault controller is a USDA vault and will reference
     // the vault at address 0
-    int256 _intCurveVal = curveMaster.getValueAt(address(0x00), _reserveRatio);
+    int256 _intCurveVal = curveMaster.getValueAt(address(0), _reserveRatio);
     // cast the integer curve value to a u192
     uint192 _curveVal = _safeu192(uint256(_intCurveVal));
     // calculate the amount of total outstanding loans before and after this interest accrual

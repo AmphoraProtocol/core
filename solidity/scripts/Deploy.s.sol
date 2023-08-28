@@ -10,6 +10,7 @@ import {USDA} from '@contracts/core/USDA.sol';
 import {GovernorCharlie} from '@contracts/governance/GovernorCharlie.sol';
 import {AmphoraProtocolToken} from '@contracts/governance/AmphoraProtocolToken.sol';
 import {ChainlinkOracleRelay} from '@contracts/periphery/oracles/ChainlinkOracleRelay.sol';
+import {CTokenOracle} from '@contracts/periphery/oracles/CTokenOracle.sol';
 import {AnchoredViewRelay} from '@contracts/periphery/oracles/AnchoredViewRelay.sol';
 import {CurveMaster} from '@contracts/periphery/CurveMaster.sol';
 import {UniswapV3OracleRelay} from '@contracts/periphery/oracles/UniswapV3OracleRelay.sol';
@@ -21,6 +22,7 @@ import {IVaultDeployer} from '@interfaces/core/IVaultDeployer.sol';
 import {TestConstants} from '@test/utils/TestConstants.sol';
 import {IVault} from '@interfaces/core/IVault.sol';
 import {CreateOracles} from '@scripts/CreateOracles.sol';
+import {IAnchoredViewRelay} from '@interfaces/periphery/IAnchoredViewRelay.sol';
 
 import {FakeBaseRewardPool} from '@scripts/fakes/FakeBaseRewardPool.sol';
 import {FakeBooster} from '@scripts/fakes/FakeBooster.sol';
@@ -31,6 +33,10 @@ import {FakeCVX} from '@scripts/fakes/FakeBaseRewardPool.sol';
 
 import {ERC20, IERC20} from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import '@openzeppelin/contracts/utils/Strings.sol';
+
+interface IOwnable {
+  function transferOwnership(address newOwner) external;
+}
 
 struct DeployVars {
   address deployer;
@@ -57,7 +63,8 @@ abstract contract Deploy is Script, TestConstants, CreateOracles {
       VaultController _vaultController,
       VaultDeployer _vaultDeployer,
       AMPHClaimer _amphClaimer,
-      USDA _usda
+      USDA _usda,
+      CurveMaster _curveMaster
     )
   {
     address[] memory _tokens;
@@ -98,7 +105,7 @@ abstract contract Deploy is Script, TestConstants, CreateOracles {
     console.log('THREE_LINES_0_100: ', address(_threeLines));
 
     // Deploy CurveMaster
-    CurveMaster _curveMaster = new CurveMaster();
+    _curveMaster = new CurveMaster();
     console.log('CURVE_MASTER: ', address(_curveMaster));
     // Set curve
     _curveMaster.setCurve(address(0), address(_threeLines));
@@ -120,6 +127,12 @@ abstract contract Deploy is Script, TestConstants, CreateOracles {
       _changeOwnership(
         _deployVars.deployer, address(_governor), _amphToken, _vaultController, _amphClaimer, _usda, _curveMaster
       );
+
+      // change ownership oracles
+      IOwnable[] memory _oracles = new IOwnable[](1);
+      _oracles[0] = IOwnable(address(IAnchoredViewRelay(_deployVars.wethOracle).mainRelay()));
+
+      _changeOwnershipOracles(address(_governor), _oracles);
     }
   }
 
@@ -177,15 +190,18 @@ abstract contract Deploy is Script, TestConstants, CreateOracles {
     _usda.transferOwnership(_governor);
     //curveMaster
     _curveMaster.transferOwnership(_governor);
-    // TODO: chainlinkEth transfer ownership, gets into stack too deep errors
-    // if (address(_chainlinkEth) != address(0)) _chainlinkEth.transferOwnership(_governor);
   }
 
-  /**
-   *  @notice Creates a fake oracle
-   *  @param _price The price to set for the oracle
-   *  @return _oracle Address of the fake oracle
-   */
+  function _changeOwnershipOracles(address _governor, IOwnable[] memory _oracleRelays) internal {
+    // Chainlink oracles
+    for (uint256 _i = 0; _i < _oracleRelays.length; _i++) {
+      _oracleRelays[_i].transferOwnership(_governor);
+    }
+  }
+
+  //  @notice Creates a fake oracle
+  //  @param _price The price to set for the oracle
+  //  @return _oracle Address of the fake oracle
   function _createFakeOracle(uint256 _price) internal returns (address _oracle) {
     // Deploy for convex rewards
     FakeWethOracle fakeRewardsOracle1 = new FakeWethOracle();
@@ -194,12 +210,10 @@ abstract contract Deploy is Script, TestConstants, CreateOracles {
     _oracle = address(fakeRewardsOracle1);
   }
 
-  /**
-   *  @notice Creates a fake lp token
-   *  @param _minter The address that's gonna receive the tokens
-   *  @param _amount The amount of tokens to mint
-   *  @return _lpToken The address of the lp token
-   */
+  //  @notice Creates a fake lp token
+  //  @param _minter The address that's gonna receive the tokens
+  //  @param _amount The amount of tokens to mint
+  //  @return _lpToken The address of the lp token
   function _createFakeLp(address _minter, uint256 _amount) internal returns (address _lpToken) {
     MintableToken fakeLp1 = new MintableToken('LPToken',uint8(18));
     fakeLp1.mint(_minter, _amount);

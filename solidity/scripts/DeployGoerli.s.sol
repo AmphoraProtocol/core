@@ -79,7 +79,7 @@ contract DeployGoerliOpenDeployment is Deploy {
     // Deploy protocol
     DeployVars memory _deployVars =
       DeployVars(deployer, cvx, crv, susdCopy, IERC20(wethGoerli), address(fakeBooster), address(_chainlinkEth), false);
-    (,, VaultController _vaultController,,, USDA _usda) = _deploy(_deployVars);
+    (,, VaultController _vaultController,,, USDA _usda,) = _deploy(_deployVars);
 
     susdCopy.approve(address(_usda), 1_000_000 ether);
     _usda.donate(500_000 ether);
