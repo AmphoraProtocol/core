@@ -61,7 +61,7 @@
     "@typechain/truffle-v5": "8.0.2",
     "@typechain/web3-v1": "6.0.2",
     "cross-env": "7.0.3",
-    "husky": "8.0.2",
+    "husky": "^8.0.0",
     "lint-staged": "10",
     "solhint": "3.3.6",
     "solhint-plugin-defi-wonderland": "1.1.0",

@@ -20,7 +20,7 @@ gas_reports = ['*']
 auto_detect_solc = true
 optimizer = true
 optimizer_runs = 20000
-verbosity = 0
+verbosity = 4
 fuzz_runs = 1000
 
 [fuzz]
