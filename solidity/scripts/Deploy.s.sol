@@ -50,7 +50,7 @@ struct DeployVars {
 }
 
 abstract contract Deploy is Script, TestConstants, CreateOracles {
-  uint256 public constant initialAmphSupply = 100_000_000 ether;
+  uint256 public constant initialAmphSupply = 10_000_000_000 ether;
 
   uint256 public constant cvxRewardFee = 0.02 ether;
   uint256 public constant crvRewardFee = 0.01 ether;
