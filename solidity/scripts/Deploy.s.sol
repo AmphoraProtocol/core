@@ -50,7 +50,7 @@ struct DeployVars {
 }
 
 abstract contract Deploy is Script, TestConstants, CreateOracles {
-  uint256 public constant initialAmphSupply = 10_000_000_000 ether;
+  uint256 public constant initialAmphSupply = 3_800_000_000 ether;
 
   uint256 public constant cvxRewardFee = 0.02 ether;
   uint256 public constant crvRewardFee = 0.01 ether;
@@ -91,7 +91,7 @@ abstract contract Deploy is Script, TestConstants, CreateOracles {
     _amphClaimer =
     new AMPHClaimer(address(_vaultController), IERC20(address(_amphToken)), _deployVars.cvxAddress, _deployVars.crvAddress, cvxRewardFee, crvRewardFee); // Nonce + 4
     console.log('AMPH_CLAIMER: ', address(_amphClaimer));
-    _amphToken.mint(address(_amphClaimer), 1_000_000 ether); // Mint amph to start LM program
+    _amphToken.mint(address(_amphClaimer), 100_000_000 ether); // Mint amph to start LM program
 
     // Make sure the calculated address is correct
     assert(_amphClaimerAddress == address(_amphClaimer));
