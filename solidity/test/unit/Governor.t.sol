@@ -91,7 +91,7 @@ contract UnitGovernorCharliePropose is Base {
       _getProposalData(2);
     governor.propose(_targets, _values, _signatures, _calldatas, 'description');
 
-    vm.roll(block.number + 13_141);
+    vm.roll(block.number + governor.votingDelay() + 1);
     vm.expectRevert(IGovernorCharlie.GovernorCharlie_MultipleActiveProposals.selector);
     governor.propose(_targets, _values, _signatures, _calldatas, 'description');
   }
