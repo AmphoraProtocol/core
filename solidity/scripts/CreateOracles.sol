@@ -131,7 +131,7 @@ abstract contract CreateOracles is TestConstants {
 
     // Deploy chainlinkSusd oracle relay
     ChainlinkOracleRelay _chainlinkSusd =
-      new ChainlinkOracleRelay(SUSD_ADDRESS, CHAINLINK_SUSD_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_DAY);
+      new ChainlinkOracleRelay(SUSD_V2_ADDRESS, CHAINLINK_SUSD_FEED_ADDRESS, EIGHT_DECIMALS_MUL_DIV, 1, ONE_DAY);
     console.log('CHAINLINK_SUSD_FEED: ', address(_chainlinkSusd));
 
     // Deploy anchoredViewSusd relay

@@ -28,7 +28,7 @@ contract DeployGoerli is Deploy {
       deployer,
       IERC20(CVX_ADDRESS),
       IERC20(CRV_ADDRESS),
-      IERC20(SUSD_ADDRESS),
+      IERC20(SUSD_V2_ADDRESS),
       IERC20(WETH_ADDRESS),
       BOOSTER,
       _oracle,

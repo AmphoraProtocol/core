@@ -31,6 +31,7 @@ import {TestConstants} from '@test/utils/TestConstants.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {ExponentialNoError} from '@contracts/utils/ExponentialNoError.sol';
 import {CreateOracles} from '@scripts/CreateOracles.sol';
+import {MintableToken} from '@scripts/fakes/MintableToken.sol';
 
 // solhint-disable-next-line max-states-count
 contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateOracles {
@@ -82,7 +83,8 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateO
   // Governance
   GovernorCharlie public governor;
 
-  IERC20 public susd = IERC20(label(SUSD_ADDRESS, 'SUSD'));
+  IERC20 public susdV2 = IERC20(label(SUSD_V2_ADDRESS, 'SUSD_V2'));
+  IERC20 public susd = IERC20(label(SUSD_V3_ADDRESS, 'SUSD_V3'));
   IERC20 public weth = IERC20(label(WETH_ADDRESS, 'WETH'));
   IERC20 public wbtc = IERC20(label(WBTC_ADDRESS, 'WBTC'));
   IERC20 public uni = IERC20(label(UNI_ADDRESS, 'UNI'));
@@ -182,7 +184,7 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateO
     vaultController.changeClaimerContract(amphClaimer);
 
     // Deploy and initialize USDA
-    usdaToken = new USDA(IERC20(SUSD_ADDRESS));
+    usdaToken = new USDA(IERC20(SUSD_V3_ADDRESS));
     label(address(usdaToken), 'USDA');
 
     // Deploy curve
@@ -307,9 +309,8 @@ contract CommonE2EBase is DSTestPlus, TestConstants, ExponentialNoError, CreateO
   }
 
   function _dealSUSD(address _receiver, uint256 _amount) internal {
-    // sUSD is a proxy so doesn't work with `deal`
-    // here executes deal in the `TokenState` contract from sUSD
-    deal(SUSD_TOKEN_STATE, _receiver, _amount);
+    vm.prank(SUSD_V3_MINTER);
+    MintableToken(SUSD_V3_ADDRESS).mint(_receiver, _amount);
   }
 
   function _mintVault(address _minter) internal returns (uint96 _id) {

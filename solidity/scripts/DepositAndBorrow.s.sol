@@ -37,7 +37,7 @@ contract Borrow is Script, TestConstants {
   /// NOTE: Remember to set this address in the TestConstants.sol
   IVaultController public vaultController = IVaultController(VAULT_CONTROLLER_ADDRESS);
   IUSDA public usda = IUSDA(USDA_ADDRESS);
-  IERC20 public susd = IERC20(SUSD_ADDRESS);
+  IERC20 public susd = IERC20(SUSD_V3_ADDRESS);
   address public user = vm.rememberKey(vm.envUint('USER_PRIVATE_KEY'));
   uint192 public borrowAmount = 0.5 ether;
   uint96 public vaultId = 1;
