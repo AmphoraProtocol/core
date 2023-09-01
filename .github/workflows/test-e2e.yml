@@ -1,6 +1,6 @@
 on: [push]
 
-name: test
+name: e2e test
 
 concurrency:
   group: ${{github.workflow}}-${{github.ref}}

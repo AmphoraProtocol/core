@@ -1,6 +1,6 @@
 on: [push]
 
-name: test
+name: invariant test
 
 concurrency:
   group: ${{github.workflow}}-${{github.ref}}
