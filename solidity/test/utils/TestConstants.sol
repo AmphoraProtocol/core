@@ -24,7 +24,7 @@ contract TestConstants is ChainlinkFeeds, PoolAddresses, TokenAddresses, CurvePo
   address public constant THREE_CRV_LP_STAKED_CONTRACT = 0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A;
 
   // LTV
-  uint256 public constant WETH_LTV = 0.6 ether;
+  uint256 public constant WETH_LTV = 0.85 ether;
   uint256 public constant UNI_LTV = 0.75 ether;
   uint256 public constant AAVE_LTV = 0.75 ether;
   uint256 public constant DYDX_LTV = 0.75 ether;

@@ -116,7 +116,7 @@ abstract contract Deploy is Script, TestConstants, CreateOracles {
     _usda.addVaultController(address(_vaultController));
     // Register WETH as acceptable erc20 to vault controller
     _vaultController.registerErc20(
-      address(_deployVars.wethAddress), WETH_LTV, _deployVars.wethOracle, LIQUIDATION_INCENTIVE, type(uint256).max, 0
+      address(_deployVars.wethAddress), LTV_60, _deployVars.wethOracle, LIQUIDATION_INCENTIVE, type(uint256).max, 0
     );
     // Register USDA
     _vaultController.registerUSDA(address(_usda));
