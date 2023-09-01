@@ -18,6 +18,8 @@ contract TokenAddresses {
   address public constant CVX_ADDRESS = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
   address public constant CRV_ADDRESS = 0xD533a949740bb3306d119CC777fa900bA034cd52;
   address public constant TRI_CRYPTO_LP_TOKEN = 0xc4AD29ba4B3c580e6D59105FFf484999997675Ff;
+  address public constant CBETH_ETH_LP_TOKEN = 0x5b6C539b224014A09B3388e51CaAA8e354c959C8;
+  address public constant SUSD_USDT_USDC_DAI_LP_TOKEN = 0xC25a3A3b969415c80451098fa907EC722572917F;
   address public constant cETH_ADDRESS = 0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5;
   address public constant cDAI_ADDRESS = 0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643;
   address public constant cUSDC_ADDRESS = 0x39AA39c021dfbaE8faC545936693aC917d5E7563;

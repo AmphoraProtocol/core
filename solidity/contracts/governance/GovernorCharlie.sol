@@ -87,19 +87,21 @@ contract GovernorCharlie is IGovernorCharlie {
 
   constructor(address _amph) {
     amph = IAMPH(_amph);
-    votingPeriod = 40_320;
-    votingDelay = 13_140;
-    proposalThreshold = 1_000_000_000_000_000_000_000_000;
-    proposalTimelockDelay = 172_800;
-    proposalCount = 0;
-    quorumVotes = 10_000_000_000_000_000_000_000_000;
-    emergencyQuorumVotes = 40_000_000_000_000_000_000_000_000;
-    emergencyVotingPeriod = 6570;
-    emergencyTimelockDelay = 43_200;
+    votingPeriod = 1 days;
+    votingDelay = 4 hours;
+    proposalTimelockDelay = 2 days;
+    proposalThreshold = 1_000_000 ether;
+    quorumVotes = 2_000_000 ether;
 
-    optimisticQuorumVotes = 2_000_000_000_000_000_000_000_000;
-    optimisticVotingDelay = 25_600;
-    maxWhitelistPeriod = 31_536_000;
+    emergencyQuorumVotes = 400_000_000 ether;
+    emergencyVotingPeriod = 6 hours;
+    emergencyTimelockDelay = 1 days;
+
+    optimisticQuorumVotes = 2_000_000 ether;
+    optimisticVotingDelay = 7 hours;
+    maxWhitelistPeriod = 365 days;
+
+    proposalCount = 0;
   }
 
   /// @notice any function with this modifier can only be called by governance

@@ -31,8 +31,13 @@ contract TestConstants is ChainlinkFeeds, PoolAddresses, TokenAddresses, CurvePo
   uint256 public constant OTHER_LTV = 0.75 ether;
   uint256 public constant WBTC_LTV = 0.8 ether;
 
+  uint256 public constant LTV_60 = 0.6 ether;
+  uint256 public constant LTV_40 = 0.4 ether;
+  uint256 public constant LTV_30 = 0.3 ether;
+  uint256 public constant LTV_20 = 0.2 ether;
+
   // LIQ INC
-  uint256 public constant LIQUIDATION_INCENTIVE = 0.05 ether;
+  uint256 public constant LIQUIDATION_INCENTIVE = 0.1 ether;
 
   // CAP
   uint256 public constant AAVE_CAP = 500 ether;
