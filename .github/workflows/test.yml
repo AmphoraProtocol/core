@@ -7,8 +7,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check:
-    name: Foundry project
+  setup:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -29,13 +28,25 @@ jobs:
       - name: Compile
         run: forge build
 
+  unit_tests:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
       - name: Run unit tests
         run: yarn test:unit
 
-      - name: "Run invariant tests"
+  invariant_tests:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run invariant tests
         run: yarn test:invariant
 
-      - name: "Create env file"
+  e2e_tests:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create env file
         run: |
           touch .env
           echo MAINNET_RPC="${{ secrets.MAINNET_RPC }}" >> .env
