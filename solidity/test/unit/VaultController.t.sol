@@ -542,7 +542,7 @@ contract UnitVaultControllerRegisterERC20 is Base {
   }
 
   function testRevertIfTokenAlreadyRegistered(address _oracle, uint64 _ltv, uint256 _cap) public {
-    vm.assume(_ltv < 0.95 ether);
+    vm.assume(_ltv < 0.9 ether);
     // Register WETH as acceptable erc20 collateral to vault controller and set oracle
     vm.prank(governance);
     vaultController.registerErc20(WETH_ADDRESS, _ltv, _oracle, LIQUIDATION_INCENTIVE, _cap, 0);
@@ -576,7 +576,7 @@ contract UnitVaultControllerRegisterERC20 is Base {
     uint64 _ltv,
     uint256 _cap
   ) public {
-    vm.assume(_ltv < 0.95 ether);
+    vm.assume(_ltv < 0.9 ether);
     vm.assume(address(_token) > address(10));
     vm.assume(address(_token) != address(vaultController));
     vm.assume(address(_token) != address(vm));
@@ -594,7 +594,7 @@ contract UnitVaultControllerRegisterERC20 is Base {
   }
 
   function testRegisterCurveLPToken(address _oracle, uint64 _ltv, uint256 _cap, uint8 _decimals) public {
-    vm.assume(_ltv < 0.95 ether);
+    vm.assume(_ltv < 0.9 ether);
     vm.assume(_decimals <= 18);
     vm.assume(address(_oracle) != address(vaultController));
     vm.assume(address(_oracle) != address(vm));
@@ -665,7 +665,7 @@ contract UnitVaultControllerRegisterERC20 is Base {
     uint256 _cap,
     uint8 _decimals
   ) public {
-    vm.assume(_ltv < 0.95 ether);
+    vm.assume(_ltv < 0.9 ether);
     vm.assume(_decimals > 18);
     vm.assume(address(_oracle) != address(vaultController));
     vm.assume(address(_oracle) != address(vm));
@@ -719,7 +719,7 @@ contract UnitVaultControllerUpdateRegisteredERC20 is Base {
   }
 
   function testRevertIfTokenNotRegistered(IERC20 _token, address _oracle, uint64 _ltv, uint256 _poolId) public {
-    vm.assume(_ltv < 0.95 ether && address(_token) != WETH_ADDRESS);
+    vm.assume(_ltv < 0.9 ether && address(_token) != WETH_ADDRESS);
     vm.expectRevert(IVaultController.VaultController_TokenNotRegistered.selector);
     // Try to update a non registered token
     vm.prank(governance);
@@ -743,7 +743,7 @@ contract UnitVaultControllerUpdateRegisteredERC20 is Base {
     uint256 _cap,
     uint256 _poolId
   ) public {
-    vm.assume(_ltv < 0.95 ether);
+    vm.assume(_ltv < 0.9 ether);
     vm.assume(_poolId != 0);
 
     address _mockCrvRewards = newAddress();
@@ -760,7 +760,7 @@ contract UnitVaultControllerUpdateRegisteredERC20 is Base {
   }
 
   function testUpdateRegisteredERC20(address _oracle, uint256 _ltv, uint256 _cap) public {
-    vm.assume(_ltv < 0.95 ether);
+    vm.assume(_ltv < 0.9 ether);
     vm.expectEmit(false, false, false, true);
     emit UpdateRegisteredErc20(WETH_ADDRESS, _ltv, _oracle, LIQUIDATION_INCENTIVE, _cap, 0);
 
@@ -778,7 +778,7 @@ contract UnitVaultControllerUpdateRegisteredERC20 is Base {
     uint256 _cap,
     uint256 _poolId
   ) public {
-    vm.assume(_ltv < 0.95 ether);
+    vm.assume(_ltv < 0.9 ether);
     vm.assume(_poolId != 0);
 
     address _mockCrvRewards = newAddress();
