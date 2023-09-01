@@ -56,14 +56,11 @@ contract E2ECbEthEthOracle is CommonE2EBase {
 }
 
 contract E2ECbEthSafeCurveLpOracleManipulations is E2ECbEthEthOracle {
-  address public whale = 0x629184d792f1c937DBfDd7e1055233E22c1Ca2DF;
   CbEthEthCurveLPExploiter public exploiter;
 
   function setUp() public virtual override {
     super.setUp();
-    // We impersonate the whale to get some cbETH
-    vm.prank(whale);
-    cbETH.transfer(address(this), 29_000 ether); // 29k cbETH for us
+    deal(address(cbETH), address(this), 29_000 ether);
 
     // deploy the exploiter contract
     // solhint-disable-next-line reentrancy

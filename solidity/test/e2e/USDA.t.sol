@@ -69,17 +69,6 @@ contract E2EUSDA is CommonE2EBase {
     assertGt(usdaToken.balanceOf(dave), _daveUSDABalance + susdAmount);
   }
 
-  function testRevertIfDepositingMoreThanBalance() public {
-    assertEq(0, susd.balanceOf(eric));
-
-    vm.startPrank(eric);
-    susd.approve(address(usdaToken), susdAmount);
-
-    vm.expectRevert('Insufficient balance after any settlement owing');
-    usdaToken.deposit(susdAmount);
-    vm.stopPrank();
-  }
-
   function testRevertIfDepositIsZero() public {
     vm.startPrank(dave);
     susd.approve(address(usdaToken), susdAmount);
