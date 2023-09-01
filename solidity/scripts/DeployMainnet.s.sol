@@ -87,17 +87,17 @@ contract DeployMainnet is Deploy {
       );
     }
 
-    {
-      // Add cbeth/eth
-      IOracleRelay _cbEthAnchorOracle = IOracleRelay(_createCbEthOracle(_uniswapRelayEthUsdc, _chainlinkEth));
-      ChainlinkTokenOracleRelay _chainlinkCbeth =
-        ChainlinkTokenOracleRelay(address(IAnchoredViewRelay(address(_cbEthAnchorOracle)).mainRelay()));
-      _oracles.push(IOwnable(address(_chainlinkCbeth.AGGREGATOR())));
-      address _cbethEthOracle = _createCbEthEthOracle(_cbEthAnchorOracle, IOracleRelay(_wethOracle));
-      _vaultController.registerErc20(
-        CBETH_ETH_LP_TOKEN, LTV_30, _cbethEthOracle, LIQUIDATION_INCENTIVE, type(uint256).max, 127
-      );
-    }
+    // {
+    //   // Add cbeth/eth
+    //   IOracleRelay _cbEthAnchorOracle = IOracleRelay(_createCbEthOracle(_uniswapRelayEthUsdc, _chainlinkEth));
+    //   ChainlinkTokenOracleRelay _chainlinkCbeth =
+    //     ChainlinkTokenOracleRelay(address(IAnchoredViewRelay(address(_cbEthAnchorOracle)).mainRelay()));
+    //   _oracles.push(IOwnable(address(_chainlinkCbeth.AGGREGATOR())));
+    //   address _cbethEthOracle = _createCbEthEthOracle(_cbEthAnchorOracle, IOracleRelay(_wethOracle));
+    //   _vaultController.registerErc20(
+    //     CBETH_ETH_LP_TOKEN, LTV_30, _cbethEthOracle, LIQUIDATION_INCENTIVE, type(uint256).max, 127
+    //   );
+    // }
 
     {
       // Add 4pool
